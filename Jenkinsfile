@@ -3,14 +3,15 @@ pipeline {
 
     stages {
         stage('Install & Build') {
+            agent {
+                docker {
+                    image 'node:18'
+                    args '-v $PWD:/app -w /app'
+                }
+            }
             steps {
-                sh '''
-                docker run --rm \
-                -v $PWD:/app \
-                -w /app \
-                node:18 \
-                sh -c "npm install && npm run build"
-                '''
+                sh 'npm install'
+                sh 'npm run build'
             }
         }
 
