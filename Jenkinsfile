@@ -2,20 +2,25 @@ pipeline {
     agent any
 
     stages {
-        stage('Install & Build') {
-            agent {
-                docker {
-                    image 'node:18'
-                    args '-v $PWD:/app -w /app'
-                }
-            }
+        stage('Checkout') {
             steps {
-                sh 'npm install'
-                sh 'npm run build'
+                checkout scm
             }
         }
 
-        stage('Docker Build') {
+        stage('Build Frontend') {
+            steps {
+                sh '''
+                docker run --rm \
+                -v $PWD:/app \
+                -w /app \
+                node:18 \
+                sh -c "npm install && npm run build"
+                '''
+            }
+        }
+
+        stage('Build Image') {
             steps {
                 sh 'docker build -t demo-app:latest .'
             }
