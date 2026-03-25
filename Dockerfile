@@ -1,5 +1,5 @@
 # 第一阶段：构建前端代码 (使用 Node 镜像)
-FROM node:18 AS build-stage
+FROM node:22 AS build-stage
 WORKDIR /app
 # 拷贝所有源代码到容器内
 COPY . .
