@@ -10,13 +10,14 @@ pipeline {
 
         stage('Build Frontend') {
             steps {
-                sh '''
+                // 注意这里改成了双引号 """
+                sh """
                 docker run --rm \
-                -v $PWD:/app \
+                -v ${WORKSPACE}:/app \
                 -w /app \
                 node:18 \
                 sh -c "npm install && npm run build"
-                '''
+                """
             }
         }
 
