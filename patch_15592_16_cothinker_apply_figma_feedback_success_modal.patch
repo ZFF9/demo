@@ -274,7 +274,7 @@ index e34183d..021c0cd 100644
  			expect(
  				screen.queryByText("Thank you—we got it!")
 diff --git a/packages/web/src/components/InsightCard/index.tsx b/packages/web/src/components/InsightCard/index.tsx
-index 9397ac0..307e9d8 100644
+index 55d1978..0be8226 100644
 --- a/packages/web/src/components/InsightCard/index.tsx
 +++ b/packages/web/src/components/InsightCard/index.tsx
 @@ -14,6 +14,7 @@ import {
@@ -319,4 +319,4 @@ index 9397ac0..307e9d8 100644
 +				/>
  				<h2>Thank you—we got it!</h2>
  				<p className="insightFeedbackSuccessModal__description">
- 					We will use your feedback to improve future insights for Pocket News.
+ 					We will use your feedback to improve future insights for
