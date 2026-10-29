@@ -1,0 +1,94 @@
+diff --git a/packages/web/src/components/InsightCard/index.spec.tsx b/packages/web/src/components/InsightCard/index.spec.tsx
+index be3124b..d83115b 100644
+--- a/packages/web/src/components/InsightCard/index.spec.tsx
++++ b/packages/web/src/components/InsightCard/index.spec.tsx
+@@ -1928,28 +1928,33 @@ describe("InsightCard", () => {
+ 		);
+ 		await screen.findByText("Generation Complete");
+ 		fireEvent.click(screen.getByRole("button", { name: "Like" }));
++
++		jest.useFakeTimers();
+ 		fireEvent.click(
+ 			screen.getByRole("button", { name: "Submit feedback" })
+ 		);
+ 
+-		await waitFor(() =>
+-			expect(screen.getByText("Thank you—we got it!")).toBeInTheDocument()
+-		);
++		await act(async () => {
++			await Promise.resolve();
++		});
++
++		expect(
++			screen.getByText(/Thank you.*we got it!/)
++		).toBeInTheDocument();
+ 		expect(
+ 			screen.getByText(
+ 				"We will use your feedback to improve future insights for Pocket News."
+ 			)
+ 		).toBeInTheDocument();
+ 
+-		jest.useFakeTimers();
+ 		act(() => {
+ 			jest.advanceTimersByTime(3000);
+ 		});
+ 
+-		await waitFor(() =>
+-			expect(
+-				screen.queryByText("Thank you—we got it!")
+-			).not.toBeInTheDocument()
+-		);
++		expect(
++			screen.queryByText(/Thank you.*we got it!/)
++		).not.toBeInTheDocument();
++
++		jest.useRealTimers();
+ 	});
+ });
+diff --git a/packages/web/src/components/InsightCard/index.tsx b/packages/web/src/components/InsightCard/index.tsx
+index 1dcd3ed..14c15eb 100644
+--- a/packages/web/src/components/InsightCard/index.tsx
++++ b/packages/web/src/components/InsightCard/index.tsx
+@@ -14,6 +14,7 @@ import {
+ 	CoThinkerFilterSvgIcon,
+ 	CoThinkerThumbsUpSvgIcon,
+ 	CoThinkerThumbsDownSvgIcon,
++	CoThinkerFeedbackSuccessSvgIcon,
+ } from "@angen_frontend/components";
+ import { InsightService, InsightTimeoutError } from "@angen_frontend/services";
+ import type {
+@@ -637,21 +638,29 @@ const FeedbackSuccessDialog: FC<{
+ 	open: boolean;
+ 	onClose: () => void;
+ }> = ({ open, onClose }) => {
++	useEffect(() => {
++		if (!open) return;
++		const timer = setTimeout(() => {
++			onClose();
++		}, 3000);
++		return () => {
++			clearTimeout(timer);
++		};
++	}, [open, onClose]);
++
+ 	return (
+ 		<GenericModalV2
+ 			className="insightFeedbackSuccessModal"
+ 			isOpen={open}
+ 			onClose={onClose}
+-			showCloseIcon
++			showCloseIcon={false}
+ 			footer={null}
+ 		>
+ 			<div className="insightFeedbackSuccessModal__content">
+-				<div
++				<CoThinkerFeedbackSuccessSvgIcon
+ 					className="insightFeedbackSuccessModal__icon"
+ 					aria-hidden="true"
+-				>
+-					<CoThinkerCompleteTickSvgIcon />
+-				</div>
++				/>
+ 				<h2>Thank you—we got it!</h2>
+ 				<p className="insightFeedbackSuccessModal__description">
+ 					We will use your feedback to improve future insights for
