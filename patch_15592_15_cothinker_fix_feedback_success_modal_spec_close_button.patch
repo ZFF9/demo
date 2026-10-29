@@ -1,0 +1,37 @@
+diff --git a/packages/web/src/components/InsightCard/index.spec.tsx b/packages/web/src/components/InsightCard/index.spec.tsx
+index a67cda6..e34183d 100644
+--- a/packages/web/src/components/InsightCard/index.spec.tsx
++++ b/packages/web/src/components/InsightCard/index.spec.tsx
+@@ -116,13 +116,22 @@ jest.mock("@angen_frontend/components", () => ({
+ 		children,
+ 		footer,
+ 		isOpen,
++		onClose,
++		showCloseIcon,
+ 	}: {
+ 		children: React.ReactNode;
+ 		footer?: React.ReactNode;
+ 		isOpen?: boolean;
++		onClose?: () => void;
++		showCloseIcon?: boolean;
+ 	}) =>
+ 		isOpen ? (
+ 			<>
++				{showCloseIcon ? (
++					<button aria-label="Close" onClick={onClose} type="button">
++						Close
++					</button>
++				) : null}
+ 				{children}
+ 				{footer}
+ 			</>
+@@ -1921,8 +1930,7 @@ describe("InsightCard", () => {
+ 			)
+ 		).toBeInTheDocument();
+ 
+-		const closeButtons = screen.getAllByRole("button", { name: "Close" });
+-		fireEvent.click(closeButtons[closeButtons.length - 1]);
++		fireEvent.click(screen.getByRole("button", { name: "Close" }));
+ 		await waitFor(() =>
+ 			expect(
+ 				screen.queryByText("Thank you—we got it!")
