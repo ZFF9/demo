@@ -1,0 +1,322 @@
+diff --git a/packages/components/src/Icons/CoThinkerFeedbackSuccessSvgIcon/index.spec.tsx b/packages/components/src/Icons/CoThinkerFeedbackSuccessSvgIcon/index.spec.tsx
+new file mode 100644
+index 0000000..f483a1e
+--- /dev/null
++++ b/packages/components/src/Icons/CoThinkerFeedbackSuccessSvgIcon/index.spec.tsx
+@@ -0,0 +1,19 @@
++import "@testing-library/jest-dom";
++import { render, screen, waitFor } from "@testing-library/react";
++import CoThinkerFeedbackSuccessSvgIcon from "./index";
++
++jest.mock("@ant-design/icons", () => ({
++	__esModule: true,
++	default: () => <div data-testid="fakeAntIcon">fake icon</div>,
++}));
++
++describe("CoThinkerFeedbackSuccessSvgIcon", () => {
++	it("should render without errors", async () => {
++		render(<CoThinkerFeedbackSuccessSvgIcon />);
++
++		await waitFor(() => {
++			const iconElement = screen.getByTestId("fakeAntIcon");
++			expect(iconElement).toBeInTheDocument();
++		});
++	});
++});
+diff --git a/packages/components/src/Icons/CoThinkerFeedbackSuccessSvgIcon/index.tsx b/packages/components/src/Icons/CoThinkerFeedbackSuccessSvgIcon/index.tsx
+new file mode 100644
+index 0000000..4f60cef
+--- /dev/null
++++ b/packages/components/src/Icons/CoThinkerFeedbackSuccessSvgIcon/index.tsx
+@@ -0,0 +1,89 @@
++import Icon from "@ant-design/icons";
++import { FC } from "react";
++
++interface IProps {
++	className?: string;
++	onClick?: () => void;
++}
++
++const CoThinkerFeedbackSuccessSvg: FC = () => (
++	<svg
++		width="61"
++		height="64"
++		viewBox="0 0 122 128"
++		fill="none"
++		xmlns="http://www.w3.org/2000/svg"
++	>
++		<g clipPath="url(#clip0_cothinker_feedback_success)">
++			<path
++				d="M61.3879 128C91.6847 128 116.245 103.44 116.245 73.1428C116.245 42.846 91.6847 18.2856 61.3879 18.2856C31.0911 18.2856 6.53076 42.846 6.53076 73.1428C6.53076 103.44 31.0911 128 61.3879 128Z"
++				fill="#E8F7EA"
++			/>
++			<path
++				d="M61.3876 116.571C85.3725 116.571 104.816 97.1279 104.816 73.1429C104.816 49.158 85.3725 29.7144 61.3876 29.7144C37.4026 29.7144 17.959 49.158 17.959 73.1429C17.959 97.1279 37.4026 116.571 61.3876 116.571Z"
++				fill="#F5FBF6"
++			/>
++			<path
++				d="M61.3877 105.143C79.0608 105.143 93.3877 90.8162 93.3877 73.1431C93.3877 55.47 79.0608 41.1431 61.3877 41.1431C43.7146 41.1431 29.3877 55.47 29.3877 73.1431C29.3877 90.8162 43.7146 105.143 61.3877 105.143Z"
++				fill="#57C26A"
++			/>
++			<path
++				d="M46.7349 73L56.0682 84L74.7349 62"
++				strokeWidth="4"
++				strokeLinecap="round"
++				strokeLinejoin="round"
++				stroke="white"
++			/>
++			<path
++				d="M61.3876 0L64.8161 8L72.8161 11.4286L64.8161 14.8571L61.3876 22.8571L57.959 14.8571L49.959 11.4286L57.959 8L61.3876 0Z"
++				fill="#F4C542"
++			/>
++			<path
++				d="M112.816 41.1431L115.102 46.8574L120.816 49.1431L115.102 51.4288L112.816 57.1431L110.531 51.4288L104.816 49.1431L110.531 46.8574L112.816 41.1431Z"
++				fill="#FF6B5A"
++			/>
++			<path
++				d="M8.81641 48L11.1021 53.7143L16.8164 56L11.1021 58.2857L8.81641 64L6.53069 58.2857L0.816406 56L6.53069 53.7143L8.81641 48Z"
++				fill="#9C6BFF"
++			/>
++			<path
++				d="M105.959 108.571L108.245 114.286L113.959 116.571L108.245 118.857L105.959 124.571L103.673 118.857L97.959 116.571L103.673 114.286L105.959 108.571Z"
++				fill="#57C26A"
++			/>
++			<path
++				d="M27.1019 24.0002C28.9955 24.0002 30.5305 22.4652 30.5305 20.5716C30.5305 18.6781 28.9955 17.1431 27.1019 17.1431C25.2084 17.1431 23.6733 18.6781 23.6733 20.5716C23.6733 22.4652 25.2084 24.0002 27.1019 24.0002Z"
++				fill="#FFD97A"
++			/>
++			<path
++				d="M102.53 25.7143C104.108 25.7143 105.388 24.4351 105.388 22.8571C105.388 21.2792 104.108 20 102.53 20C100.953 20 99.6733 21.2792 99.6733 22.8571C99.6733 24.4351 100.953 25.7143 102.53 25.7143Z"
++				fill="#B69CFF"
++			/>
++			<path
++				d="M116.245 90.2859C118.139 90.2859 119.674 88.7508 119.674 86.8573C119.674 84.9637 118.139 83.4287 116.245 83.4287C114.351 83.4287 112.816 84.9637 112.816 86.8573C112.816 88.7508 114.351 90.2859 116.245 90.2859Z"
++				fill="#FF8A7B"
++			/>
++			<path
++				d="M13.3879 101.143C14.9659 101.143 16.245 99.8638 16.245 98.2859C16.245 96.7079 14.9659 95.4287 13.3879 95.4287C11.8099 95.4287 10.5308 96.7079 10.5308 98.2859C10.5308 99.8638 11.8099 101.143 13.3879 101.143Z"
++				fill="#8DD99A"
++			/>
++		</g>
++		<defs>
++			<clipPath id="clip0_cothinker_feedback_success">
++				<rect width="60.7347" height="64" fill="white" transform="scale(2)" />
++			</clipPath>
++		</defs>
++	</svg>
++);
++
++const CoThinkerFeedbackSuccessSvgIcon: FC<IProps> = ({
++	className,
++	onClick,
++}) => (
++	<Icon
++		component={CoThinkerFeedbackSuccessSvg}
++		className={className}
++		onClick={onClick}
++	/>
++);
++
++export default CoThinkerFeedbackSuccessSvgIcon;
+diff --git a/packages/components/src/index.ts b/packages/components/src/index.ts
+index 3c5b63e..e5390fd 100644
+--- a/packages/components/src/index.ts
++++ b/packages/components/src/index.ts
+@@ -58,6 +58,7 @@ import CoThinkerCompleteTickSvgIcon from "./Icons/CoThinkerCompleteTickSvgIcon";
+ import CoThinkerFilterSvgIcon from "./Icons/CoThinkerFilterSvgIcon";
+ import CoThinkerThumbsUpSvgIcon from "./Icons/CoThinkerThumbsUpSvgIcon";
+ import CoThinkerThumbsDownSvgIcon from "./Icons/CoThinkerThumbsDownSvgIcon";
++import CoThinkerFeedbackSuccessSvgIcon from "./Icons/CoThinkerFeedbackSuccessSvgIcon";
+ 
+ import { AdminPanelHeader } from "./Section/AdminPanel/header";
+ import { AdvancedFilterButton } from "./AdvancedFilterButton";
+@@ -321,6 +322,7 @@ export {
+ 	CoThinkerFilterSvgIcon,
+ 	CoThinkerThumbsUpSvgIcon,
+ 	CoThinkerThumbsDownSvgIcon,
++	CoThinkerFeedbackSuccessSvgIcon,
+ 	AdminPanelProvider,
+ 	ConfigurationProvider,
+ 	CustomPagePanelEditProvider,
+diff --git a/packages/web/src/components/InsightCard/index.scss b/packages/web/src/components/InsightCard/index.scss
+index 434a8ed..cc549e3 100644
+--- a/packages/web/src/components/InsightCard/index.scss
++++ b/packages/web/src/components/InsightCard/index.scss
+@@ -830,13 +830,16 @@
+ .insightFeedbackSuccessModal {
+ 	&.ant-modal,
+ 	.ant-modal {
+-		width: min(calc(100vw - 32px), 480px) !important;
++		width: min(calc(100vw - 32px), 340px) !important;
+ 	}
+ 
+ 	.ant-modal-content {
+ 		width: auto;
+-		padding: 40px 32px 32px;
+-		border-radius: 8px;
++		padding: 32px 28px;
++		border-radius: 10px;
++		background: #ffffff;
++		border: 1px solid #e8e6e3;
++		box-shadow: 0px 0px 10px 2px rgba(0, 0, 0, 0.2);
+ 	}
+ 
+ 	.ant-modal-header {
+@@ -849,12 +852,7 @@
+ 		display: none;
+ 	}
+ 	.ant-modal-close {
+-		top: 16px;
+-		right: 16px;
+-		width: 32px;
+-		height: 32px;
+-		border: 1px solid #c9c2bb;
+-		border-radius: 4px;
++		display: none;
+ 	}
+ 
+ 	&__content {
+@@ -865,38 +863,33 @@
+ 	}
+ 
+ 	&__icon {
+-		display: grid;
+-		width: 56px;
+-		height: 56px;
+-		place-items: center;
+-		margin-bottom: 20px;
+-		border-radius: 50%;
+-		background: #e8f5e9;
+-		color: #1b8738;
++		display: inline-flex;
++		width: 61px;
++		height: 64px;
++		margin-bottom: 12px;
+ 
+-		.anticon,
+ 		svg {
+-			width: 24px;
+-			height: 24px;
+-			color: #1b8738;
+-			fill: currentColor;
++			width: 61px;
++			height: 64px;
+ 		}
+ 	}
+ 
+ 	h2 {
+-		margin: 0 0 10px;
+-		color: #2f2a27;
++		margin: 0;
++		color: #000000;
+ 		font-size: 22px;
+ 		font-weight: 600;
+ 		line-height: 28px;
++		text-align: center;
+ 	}
+ 
+ 	&__description {
+-		max-width: 380px;
+-		margin: 0;
+-		color: #716963;
++		max-width: 284px;
++		margin: 4px 0 0;
++		color: #564c47;
+ 		font-size: 14px;
+-		line-height: 22px;
++		line-height: 18px;
++		text-align: center;
+ 	}
+ }
+ 
+diff --git a/packages/web/src/components/InsightCard/index.spec.tsx b/packages/web/src/components/InsightCard/index.spec.tsx
+index e34183d..021c0cd 100644
+--- a/packages/web/src/components/InsightCard/index.spec.tsx
++++ b/packages/web/src/components/InsightCard/index.spec.tsx
+@@ -112,6 +112,17 @@ jest.mock("@angen_frontend/components", () => ({
+ 			failed
+ 		</span>
+ 	),
++	CoThinkerFeedbackSuccessSvgIcon: ({
++		className,
++		"data-testid": testId,
++	}: {
++		className?: string;
++		"data-testid"?: string;
++	}) => (
++		<span className={className} data-testid={testId}>
++			feedback-success
++		</span>
++	),
+ 	GenericModalV2: ({
+ 		children,
+ 		footer,
+@@ -1899,7 +1910,7 @@ describe("InsightCard", () => {
+ 		).toHaveTextContent("Sales Representative");
+ 	});
+ 
+-	it("displays and closes feedback success modal upon successful submission", async () => {
++	it("displays and automatically closes feedback success modal after 3 seconds upon successful submission", async () => {
+ 		(InsightService.generate as jest.Mock).mockResolvedValue({
+ 			content: "Generated text",
+ 			requestId: "request-1",
+@@ -1930,7 +1941,11 @@ describe("InsightCard", () => {
+ 			)
+ 		).toBeInTheDocument();
+ 
+-		fireEvent.click(screen.getByRole("button", { name: "Close" }));
++		jest.useFakeTimers();
++		act(() => {
++			jest.advanceTimersByTime(3000);
++		});
++
+ 		await waitFor(() =>
+ 			expect(
+ 				screen.queryByText("Thank you—we got it!")
+diff --git a/packages/web/src/components/InsightCard/index.tsx b/packages/web/src/components/InsightCard/index.tsx
+index 9397ac0..307e9d8 100644
+--- a/packages/web/src/components/InsightCard/index.tsx
++++ b/packages/web/src/components/InsightCard/index.tsx
+@@ -14,6 +14,7 @@ import {
+ 	CoThinkerFilterSvgIcon,
+ 	CoThinkerThumbsUpSvgIcon,
+ 	CoThinkerThumbsDownSvgIcon,
++	CoThinkerFeedbackSuccessSvgIcon,
+ } from "@angen_frontend/components";
+ import { InsightService, InsightTimeoutError } from "@angen_frontend/services";
+ import type {
+@@ -637,21 +638,29 @@ const FeedbackSuccessDialog: FC<{
+ 	open: boolean;
+ 	onClose: () => void;
+ }> = ({ open, onClose }) => {
++	useEffect(() => {
++		if (!open) return;
++		const timer = setTimeout(() => {
++			onClose();
++		}, 3000);
++		return () => {
++			clearTimeout(timer);
++		};
++	}, [open, onClose]);
++
+ 	return (
+ 		<GenericModalV2
+ 			className="insightFeedbackSuccessModal"
+ 			isOpen={open}
+ 			onClose={onClose}
+-			showCloseIcon
++			showCloseIcon={false}
+ 			footer={null}
+ 		>
+ 			<div className="insightFeedbackSuccessModal__content">
+-				<div
++				<CoThinkerFeedbackSuccessSvgIcon
+ 					className="insightFeedbackSuccessModal__icon"
+ 					aria-hidden="true"
+-				>
+-					<CoThinkerCompleteTickSvgIcon />
+-				</div>
++				/>
+ 				<h2>Thank you—we got it!</h2>
+ 				<p className="insightFeedbackSuccessModal__description">
+ 					We will use your feedback to improve future insights for Pocket News.
