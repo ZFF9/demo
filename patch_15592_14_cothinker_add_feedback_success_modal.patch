@@ -1,0 +1,228 @@
+diff --git a/packages/web/src/components/InsightCard/index.scss b/packages/web/src/components/InsightCard/index.scss
+index e837487..434a8ed 100644
+--- a/packages/web/src/components/InsightCard/index.scss
++++ b/packages/web/src/components/InsightCard/index.scss
+@@ -827,6 +827,79 @@
+ 	gap: 8px;
+ }
+ 
++.insightFeedbackSuccessModal {
++	&.ant-modal,
++	.ant-modal {
++		width: min(calc(100vw - 32px), 480px) !important;
++	}
++
++	.ant-modal-content {
++		width: auto;
++		padding: 40px 32px 32px;
++		border-radius: 8px;
++	}
++
++	.ant-modal-header {
++		display: none;
++	}
++	.ant-modal-body {
++		padding: 0;
++	}
++	.ant-modal-footer {
++		display: none;
++	}
++	.ant-modal-close {
++		top: 16px;
++		right: 16px;
++		width: 32px;
++		height: 32px;
++		border: 1px solid #c9c2bb;
++		border-radius: 4px;
++	}
++
++	&__content {
++		display: flex;
++		flex-direction: column;
++		align-items: center;
++		text-align: center;
++	}
++
++	&__icon {
++		display: grid;
++		width: 56px;
++		height: 56px;
++		place-items: center;
++		margin-bottom: 20px;
++		border-radius: 50%;
++		background: #e8f5e9;
++		color: #1b8738;
++
++		.anticon,
++		svg {
++			width: 24px;
++			height: 24px;
++			color: #1b8738;
++			fill: currentColor;
++		}
++	}
++
++	h2 {
++		margin: 0 0 10px;
++		color: #2f2a27;
++		font-size: 22px;
++		font-weight: 600;
++		line-height: 28px;
++	}
++
++	&__description {
++		max-width: 380px;
++		margin: 0;
++		color: #716963;
++		font-size: 14px;
++		line-height: 22px;
++	}
++}
++
+ .insightGenerateButton.genericButtonV2 {
+ 	--btn-width: 125px;
+ 	--btn-height: 32px;
+diff --git a/packages/web/src/components/InsightCard/index.spec.tsx b/packages/web/src/components/InsightCard/index.spec.tsx
+index bd840b7..a67cda6 100644
+--- a/packages/web/src/components/InsightCard/index.spec.tsx
++++ b/packages/web/src/components/InsightCard/index.spec.tsx
+@@ -458,6 +458,12 @@ describe("InsightCard", () => {
+ 				screen.queryByText("What worked well?")
+ 			).not.toBeInTheDocument()
+ 		);
++		expect(screen.getByText("Thank you—we got it!")).toBeInTheDocument();
++		expect(
++			screen.getByText(
++				"We will use your feedback to improve future insights for Pocket News."
++			)
++		).toBeInTheDocument();
+ 		fireEvent.click(screen.getByRole("button", { name: "Like" }));
+ 		expect(screen.getByRole("textbox")).toHaveValue("");
+ 		expect(screen.getByText("0 / 1000")).toBeInTheDocument();
+@@ -746,6 +752,7 @@ describe("InsightCard", () => {
+ 				screen.queryByText("What could be improved?")
+ 			).not.toBeInTheDocument()
+ 		);
++		expect(screen.getByText("Thank you—we got it!")).toBeInTheDocument();
+ 	});
+ 
+ 	it("submits selected dislike reasons in selection order", async () => {
+@@ -1882,4 +1889,44 @@ describe("InsightCard", () => {
+ 			container.querySelector(".insightCard__primaryFilter")
+ 		).toHaveTextContent("Sales Representative");
+ 	});
++
++	it("displays and closes feedback success modal upon successful submission", async () => {
++		(InsightService.generate as jest.Mock).mockResolvedValue({
++			content: "Generated text",
++			requestId: "request-1",
++			correlationId: "correlation-1",
++		});
++		(InsightService.submitFeedback as jest.Mock).mockResolvedValue(
++			undefined
++		);
++		render(<TestInsightCard />);
++
++		fireEvent.click(
++			screen.getByRole("button", { name: "Generate Insight" })
++		);
++		await screen.findByText("Generation Complete");
++		fireEvent.click(screen.getByRole("button", { name: "Like" }));
++		fireEvent.click(
++			screen.getByRole("button", { name: "Submit feedback" })
++		);
++
++		await waitFor(() =>
++			expect(
++				screen.getByText("Thank you—we got it!")
++			).toBeInTheDocument()
++		);
++		expect(
++			screen.getByText(
++				"We will use your feedback to improve future insights for Pocket News."
++			)
++		).toBeInTheDocument();
++
++		const closeButtons = screen.getAllByRole("button", { name: "Close" });
++		fireEvent.click(closeButtons[closeButtons.length - 1]);
++		await waitFor(() =>
++			expect(
++				screen.queryByText("Thank you—we got it!")
++			).not.toBeInTheDocument()
++		);
++	});
+ });
+diff --git a/packages/web/src/components/InsightCard/index.tsx b/packages/web/src/components/InsightCard/index.tsx
+index d0bb578..9397ac0 100644
+--- a/packages/web/src/components/InsightCard/index.tsx
++++ b/packages/web/src/components/InsightCard/index.tsx
+@@ -633,6 +633,34 @@ const FeedbackDialog: FC<{
+ 	);
+ };
+ 
++const FeedbackSuccessDialog: FC<{
++	open: boolean;
++	onClose: () => void;
++}> = ({ open, onClose }) => {
++	return (
++		<GenericModalV2
++			className="insightFeedbackSuccessModal"
++			isOpen={open}
++			onClose={onClose}
++			showCloseIcon
++			footer={null}
++		>
++			<div className="insightFeedbackSuccessModal__content">
++				<div
++					className="insightFeedbackSuccessModal__icon"
++					aria-hidden="true"
++				>
++					<CoThinkerCompleteTickSvgIcon />
++				</div>
++				<h2>Thank you—we got it!</h2>
++				<p className="insightFeedbackSuccessModal__description">
++					We will use your feedback to improve future insights for Pocket News.
++				</p>
++			</div>
++		</GenericModalV2>
++	);
++};
++
+ interface IInsightFilterEntry {
+ 	label: string;
+ 	value: string;
+@@ -1229,6 +1257,7 @@ export const InsightCard: FC<{
+ 		generation.isGenerating
+ 	);
+ 	const [feedbackOpen, setFeedbackOpen] = useState<"LIKE" | "DISLIKE">();
++	const [feedbackSuccessOpen, setFeedbackSuccessOpen] = useState(false);
+ 	const [isAddingToTextEditor, setIsAddingToTextEditor] = useState(false);
+ 	const [addError, setAddError] = useState<string>();
+ 	const [copiedRequestId, setCopiedRequestId] = useState(false);
+@@ -1238,6 +1267,7 @@ export const InsightCard: FC<{
+ 			setFiltersExpanded(false);
+ 			setAddError(undefined);
+ 			setCopiedRequestId(false);
++			setFeedbackSuccessOpen(false);
+ 		}
+ 		previousGeneratingRef.current = generation.isGenerating;
+ 	}, [generation.isGenerating]);
+@@ -1247,6 +1277,7 @@ export const InsightCard: FC<{
+ 	) => {
+ 		await generation.submitFeedback(feedbackOpen!, comment, reasons);
+ 		setFeedbackOpen(undefined);
++		setFeedbackSuccessOpen(true);
+ 	};
+ 	const {
+ 		filterGroups,
+@@ -1377,6 +1408,10 @@ export const InsightCard: FC<{
+ 				onClose={() => setFeedbackOpen(undefined)}
+ 				onSubmit={submitFeedback}
+ 			/>
++			<FeedbackSuccessDialog
++				open={feedbackSuccessOpen}
++				onClose={() => setFeedbackSuccessOpen(false)}
++			/>
+ 		</>
+ 	);
+ };
