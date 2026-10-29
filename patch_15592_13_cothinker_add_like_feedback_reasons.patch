@@ -1,0 +1,137 @@
+diff --git a/packages/types/src/index.ts b/packages/types/src/index.ts
+index a429493..cb9ad26 100644
+--- a/packages/types/src/index.ts
++++ b/packages/types/src/index.ts
+@@ -361,7 +361,13 @@ export type InsightFeedbackReason =
+ 	| "Not actionable"
+ 	| "Missing context"
+ 	| "Inaccurate"
+-	| "Difficult to understand";
++	| "Difficult to understand"
++	| "Relevant"
++	| "Actionable"
++	| "Clear"
++	| "Accurate"
++	| "Next steps"
++	| "Prioritisation";
+ 
+ export interface IInsightFeedbackPayload {
+ 	requestId: string;
+diff --git a/packages/web/src/components/InsightCard/index.spec.tsx b/packages/web/src/components/InsightCard/index.spec.tsx
+index 4cac6c3..bd840b7 100644
+--- a/packages/web/src/components/InsightCard/index.spec.tsx
++++ b/packages/web/src/components/InsightCard/index.spec.tsx
+@@ -420,7 +420,15 @@ describe("InsightCard", () => {
+ 		await screen.findByText("Generation Complete");
+ 		fireEvent.click(screen.getByRole("button", { name: "Like" }));
+ 		expect(screen.getByText("What worked well?")).toBeInTheDocument();
+-		expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
++		expect(screen.getAllByRole("checkbox")).toHaveLength(6);
++		expect(screen.getByText("Relevant")).toBeInTheDocument();
++		expect(screen.getByText("Actionable")).toBeInTheDocument();
++		expect(screen.getByText("Clear")).toBeInTheDocument();
++		expect(screen.getByText("Accurate")).toBeInTheDocument();
++		expect(screen.getByText("Next steps")).toBeInTheDocument();
++		expect(screen.getByText("Prioritisation")).toBeInTheDocument();
++		fireEvent.click(screen.getByLabelText("Relevant"));
++		fireEvent.click(screen.getByLabelText("Actionable"));
+ 		const feedbackInput = screen.getByRole("textbox");
+ 		expect(feedbackInput).toHaveAttribute("data-auto-size", "false");
+ 		expect(feedbackInput).toHaveAttribute("maxLength", "1000");
+@@ -441,7 +449,7 @@ describe("InsightCard", () => {
+ 				requestId: "request-1",
+ 				correlationId: "correlation-1",
+ 				isHelpful: true,
+-				reason: [],
++				reason: ["Relevant", "Actionable"],
+ 				comment: "Useful result",
+ 			})
+ 		);
+diff --git a/packages/web/src/components/InsightCard/index.tsx b/packages/web/src/components/InsightCard/index.tsx
+index 7a4878b..d0bb578 100644
+--- a/packages/web/src/components/InsightCard/index.tsx
++++ b/packages/web/src/components/InsightCard/index.tsx
+@@ -481,7 +481,16 @@ const AI_DISCLAIMER =
+ const INSIGHT_EDITOR_PREFIX = "[AI-Generated Insights]";
+ const FALLBACK_ROLE = "-";
+ const FEEDBACK_COMMENT_MAX_LENGTH = 1000;
+-export const FEEDBACK_REASONS = [
++export const LIKE_FEEDBACK_REASONS = [
++	"Relevant",
++	"Actionable",
++	"Clear",
++	"Accurate",
++	"Next steps",
++	"Prioritisation",
++] as const;
++
++export const DISLIKE_FEEDBACK_REASONS = [
+ 	"Not relevant",
+ 	"Too generic",
+ 	"Not actionable",
+@@ -489,6 +498,8 @@ export const FEEDBACK_REASONS = [
+ 	"Inaccurate",
+ 	"Difficult to understand",
+ ] as const;
++
++export const FEEDBACK_REASONS = DISLIKE_FEEDBACK_REASONS;
+ const FeedbackDialog: FC<{
+ 	open: boolean;
+ 	sentiment: "LIKE" | "DISLIKE";
+@@ -514,7 +525,7 @@ const FeedbackDialog: FC<{
+ 		try {
+ 			await onSubmit(
+ 				comment.trim(),
+-				sentiment === "DISLIKE" ? reasons : undefined
++				reasons.length ? reasons : undefined
+ 			);
+ 			setComment("");
+ 			setReasons([]);
+@@ -574,26 +585,27 @@ const FeedbackDialog: FC<{
+ 						? "Tell us what made this commentary useful so future outputs can keep improving it."
+ 						: "Tell us what should change so the next commentary better supports the business review."}
+ 				</p>
+-				{sentiment === "DISLIKE" && (
+-					<fieldset className="insightFeedbackModal__reasons">
+-						<legend>Select all that apply</legend>
+-						<div className="insightFeedbackModal__reasonGrid">
+-							{FEEDBACK_REASONS.map((reason) => (
+-								<label
+-									className="insightFeedbackModal__reasonOption"
+-									key={reason}
+-								>
+-									<input
+-										checked={reasons.includes(reason)}
+-										onChange={() => toggleReason(reason)}
+-										type="checkbox"
+-									/>
+-									<span>{reason}</span>
+-								</label>
+-							))}
+-						</div>
+-					</fieldset>
+-				)}
++				<fieldset className="insightFeedbackModal__reasons">
++					<legend>Select all that apply</legend>
++					<div className="insightFeedbackModal__reasonGrid">
++						{(sentiment === "LIKE"
++							? LIKE_FEEDBACK_REASONS
++							: DISLIKE_FEEDBACK_REASONS
++						).map((reason) => (
++							<label
++								className="insightFeedbackModal__reasonOption"
++								key={reason}
++							>
++								<input
++									checked={reasons.includes(reason)}
++									onChange={() => toggleReason(reason)}
++									type="checkbox"
++								/>
++								<span>{reason}</span>
++							</label>
++						))}
++					</div>
++				</fieldset>
+ 				<label htmlFor="insight-feedback-input">Feedback</label>
+ 				<div className="insightFeedbackModal__inputWrap">
+ 					<GenericTextArea
