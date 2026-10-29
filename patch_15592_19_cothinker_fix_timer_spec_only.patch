@@ -1,0 +1,47 @@
+diff --git a/packages/web/src/components/InsightCard/index.spec.tsx b/packages/web/src/components/InsightCard/index.spec.tsx
+index be3124b..d83115b 100644
+--- a/packages/web/src/components/InsightCard/index.spec.tsx
++++ b/packages/web/src/components/InsightCard/index.spec.tsx
+@@ -1928,28 +1928,33 @@ describe("InsightCard", () => {
+ 		);
+ 		await screen.findByText("Generation Complete");
+ 		fireEvent.click(screen.getByRole("button", { name: "Like" }));
++
++		jest.useFakeTimers();
+ 		fireEvent.click(
+ 			screen.getByRole("button", { name: "Submit feedback" })
+ 		);
+ 
+-		await waitFor(() =>
+-			expect(screen.getByText("Thank you—we got it!")).toBeInTheDocument()
+-		);
++		await act(async () => {
++			await Promise.resolve();
++		});
++
++		expect(
++			screen.getByText(/Thank you.*we got it!/)
++		).toBeInTheDocument();
+ 		expect(
+ 			screen.getByText(
+ 				"We will use your feedback to improve future insights for Pocket News."
+ 			)
+ 		).toBeInTheDocument();
+ 
+-		jest.useFakeTimers();
+ 		act(() => {
+ 			jest.advanceTimersByTime(3000);
+ 		});
+ 
+-		await waitFor(() =>
+-			expect(
+-				screen.queryByText("Thank you—we got it!")
+-			).not.toBeInTheDocument()
+-		);
++		expect(
++			screen.queryByText(/Thank you.*we got it!/)
++		).not.toBeInTheDocument();
++
++		jest.useRealTimers();
+ 	});
+ });
