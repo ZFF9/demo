@@ -1,5 +1,5 @@
 diff --git a/packages/web/src/components/InsightCard/index.spec.tsx b/packages/web/src/components/InsightCard/index.spec.tsx
-index 021c0cd..76d9ee0 100644
+index 021c0cd..9fa78f4 100644
 --- a/packages/web/src/components/InsightCard/index.spec.tsx
 +++ b/packages/web/src/components/InsightCard/index.spec.tsx
 @@ -1926,30 +1926,31 @@ describe("InsightCard", () => {
@@ -22,7 +22,7 @@ index 021c0cd..76d9ee0 100644
 +		});
 +
 +		expect(
-+			screen.getByText("Thank you—we got it!")
++			screen.getByText(/Thank you.*we got it!/)
 +		).toBeInTheDocument();
  		expect(
  			screen.getByText(
@@ -41,7 +41,7 @@ index 021c0cd..76d9ee0 100644
 -			).not.toBeInTheDocument()
 -		);
 +		expect(
-+			screen.queryByText("Thank you—we got it!")
++			screen.queryByText(/Thank you.*we got it!/)
 +		).not.toBeInTheDocument();
  	});
  });
