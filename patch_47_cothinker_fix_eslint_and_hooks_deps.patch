@@ -1,0 +1,104 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+index 872f92a..c9023bf 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+@@ -4,7 +4,6 @@ import {
+ 	GenericButton,
+ 	GenericModalV2,
+ 	Text,
+-	UploadSvgIcon,
+ } from "@angen_frontend/components";
+ import { IKnowledgeDocument, KNOWLEDGE_BRANDS, documentDate } from "../index";
+ 
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
+index 72f26f3..6d667bf 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
+@@ -2,9 +2,7 @@ import { FC, useState, useMemo, KeyboardEvent } from "react";
+ import {
+ 	DocFileSvgIcon,
+ 	GenericDataTable,
+-	GenericButton,
+ 	GenericStatusTag,
+-	Text,
+ } from "@angen_frontend/components";
+ import {
+ 	IKnowledgeDocument,
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+index e32b311..ef7a603 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+@@ -10,7 +10,6 @@ import {
+ 	SortSvgIcon,
+ 	GenericButton,
+ 	GenericDataTable,
+-	GenericStatusTag,
+ 	Text,
+ } from "@angen_frontend/components";
+ import { LogDetailDrawer } from "./LogDetailDrawer";
+@@ -555,7 +554,7 @@ export const LogAuditTab: FC = () => {
+ 				),
+ 			},
+ 		],
+-		[sortOrder, toggleSort]
++		[toggleSort]
+ 	);
+ 
+ 	return (
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
+index a80fcdd..ab36a41 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
+@@ -1,7 +1,6 @@
+ import { FC, useMemo } from "react";
+ import {
+ 	GenericDataTable,
+-	GenericButton,
+ 	Text,
+ } from "@angen_frontend/components";
+ import {
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+index 01491a5..5b41a19 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+@@ -30,8 +30,6 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 	onInspectVersion,
+ 	onRestoreVersion,
+ }) => {
+-	const handleInspect = onInspect || onInspectVersion || (() => {});
+-	const handleRollback = onRollback || onRestoreVersion || (() => {});
+ 	const [exporting, setExporting] = useState<boolean>(false);
+ 
+ 	const handleExport = () => {
+@@ -55,8 +53,10 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 		}
+ 	};
+ 
+-	const columns = useMemo(
+-		() => [
++	const columns = useMemo(() => {
++		const handleInspect = onInspect || onInspectVersion || (() => {});
++		const handleRollback = onRollback || onRestoreVersion || (() => {});
++		return [
+ 			{
+ 				title: (
+ 					<Text
+@@ -174,9 +174,15 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 					</div>
+ 				),
+ 			},
+-		],
+-		[activeVersionId, hasDraft, handleInspect, handleRollback]
+-	);
++		];
++	}, [
++		activeVersionId,
++		hasDraft,
++		onInspect,
++		onInspectVersion,
++		onRollback,
++		onRestoreVersion,
++	]);
+ 
+ 	return (
+ 		<section
