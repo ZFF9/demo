@@ -1,0 +1,35 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+index ef7a603..8a6c829 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+@@ -381,17 +381,19 @@ export const LogAuditTab: FC = () => {
+ 		);
+ 	};
+ 
+-	const toggleSort = () => {
+-		const nextSort = sortOrder === "asc" ? "desc" : "asc";
+-		setSortOrder(nextSort);
+-		setItems((prev) =>
+-			[...prev].sort((a, b) => {
+-				const timeA = new Date(a.eventTime).getTime();
+-				const timeB = new Date(b.eventTime).getTime();
+-				return nextSort === "asc" ? timeA - timeB : timeB - timeA;
+-			})
+-		);
+-	};
++	const toggleSort = useCallback(() => {
++		setSortOrder((prevSort) => {
++			const nextSort = prevSort === "asc" ? "desc" : "asc";
++			setItems((prev) =>
++				[...prev].sort((a, b) => {
++					const timeA = new Date(a.eventTime).getTime();
++					const timeB = new Date(b.eventTime).getTime();
++					return nextSort === "asc" ? timeA - timeB : timeB - timeA;
++				})
++			);
++			return nextSort;
++		});
++	}, []);
+ 
+ 	const handleExport = async () => {
+ 		if (exporting) return;
