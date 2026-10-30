@@ -1,0 +1,22 @@
+diff --git a/packages/web/src/components/InsightCard/index.spec.tsx b/packages/web/src/components/InsightCard/index.spec.tsx
+index 08877a4..c2e5958 100644
+--- a/packages/web/src/components/InsightCard/index.spec.tsx
++++ b/packages/web/src/components/InsightCard/index.spec.tsx
+@@ -1960,7 +1960,7 @@ describe("InsightCard", () => {
+ 
+ 	it("sorts filter entries by LANGUAGE, YEAR MONTH, DATE RANGE, CURRENCY and puts others after", async () => {
+ 		(InsightService.generate as jest.Mock).mockResolvedValue({
+-			summary: "Summary text",
++			content: "Generated content",
+ 			filters: {
+ 				parameters: {
+ 					"DATE RANGE": "MTH",
+@@ -1976,7 +1976,7 @@ describe("InsightCard", () => {
+ 		fireEvent.click(
+ 			screen.getByRole("button", { name: "Generate Insight" })
+ 		);
+-		await screen.findByText("Summary text");
++		await screen.findByText("Generation Complete");
+ 		fireEvent.click(screen.getByRole("button", { name: "Show All" }));
+ 
+ 		const filterLabels = Array.from(
