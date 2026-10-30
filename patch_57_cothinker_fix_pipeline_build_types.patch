@@ -1,0 +1,326 @@
+diff --git a/packages/components/src/GenericStatusTag/index.scss b/packages/components/src/GenericStatusTag/index.scss
+index bf3cc81..929b346 100644
+--- a/packages/components/src/GenericStatusTag/index.scss
++++ b/packages/components/src/GenericStatusTag/index.scss
+@@ -6,7 +6,8 @@
+ 	line-height: 20px;
+ 	border: 1px solid transparent;
+ 
+-	&.statusTag-success {
++	&.statusTag-success,
++	&.statusTag-active {
+ 		background: #ecfdf5;
+ 		color: #065f46;
+ 		border-color: #a7f3d0;
+@@ -24,7 +25,8 @@
+ 		border-color: #fecaca;
+ 	}
+ 
+-	&.statusTag-default {
++	&.statusTag-default,
++	&.statusTag-inactive {
+ 		background: #f1f5f9;
+ 		color: #475569;
+ 		border-color: #cbd5e1;
+diff --git a/packages/components/src/GenericStatusTag/index.tsx b/packages/components/src/GenericStatusTag/index.tsx
+index 17f8d5a..778092d 100644
+--- a/packages/components/src/GenericStatusTag/index.tsx
++++ b/packages/components/src/GenericStatusTag/index.tsx
+@@ -8,7 +8,9 @@ export type StatusTagType =
+ 	| "processing"
+ 	| "error"
+ 	| "default"
+-	| "warning";
++	| "warning"
++	| "active"
++	| "inactive";
+ 
+ export interface IGenericStatusTagProps {
+ 	status: StatusTagType;
+@@ -22,6 +24,8 @@ const STATUS_COLOR_MAP: Record<StatusTagType, string> = {
+ 	error: "error",
+ 	default: "default",
+ 	warning: "warning",
++	active: "success",
++	inactive: "default",
+ };
+ 
+ export const GenericStatusTag: FC<IGenericStatusTagProps> = ({
+diff --git a/packages/components/src/GenericUploadDragger/index.tsx b/packages/components/src/GenericUploadDragger/index.tsx
+index 3e4fdcb..844d2d2 100644
+--- a/packages/components/src/GenericUploadDragger/index.tsx
++++ b/packages/components/src/GenericUploadDragger/index.tsx
+@@ -9,8 +9,10 @@ const { Dragger } = Upload;
+ 
+ export interface IGenericUploadDraggerProps {
+ 	file: File | null;
+-	onFileSelected: (file: File) => void;
++	onFileSelected?: (file: File) => void;
++	onFileSelect?: (file: File) => void;
+ 	onFileRemoved?: () => void;
++	onRemove?: () => void;
+ 	accept?: string;
+ 	title?: ReactNode;
+ 	hint?: ReactNode;
+@@ -22,7 +24,9 @@ export interface IGenericUploadDraggerProps {
+ export const GenericUploadDragger: FC<IGenericUploadDraggerProps> = ({
+ 	file,
+ 	onFileSelected,
++	onFileSelect,
+ 	onFileRemoved,
++	onRemove,
+ 	accept,
+ 	title,
+ 	hint,
+@@ -30,6 +34,7 @@ export const GenericUploadDragger: FC<IGenericUploadDraggerProps> = ({
+ 	icon = <UploadSvgIcon size={32} />,
+ 	className,
+ }) => {
++	const handleRemove = onFileRemoved || onRemove;
+ 	const uploadProps: UploadProps = {
+ 		name: "file",
+ 		multiple: false,
+@@ -38,7 +43,9 @@ export const GenericUploadDragger: FC<IGenericUploadDraggerProps> = ({
+ 		disabled,
+ 		showUploadList: false,
+ 		beforeUpload: (selectedFile) => {
+-			onFileSelected(selectedFile as unknown as File);
++			const targetFile = selectedFile as unknown as File;
++			onFileSelected?.(targetFile);
++			onFileSelect?.(targetFile);
+ 			return false;
+ 		},
+ 	};
+@@ -50,13 +57,13 @@ export const GenericUploadDragger: FC<IGenericUploadDraggerProps> = ({
+ 				{file ? (
+ 					<div className="uploadDraggerSelected">
+ 						<span className="selectedFileName">{file.name}</span>
+-						{onFileRemoved && (
++						{handleRemove && (
+ 							<button
+ 								type="button"
+ 								className="removeFileBtn"
+ 								onClick={(e) => {
+ 									e.stopPropagation();
+-									onFileRemoved();
++									handleRemove();
+ 								}}
+ 							>
+ 								Remove
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+index 1aadc8d..b45e6ba 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+@@ -155,7 +155,9 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 						</h3>
+ 						<dl className="metadata-grid">
+ 							<dt>Document ID</dt>
+-							<dd className="document-id">{doc.documentId}</dd>
++							<dd className="document-id">
++								{doc.documentId || doc.id}
++							</dd>
+ 							<dt>Format</dt>
+ 							<dd>{documentFormat(doc.fileName)}</dd>
+ 							<dt>Size</dt>
+@@ -235,7 +237,7 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 								</strong>
+ 								<p>{doc.processingError}</p>
+ 								<GenericButtonV2
+-									type="secondary"
++									type="default"
+ 									className="el-btn-default retry-btn"
+ 									onClick={() => onRetry(doc)}
+ 								>
+@@ -250,14 +252,14 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 
+ 				<div className="drawer-footer">
+ 					<GenericButtonV2
+-						type="secondary"
++						type="default"
+ 						className="el-btn-default"
+ 						onClick={onClose}
+ 					>
+ 						<Text entry={{ "cothinker.common.close": {} }} />
+ 					</GenericButtonV2>
+ 					<GenericButtonV2
+-						type="secondary"
++						type="default"
+ 						className="el-btn-default"
+ 						onClick={() => onEdit(doc)}
+ 					>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+index e455a31..2c7270a 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+@@ -97,7 +97,7 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 			footer={
+ 				<div className="modal-bottom">
+ 					<GenericButtonV2
+-						type="secondary"
++						type="default"
+ 						className="el-btn-default"
+ 						onClick={onClose}
+ 					>
+@@ -146,7 +146,7 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 							</label>
+ 							<GenericUploadDragger
+ 								file={selectedFile}
+-								onFileSelect={(f) => {
++								onFileSelect={(f: File) => {
+ 									setSelectedFile(f);
+ 									setError("");
+ 								}}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+index cc404f2..c43421d 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+@@ -36,6 +36,7 @@ export type DocProcessingStatus = "READY" | "PROCESSING" | "FAILED";
+ 
+ export interface IKnowledgeDocument {
+ 	id: string;
++	documentId?: string;
+ 	fileName: string;
+ 	fileType?: string;
+ 	fileSize?: string;
+@@ -555,7 +556,7 @@ export const KnowledgeDocTab: FC = () => {
+ 							<Text entry={{ "cothinker.common.search": {} }} />
+ 						</GenericButtonV2>
+ 						<GenericButtonV2
+-							type="secondary"
++							type="default"
+ 							className="el-btn-default"
+ 							onClick={handleResetFilters}
+ 						>
+@@ -595,7 +596,7 @@ export const KnowledgeDocTab: FC = () => {
+ 								: "documents"}
+ 						</span>
+ 						<GenericButtonV2
+-							type="icon"
++							type="default"
+ 							className="refresh-btn"
+ 							aria-label="Refresh documents"
+ 							title="Refresh documents"
+@@ -657,7 +658,7 @@ export const KnowledgeDocTab: FC = () => {
+ 					footer={
+ 						<div className="modal-bottom">
+ 							<GenericButtonV2
+-								type="secondary"
++								type="default"
+ 								className="el-btn-default"
+ 								onClick={() => setConfirmModalVisible(false)}
+ 							>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+index 57bf7e2..ece7dd5 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+@@ -240,7 +240,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 					footer={
+ 						<div className="modal-footer">
+ 							<GenericButtonV2
+-								type="secondary"
++								type="default"
+ 								className="el-btn-default"
+ 								onClick={() => setEditorVisible(false)}
+ 							>
+@@ -317,7 +317,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 					footer={
+ 						<div className="modal-footer">
+ 							<GenericButtonV2
+-								type="secondary"
++								type="default"
+ 								className="el-btn-default"
+ 								onClick={() => setDeleteTarget(null)}
+ 							>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+index 9afe747..0ba3359 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+@@ -274,7 +274,7 @@ export const PromptEditorDrawer: FC<IProps> = ({
+ 							: "Start or open a draft to edit prompt content."}
+ 					</span>
+ 					<GenericButtonV2
+-						type="secondary"
++						type="default"
+ 						className="el-btn-default"
+ 						onClick={onClose}
+ 					>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+index 8d4e0df..8fe6549 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+@@ -161,7 +161,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 						{versions.length} versions
+ 					</span>
+ 					<GenericButtonV2
+-						type="secondary"
++						type="default"
+ 						className="el-btn-default"
+ 						disabled={exporting || versions.length === 0}
+ 						prefixIcon={<CoThinkerDownloadSvgIcon size={14} />}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+index 368d022..b27f37d 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+@@ -804,7 +804,7 @@ export const PromptManagementTab: FC = () => {
+ 				)}
+ 				{activeTab !== "metrics" && draftVersion && (
+ 					<GenericButtonV2
+-						type="secondary"
++						type="default"
+ 						className="el-btn-default create-draft-btn"
+ 						prefixIcon={<EditPenSvgIcon size={14} />}
+ 						onClick={() => handleOpenEditor()}
+@@ -897,7 +897,7 @@ export const PromptManagementTab: FC = () => {
+ 					/>
+ 					<div className="draft-actions">
+ 						<GenericButtonV2
+-							type="secondary"
++							type="default"
+ 							className="el-btn-default"
+ 							disabled={changedFields.length === 0}
+ 							onClick={() => setViewChangesVisible(true)}
+@@ -907,7 +907,7 @@ export const PromptManagementTab: FC = () => {
+ 							/>
+ 						</GenericButtonV2>
+ 						<GenericButtonV2
+-							type="secondary"
++							type="default"
+ 							className="el-btn-default"
+ 							onClick={handleSaveDraft}
+ 						>
+@@ -1012,7 +1012,7 @@ export const PromptManagementTab: FC = () => {
+ 					footer={
+ 						<div className="modal-footer">
+ 							<GenericButtonV2
+-								type="secondary"
++								type="default"
+ 								className="el-btn-default"
+ 								onClick={() => setViewChangesVisible(false)}
+ 							>
+@@ -1064,7 +1064,7 @@ export const PromptManagementTab: FC = () => {
+ 					footer={
+ 						<div className="modal-footer">
+ 							<GenericButtonV2
+-								type="secondary"
++								type="default"
+ 								className="el-btn-default"
+ 								onClick={() => setPublishDialogVisible(false)}
+ 							>
+@@ -1114,7 +1114,7 @@ export const PromptManagementTab: FC = () => {
+ 					footer={
+ 						<div className="modal-footer">
+ 							<GenericButtonV2
+-								type="secondary"
++								type="default"
+ 								className="el-btn-default"
+ 								onClick={() => setDiscardDialogVisible(false)}
+ 							>
+@@ -1149,7 +1149,7 @@ export const PromptManagementTab: FC = () => {
+ 					footer={
+ 						<div className="modal-footer">
+ 							<GenericButtonV2
+-								type="secondary"
++								type="default"
+ 								className="el-btn-default"
+ 								onClick={() => setRollbackTarget(null)}
+ 							>
