@@ -45,6 +45,43 @@ index b63eb8f..6bdcbc4 100644
  	}
  
  	.ant-drawer-body {
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+index 250adfc..1aadc8d 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+@@ -154,6 +154,12 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 							/>
+ 						</h3>
+ 						<dl className="metadata-grid">
++							<dt>Document ID</dt>
++							<dd className="document-id">{doc.documentId}</dd>
++							<dt>Format</dt>
++							<dd>{documentFormat(doc.fileName)}</dd>
++							<dt>Size</dt>
++							<dd>{formatDocumentSize(doc.fileSizeBytes)}</dd>
+ 							<dt>
+ 								<Text
+ 									entry={{
+@@ -204,6 +210,19 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 							</dd>
+ 						</dl>
+ 
++						{doc.processingStatus === "READY" && (
++							<p className="processing-help">
++								Text extraction and indexing completed. Document
++								chunks are ready when status is Active.
++							</p>
++						)}
++						{doc.processingStatus === "PROCESSING" && (
++							<p className="processing-help">
++								Document is being parsed and indexed. You can
++								activate it after processing reaches Ready.
++							</p>
++						)}
++
+ 						{doc.processingError && (
+ 							<div className="processing-error-banner">
+ 								<strong>
 diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
 index 7d47c0d..c9c3a0b 100644
 --- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
