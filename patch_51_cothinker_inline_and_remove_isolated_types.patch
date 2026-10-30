@@ -1,0 +1,479 @@
+diff --git a/packages/components/src/FeedbackTrendChart/index.tsx b/packages/components/src/FeedbackTrendChart/index.tsx
+index 6f93155..ef946a0 100644
+--- a/packages/components/src/FeedbackTrendChart/index.tsx
++++ b/packages/components/src/FeedbackTrendChart/index.tsx
+@@ -1,6 +1,20 @@
+ import { FC, useRef, useMemo } from "react";
+ import type { EChartsOption } from "echarts";
+-import { IFeedbackTrendChartProps } from "./types";
++export interface IFeedbackTrendPointItem {
++	date: string;
++	totalGenerations: number;
++	thumbsUpCount: number;
++	thumbsDownCount: number;
++	ratedCount: number;
++	noFeedbackCount: number;
++	positiveFeedbackRate: number | null;
++	feedbackCoverage: number | null;
++}
++
++export interface IFeedbackTrendChartProps {
++	data: IFeedbackTrendPointItem[];
++	className?: string;
++}
+ import {
+ 	buildFeedbackTooltipFormatter,
+ 	createTrendAreaGradient,
+diff --git a/packages/components/src/FeedbackTrendChart/types.ts b/packages/components/src/FeedbackTrendChart/types.ts
+deleted file mode 100644
+index c4adb70..0000000
+--- a/packages/components/src/FeedbackTrendChart/types.ts
++++ /dev/null
+@@ -1,15 +0,0 @@
+-export interface IFeedbackTrendPointItem {
+-	date: string;
+-	totalGenerations: number;
+-	thumbsUpCount: number;
+-	thumbsDownCount: number;
+-	ratedCount: number;
+-	noFeedbackCount: number;
+-	positiveFeedbackRate: number | null;
+-	feedbackCoverage: number | null;
+-}
+-
+-export interface IFeedbackTrendChartProps {
+-	data: IFeedbackTrendPointItem[];
+-	className?: string;
+-}
+diff --git a/packages/components/src/RoleFeedbackChart/index.tsx b/packages/components/src/RoleFeedbackChart/index.tsx
+index c88c487..1a0cb26 100644
+--- a/packages/components/src/RoleFeedbackChart/index.tsx
++++ b/packages/components/src/RoleFeedbackChart/index.tsx
+@@ -1,6 +1,20 @@
+ import { FC, useRef, useMemo } from "react";
+ import type { EChartsOption } from "echarts";
+-import { IRoleFeedbackChartProps } from "./types";
++export interface IRoleFeedbackBreakdownItem {
++	role: string;
++	totalGenerations: number;
++	thumbsUpCount: number;
++	thumbsDownCount: number;
++	ratedCount: number;
++	noFeedbackCount: number;
++	positiveFeedbackRate: number | null;
++	feedbackCoverage: number | null;
++}
++
++export interface IRoleFeedbackChartProps {
++	data: IRoleFeedbackBreakdownItem[];
++	className?: string;
++}
+ import {
+ 	formatRate,
+ 	buildFeedbackTooltipFormatter,
+diff --git a/packages/components/src/RoleFeedbackChart/types.ts b/packages/components/src/RoleFeedbackChart/types.ts
+deleted file mode 100644
+index de79b99..0000000
+--- a/packages/components/src/RoleFeedbackChart/types.ts
++++ /dev/null
+@@ -1,15 +0,0 @@
+-export interface IRoleFeedbackBreakdownItem {
+-	role: string;
+-	totalGenerations: number;
+-	thumbsUpCount: number;
+-	thumbsDownCount: number;
+-	ratedCount: number;
+-	noFeedbackCount: number;
+-	positiveFeedbackRate: number | null;
+-	feedbackCoverage: number | null;
+-}
+-
+-export interface IRoleFeedbackChartProps {
+-	data: IRoleFeedbackBreakdownItem[];
+-	className?: string;
+-}
+diff --git a/packages/services/src/InsightService/index.ts b/packages/services/src/InsightService/index.ts
+index b9185f1..8994264 100644
+--- a/packages/services/src/InsightService/index.ts
++++ b/packages/services/src/InsightService/index.ts
+@@ -15,15 +15,175 @@ import type {
+ import { ulid } from "ulid";
+ import { BackendHttpClient } from "../HttpService";
+ import { HttpStatus } from "../HttpService/HttpStatus";
+-import type {
+-	IOverviewSummaryData,
+-	IRoleFeedbackResponse,
+-	IFeedbackTrendResponse,
+-	IAuditGenerationListResponse,
+-	IAuditGenerationDetail,
+-	ILogAuditFilterParams,
+-	IPortalAuditExportResult,
+-} from "./types";
++export type FeedbackStatus = "up" | "down" | "none";
++
++export interface IOverviewSummaryCost {
++	total: number | null;
++	average: number | null;
++	totalTokens: number | null;
++}
++
++export interface IOverviewSummaryData {
++	totalGenerations: number;
++	thumbsUp: number;
++	thumbsDown: number;
++	cost: IOverviewSummaryCost;
++	asOf: string;
++}
++
++export interface IRoleFeedbackItem {
++	role: string;
++	generations: number;
++	positive: number;
++	negative: number;
++	rated: number;
++	noFeedback: number;
++	positiveRate: number | null;
++	feedbackCoverage: number | null;
++}
++
++export interface IRoleFeedbackResponse {
++	window: {
++		startDate: string;
++		endDate: string;
++	};
++	metric: string;
++	items: IRoleFeedbackItem[];
++}
++
++export interface IFeedbackTrendPointItem {
++	date: string;
++	generations: number;
++	positive: number;
++	negative: number;
++	rated: number;
++	noFeedback: number;
++	positiveRate: number | null;
++	feedbackCoverage: number | null;
++}
++
++export interface IFeedbackTrendResponse {
++	window: {
++		startDate: string;
++		endDate: string;
++	};
++	metric: string;
++	points: IFeedbackTrendPointItem[];
++}
++
++export interface ILogAuditFilterParams {
++	startDate?: string;
++	endDate?: string;
++	roles?: string[];
++	username?: string;
++	page?: number;
++	pageSize?: number;
++}
++
++export interface IAuditGenerationItem {
++	resultId: string;
++	requestId: string;
++	eventTime: string;
++	username: string;
++	role: string;
++	promptVersion: string | null;
++	durationMs: number | null;
++	inputTokens: number | null;
++	outputTokens: number | null;
++	totalTokens: number | null;
++	estimatedCost: number | null;
++	feedback: {
++		status: FeedbackStatus;
++		feedbackCount: number;
++	};
++}
++
++export interface IAuditGenerationListResponse {
++	page: number;
++	pageSize: number;
++	total: number;
++	items: IAuditGenerationItem[];
++}
++
++export interface IGenerationDocChunk {
++	chunkRowId: string;
++	documentId: string | null;
++	chunkId: string | null;
++	filename: string;
++	brand: string | null;
++	excerpt: string;
++	relevanceScore: number | null;
++	tokenCount: number | null;
++	usedAt: string | null;
++}
++
++export interface IGenerationOverview {
++	resultId: string;
++	requestId: string;
++	requestTime: string;
++	generationTime: string;
++	username: string;
++	role: string;
++	durationMs: number | null;
++	promptVersion: string | null;
++	feedback: {
++		type: FeedbackStatus;
++	} | null;
++	estimatedCost: number | null;
++	inputTokens: number | null;
++	outputTokens: number | null;
++	totalTokens: number | null;
++	modelId: string | null;
++	docChunkCount: number;
++	docChunkTokens: number | null;
++	commentary: {
++		keyTakeaway?: string;
++	};
++}
++
++export interface IQueryContext {
++	customPageId?: string;
++	customPageName?: string;
++	panelId?: string;
++	panelName?: string;
++	tabId?: string;
++	sectionId?: string;
++	panelType?: string;
++}
++
++export interface IGenerationRequestPayload {
++	requestId: string;
++	correlationId: string | null;
++	user: {
++		username: string | null;
++		email: string | null;
++		groups: string[] | null;
++		role: string | null;
++	};
++	language: string | null;
++	queries: Array<{
++		context?: IQueryContext;
++	}> | null;
++}
++
++export interface IGenerationFeedbackDetail {
++	type: FeedbackStatus;
++	feedbackTime: string | null;
++	comment: string | null;
++}
++
++export interface IAuditGenerationDetail {
++	overview: IGenerationOverview;
++	requestPayload: IGenerationRequestPayload | null;
++	docChunks: IGenerationDocChunk[];
++	feedbackDetail: IGenerationFeedbackDetail;
++	fullPrompt: string | null;
++}
++
++export interface IPortalAuditExportResult {
++	blob: Blob;
++	filename: string;
++}
+ 
+ const RESOLVE_INSIGHT_CONFIG_PATH = "/insights/config/resolve";
+ const GENERATE_INSIGHT_PATH = "/commentary/v1/insights/generate";
+@@ -385,7 +545,6 @@ async function exportAuditGenerations(
+ 	return { blob, filename };
+ }
+ 
+-export * from "./types";
+ export {
+ 	PORTAL_OVERVIEW_SUMMARY_PATH,
+ 	PORTAL_FEEDBACK_BY_ROLE_PATH,
+diff --git a/packages/services/src/InsightService/types.ts b/packages/services/src/InsightService/types.ts
+deleted file mode 100644
+index a0ed4ed..0000000
+--- a/packages/services/src/InsightService/types.ts
++++ /dev/null
+@@ -1,169 +0,0 @@
+-export type FeedbackStatus = "up" | "down" | "none";
+-
+-export interface IOverviewSummaryCost {
+-	total: number | null;
+-	average: number | null;
+-	totalTokens: number | null;
+-}
+-
+-export interface IOverviewSummaryData {
+-	totalGenerations: number;
+-	thumbsUp: number;
+-	thumbsDown: number;
+-	cost: IOverviewSummaryCost;
+-	asOf: string;
+-}
+-
+-export interface IRoleFeedbackItem {
+-	role: string;
+-	generations: number;
+-	positive: number;
+-	negative: number;
+-	rated: number;
+-	noFeedback: number;
+-	positiveRate: number | null;
+-	feedbackCoverage: number | null;
+-}
+-
+-export interface IRoleFeedbackResponse {
+-	window: {
+-		startDate: string;
+-		endDate: string;
+-	};
+-	metric: string;
+-	items: IRoleFeedbackItem[];
+-}
+-
+-export interface IFeedbackTrendPointItem {
+-	date: string;
+-	generations: number;
+-	positive: number;
+-	negative: number;
+-	rated: number;
+-	noFeedback: number;
+-	positiveRate: number | null;
+-	feedbackCoverage: number | null;
+-}
+-
+-export interface IFeedbackTrendResponse {
+-	window: {
+-		startDate: string;
+-		endDate: string;
+-	};
+-	metric: string;
+-	points: IFeedbackTrendPointItem[];
+-}
+-
+-export interface ILogAuditFilterParams {
+-	startDate?: string;
+-	endDate?: string;
+-	roles?: string[];
+-	username?: string;
+-	page?: number;
+-	pageSize?: number;
+-}
+-
+-export interface IAuditGenerationItem {
+-	resultId: string;
+-	requestId: string;
+-	eventTime: string;
+-	username: string;
+-	role: string;
+-	promptVersion: string | null;
+-	durationMs: number | null;
+-	inputTokens: number | null;
+-	outputTokens: number | null;
+-	totalTokens: number | null;
+-	estimatedCost: number | null;
+-	feedback: {
+-		status: FeedbackStatus;
+-		feedbackCount: number;
+-	};
+-}
+-
+-export interface IAuditGenerationListResponse {
+-	page: number;
+-	pageSize: number;
+-	total: number;
+-	items: IAuditGenerationItem[];
+-}
+-
+-export interface IGenerationDocChunk {
+-	chunkRowId: string;
+-	documentId: string | null;
+-	chunkId: string | null;
+-	filename: string;
+-	brand: string | null;
+-	excerpt: string;
+-	relevanceScore: number | null;
+-	tokenCount: number | null;
+-	usedAt: string | null;
+-}
+-
+-export interface IGenerationOverview {
+-	resultId: string;
+-	requestId: string;
+-	requestTime: string;
+-	generationTime: string;
+-	username: string;
+-	role: string;
+-	durationMs: number | null;
+-	promptVersion: string | null;
+-	feedback: {
+-		type: FeedbackStatus;
+-	} | null;
+-	estimatedCost: number | null;
+-	inputTokens: number | null;
+-	outputTokens: number | null;
+-	totalTokens: number | null;
+-	modelId: string | null;
+-	docChunkCount: number;
+-	docChunkTokens: number | null;
+-	commentary: {
+-		keyTakeaway?: string;
+-	};
+-}
+-
+-export interface IQueryContext {
+-	customPageId?: string;
+-	customPageName?: string;
+-	panelId?: string;
+-	panelName?: string;
+-	tabId?: string;
+-	sectionId?: string;
+-	panelType?: string;
+-}
+-
+-export interface IGenerationRequestPayload {
+-	requestId: string;
+-	correlationId: string | null;
+-	user: {
+-		username: string | null;
+-		email: string | null;
+-		groups: string[] | null;
+-		role: string | null;
+-	};
+-	language: string | null;
+-	queries: Array<{
+-		context?: IQueryContext;
+-	}> | null;
+-}
+-
+-export interface IGenerationFeedbackDetail {
+-	type: FeedbackStatus;
+-	feedbackTime: string | null;
+-	comment: string | null;
+-}
+-
+-export interface IAuditGenerationDetail {
+-	overview: IGenerationOverview;
+-	requestPayload: IGenerationRequestPayload | null;
+-	docChunks: IGenerationDocChunk[];
+-	feedbackDetail: IGenerationFeedbackDetail;
+-	fullPrompt: string | null;
+-}
+-
+-export interface IPortalAuditExportResult {
+-	blob: Blob;
+-	filename: string;
+-}
+diff --git a/packages/services/src/index.ts b/packages/services/src/index.ts
+index c9bcea5..9ec0107 100644
+--- a/packages/services/src/index.ts
++++ b/packages/services/src/index.ts
+@@ -17,7 +17,7 @@ import { PanelService } from "./CustomPageService/panel";
+ import type { IConfig, IConfiguration } from "./ConfigService/types";
+ 
+ export type { IConfig, IConfiguration };
+-export * from "./InsightService/types";
++export * from "./InsightService";
+ export {
+ 	ConfigService,
+ 	LanguageService,
