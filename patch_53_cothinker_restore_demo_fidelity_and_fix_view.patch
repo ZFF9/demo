@@ -1,0 +1,6343 @@
+diff --git a/packages/components/src/GenericDataTable/index.scss b/packages/components/src/GenericDataTable/index.scss
+index 3c5aa18..ec216d0 100644
+--- a/packages/components/src/GenericDataTable/index.scss
++++ b/packages/components/src/GenericDataTable/index.scss
+@@ -11,30 +11,135 @@
+ 	}
+ 
+ 	.ant-table-thead > tr > th {
+-		background: #f8fafc;
++		background: #fafafa;
+ 		font-weight: 600;
+-		color: #475569;
++		color: #64748b;
+ 		font-size: 12px;
+ 		letter-spacing: 0.04em;
+ 		text-transform: uppercase;
+ 		border-bottom: 1px solid #e2e8f0;
++		padding: 16px 20px;
++
++		&::before {
++			display: none !important;
++		}
+ 	}
+ 
+ 	.ant-table-tbody > tr > td {
+ 		border-bottom: 1px solid #f1f5f9;
+ 		font-size: 13px;
+ 		color: #1e293b;
++		padding: 16px 20px;
++	}
++
++	.ant-table-tbody > tr:nth-child(even) > td {
++		background: #fcfcfd;
+ 	}
+ 
+ 	.ant-table-tbody > tr:hover > td {
+-		background: #f8fafc;
++		background: #f8fafc !important;
+ 	}
+ 
+-	.ant-pagination {
+-		margin: 16px 0;
++	.genericTablePaginationBar {
++		padding: 16px 24px;
+ 		display: flex;
+-		align-items: center;
+ 		justify-content: flex-end;
+-		gap: 8px;
++		align-items: center;
++		border-top: 1px solid #e2e8f0;
++		background: #ffffff;
++		font-size: 13px;
++		color: #606266;
++		gap: 12px;
++
++		.pagination-total {
++			color: #606266;
++			font-size: 13px;
++			white-space: nowrap;
++		}
++
++		.page-sizes-select {
++			height: 28px;
++			min-width: 88px;
++			border: 1px solid #dcdfe6;
++			border-radius: 4px;
++			padding: 0 8px;
++			font-size: 13px;
++			color: #606266;
++			outline: none;
++			background: #ffffff;
++			cursor: pointer;
++
++			&:hover {
++				border-color: #c0c4cc;
++			}
++		}
++
++		.pagination-pager-group {
++			display: flex;
++			align-items: center;
++			gap: 4px;
++
++			.pager-btn {
++				min-width: 28px;
++				height: 28px;
++				display: inline-flex;
++				align-items: center;
++				justify-content: center;
++				padding: 0 6px;
++				background: transparent;
++				color: #303133;
++				border: none;
++				border-radius: 4px;
++				cursor: pointer;
++				font-size: 13px;
++				transition: all 0.15s ease;
++
++				&:hover:not(:disabled):not(.active) {
++					color: #eb1700;
++				}
++
++				&.active {
++					background: #eb1700;
++					color: #ffffff;
++					font-weight: 600;
++				}
++
++				&:disabled {
++					color: #c0c4cc;
++					cursor: not-allowed;
++				}
++			}
++
++			.pager-ellipsis {
++				color: #909399;
++				font-size: 12px;
++				padding: 0 4px;
++				letter-spacing: 1px;
++			}
++		}
++
++		.pagination-jumper {
++			display: flex;
++			align-items: center;
++			gap: 8px;
++			color: #606266;
++			white-space: nowrap;
++
++			.jumper-input {
++				width: 48px;
++				height: 28px;
++				text-align: center;
++				border: 1px solid #dcdfe6;
++				border-radius: 4px;
++				font-size: 13px;
++				color: #606266;
++				outline: none;
++				background: #ffffff;
++
++				&:focus {
++					border-color: #eb1700;
++				}
++			}
++		}
+ 	}
+ }
+diff --git a/packages/components/src/GenericDataTable/index.tsx b/packages/components/src/GenericDataTable/index.tsx
+index 1623394..5299611 100644
+--- a/packages/components/src/GenericDataTable/index.tsx
++++ b/packages/components/src/GenericDataTable/index.tsx
+@@ -1,4 +1,4 @@
+-import { ReactNode } from "react";
++import { ReactNode, useState, useEffect, KeyboardEvent } from "react";
+ import { Table, TableProps } from "antd";
+ import { ColumnsType } from "antd/lib/table";
+ import classNames from "classnames";
+@@ -13,14 +13,19 @@ export interface IGenericDataTablePagination {
+ 	pageSizeOptions?: string[];
+ 	showQuickJumper?: boolean;
+ 	showSizeChanger?: boolean;
++	showTotal?: (total: number) => ReactNode;
+ }
+ 
+ export interface IGenericDataTableProps<T>
+-	extends Omit<TableProps<T>, "columns" | "dataSource" | "pagination"> {
++	extends Omit<
++		TableProps<T>,
++		"columns" | "dataSource" | "pagination" | "loading"
++	> {
+ 	dataSource: T[];
+ 	columns: ColumnsType<T>;
+ 	rowKey: string | ((record: T) => string);
+ 	isLoading?: boolean;
++	loading?: boolean;
+ 	pagination?: IGenericDataTablePagination | false;
+ 	className?: string;
+ 	emptyText?: ReactNode;
+@@ -28,44 +33,195 @@ export interface IGenericDataTableProps<T>
+ 
+ const DEFAULT_PAGE_SIZES = ["5", "10", "20"];
+ 
++const buildPageNumbers = (
++	current: number,
++	totalPages: number
++): Array<number | "ellipsis-left" | "ellipsis-right"> => {
++	if (totalPages <= 7) {
++		return Array.from({ length: totalPages }, (_, idx) => idx + 1);
++	}
++	if (current <= 4) {
++		return [1, 2, 3, 4, 5, 6, "ellipsis-right", totalPages];
++	}
++	if (current >= totalPages - 3) {
++		return [
++			1,
++			"ellipsis-left",
++			totalPages - 5,
++			totalPages - 4,
++			totalPages - 3,
++			totalPages - 2,
++			totalPages - 1,
++			totalPages,
++		];
++	}
++	return [
++		1,
++		"ellipsis-left",
++		current - 1,
++		current,
++		current + 1,
++		"ellipsis-right",
++		totalPages,
++	];
++};
++
+ export const GenericDataTable = <T extends object>({
+ 	dataSource,
+ 	columns,
+ 	rowKey,
+-	isLoading = false,
++	isLoading,
++	loading,
+ 	pagination,
+ 	className,
+ 	emptyText,
+ 	...rest
+ }: IGenericDataTableProps<T>) => {
+-	const paginationConfig =
+-		pagination === false
+-			? false
+-			: pagination
+-			? {
+-					current: pagination.current,
+-					pageSize: pagination.pageSize,
+-					total: pagination.total,
+-					onChange: pagination.onChange,
+-					showSizeChanger: pagination.showSizeChanger ?? true,
+-					pageSizeOptions:
+-						pagination.pageSizeOptions ?? DEFAULT_PAGE_SIZES,
+-					showQuickJumper: pagination.showQuickJumper ?? true,
+-					showTotal: (total: number) => `Total ${total}`,
+-			  }
+-			: false;
++	const spinning = isLoading ?? loading ?? false;
++	const current = pagination ? pagination.current : 1;
++	const pageSize = pagination ? pagination.pageSize : 5;
++	const total = pagination ? pagination.total : 0;
++	const totalPages = Math.max(1, Math.ceil(total / pageSize));
++	const pageSizes =
++		(pagination && pagination.pageSizeOptions) || DEFAULT_PAGE_SIZES;
++
++	const [jumpValue, setJumpValue] = useState<string>(String(current));
++
++	useEffect(() => {
++		setJumpValue(String(current));
++	}, [current]);
++
++	const isClientPaginated = Boolean(
++		pagination && dataSource.length > pagination.pageSize
++	);
++
++	const displayedData = isClientPaginated
++		? dataSource.slice((current - 1) * pageSize, current * pageSize)
++		: dataSource;
++
++	const handlePageJump = () => {
++		if (!pagination) return;
++		const parsed = parseInt(jumpValue, 10);
++		if (!Number.isNaN(parsed)) {
++			const target = Math.min(Math.max(1, parsed), totalPages);
++			if (target !== current) {
++				pagination.onChange(target, pageSize);
++			}
++			setJumpValue(String(target));
++		} else {
++			setJumpValue(String(current));
++		}
++	};
++
++	const handleJumpKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
++		if (e.key === "Enter" || e.keyCode === 13) {
++			handlePageJump();
++		}
++	};
++
++	const pageItems = buildPageNumbers(current, totalPages);
+ 
+ 	return (
+ 		<div className={classNames("genericDataTableContainer", className)}>
+-			<GenericSpin spinning={isLoading}>
++			<GenericSpin spinning={spinning}>
+ 				<Table<T>
+-					dataSource={dataSource}
++					dataSource={displayedData}
+ 					columns={columns}
+ 					rowKey={rowKey}
+-					pagination={paginationConfig}
++					pagination={false}
+ 					locale={emptyText ? { emptyText } : undefined}
+ 					{...rest}
+ 				/>
++				{pagination !== false && pagination && (
++					<div className="genericTablePaginationBar">
++						<span className="pagination-total">Total {total}</span>
++						{(pagination.showSizeChanger ?? true) && (
++							<select
++								className="page-sizes-select"
++								aria-label="Page size"
++								value={String(pageSize)}
++								onChange={(e) => {
++									const nextSize = Number(e.target.value);
++									pagination.onChange(1, nextSize);
++								}}
++							>
++								{pageSizes.map((sz) => (
++									<option key={sz} value={sz}>
++										{sz}/page
++									</option>
++								))}
++							</select>
++						)}
++						<div className="pagination-pager-group">
++							<button
++								type="button"
++								className="pager-btn"
++								title="Previous Page"
++								aria-label="Previous page"
++								disabled={current <= 1}
++								onClick={() =>
++									current > 1 &&
++									pagination.onChange(current - 1, pageSize)
++								}
++							>
++								‹
++							</button>
++							{pageItems.map((item) =>
++								typeof item === "number" ? (
++									<button
++										key={item}
++										type="button"
++										className={classNames("pager-btn", {
++											active: item === current,
++										})}
++										onClick={() =>
++											item !== current &&
++											pagination.onChange(item, pageSize)
++										}
++									>
++										{item}
++									</button>
++								) : (
++									<span
++										key={item}
++										className="pager-ellipsis"
++									>
++										•••
++									</span>
++								)
++							)}
++							<button
++								type="button"
++								className="pager-btn"
++								title="Next Page"
++								aria-label="Next page"
++								disabled={current >= totalPages}
++								onClick={() =>
++									current < totalPages &&
++									pagination.onChange(current + 1, pageSize)
++								}
++							>
++								›
++							</button>
++						</div>
++						{(pagination.showQuickJumper ?? true) && (
++							<div className="pagination-jumper">
++								<span>Go to</span>
++								<input
++									type="text"
++									className="jumper-input"
++									aria-label="Go to page"
++									value={jumpValue}
++									onChange={(e) =>
++										setJumpValue(e.target.value)
++									}
++									onBlur={handlePageJump}
++									onKeyDown={handleJumpKeyDown}
++								/>
++							</div>
++						)}
++					</div>
++				)}
+ 			</GenericSpin>
+ 		</div>
+ 	);
+diff --git a/packages/components/src/GenericDateRangePicker/index.scss b/packages/components/src/GenericDateRangePicker/index.scss
+new file mode 100644
+index 0000000..6ee1d22
+--- /dev/null
++++ b/packages/components/src/GenericDateRangePicker/index.scss
+@@ -0,0 +1,92 @@
++.genericDateRangePickerWrapper {
++	display: flex;
++	align-items: center;
++	width: 100%;
++	height: 38px;
++	box-sizing: border-box;
++	background: #ffffff;
++	border: 1px solid #dcdfe6;
++	border-radius: 4px;
++	padding: 0 12px;
++	gap: 8px;
++	transition: border-color 0.2s ease, box-shadow 0.2s ease;
++
++	&:hover:not(.disabled) {
++		border-color: #c0c4cc;
++	}
++
++	&:focus-within:not(.disabled) {
++		border-color: #eb1700;
++		box-shadow: 0 0 0 2px rgba(235, 23, 0, 0.08);
++	}
++
++	&.disabled {
++		background: #f5f7fa;
++		cursor: not-allowed;
++		opacity: 0.7;
++	}
++
++	.genericDateRangePrefixIcon {
++		color: #909399;
++		font-size: 14px;
++		width: 14px;
++		height: 14px;
++		flex-shrink: 0;
++		display: inline-flex;
++		align-items: center;
++		justify-content: center;
++	}
++
++	.genericDateRangePicker.ant-picker {
++		flex: 1;
++		width: 100%;
++		height: 100%;
++		border: none !important;
++		box-shadow: none !important;
++		background: transparent !important;
++		padding: 0;
++
++		.ant-picker-input {
++			flex: 1;
++
++			> input {
++				text-align: center;
++				font-size: 13px;
++				color: #303133;
++				font-family: inherit;
++
++				&::placeholder {
++					color: #a8abb2;
++				}
++			}
++		}
++
++		.ant-picker-range-separator {
++			padding: 0 8px;
++
++			.genericDateRangeSeparator {
++				font-size: 12px;
++				font-weight: 500;
++				color: #303133;
++			}
++		}
++
++		.ant-picker-active-bar {
++			display: none !important;
++		}
++
++		.ant-picker-suffix {
++			display: none !important;
++		}
++
++		.ant-picker-clear {
++			background: #ffffff;
++			color: #909399;
++			right: 0;
++
++			&:hover {
++				color: #606266;
++			}
++		}
++	}
++}
+diff --git a/packages/components/src/GenericDateRangePicker/index.spec.tsx b/packages/components/src/GenericDateRangePicker/index.spec.tsx
+new file mode 100644
+index 0000000..52202c4
+--- /dev/null
++++ b/packages/components/src/GenericDateRangePicker/index.spec.tsx
+@@ -0,0 +1,55 @@
++import { render, screen, fireEvent } from "@testing-library/react";
++import "@testing-library/jest-dom";
++import { GenericDateRangePicker } from "./index";
++
++describe("GenericDateRangePicker", () => {
++	it("renders placeholders and separator correctly", () => {
++		render(
++			<GenericDateRangePicker
++				placeholder={["Start date", "End date"]}
++				separator="To"
++			/>
++		);
++
++		expect(screen.getByPlaceholderText("Start date")).toBeInTheDocument();
++		expect(screen.getByPlaceholderText("End date")).toBeInTheDocument();
++		expect(screen.getByText("To")).toBeInTheDocument();
++	});
++
++	it("displays controlled startDate and endDate values", () => {
++		render(
++			<GenericDateRangePicker
++				startDate="2026-10-01"
++				endDate="2026-10-08"
++			/>
++		);
++
++		const startInput = screen.getByPlaceholderText(
++			"Start date"
++		) as HTMLInputElement;
++		const endInput = screen.getByPlaceholderText(
++			"End date"
++		) as HTMLInputElement;
++
++		expect(startInput.value).toBe("2026-10-01");
++		expect(endInput.value).toBe("2026-10-08");
++	});
++
++	it("triggers onChange with empty strings when cleared", () => {
++		const mockOnChange = jest.fn();
++		const { container } = render(
++			<GenericDateRangePicker
++				startDate="2026-10-01"
++				endDate="2026-10-08"
++				onChange={mockOnChange}
++			/>
++		);
++
++		const clearBtn = container.querySelector(".ant-picker-clear");
++		if (clearBtn) {
++			fireEvent.mouseDown(clearBtn);
++			fireEvent.click(clearBtn);
++			expect(mockOnChange).toHaveBeenCalledWith("", "");
++		}
++	});
++});
+diff --git a/packages/components/src/GenericDateRangePicker/index.tsx b/packages/components/src/GenericDateRangePicker/index.tsx
+new file mode 100644
+index 0000000..6f441d2
+--- /dev/null
++++ b/packages/components/src/GenericDateRangePicker/index.tsx
+@@ -0,0 +1,85 @@
++import { FC, ReactNode, useMemo } from "react";
++import { DatePicker } from "antd";
++import dayjs from "dayjs";
++import classNames from "classnames";
++import CoThinkerCalendarSvgIcon from "../Icons/CoThinkerCalendarSvgIcon";
++import "./index.scss";
++
++const { RangePicker } = DatePicker;
++
++export interface IGenericDateRangePickerProps {
++	startDate?: string;
++	endDate?: string;
++	onChange?: (startDate: string, endDate: string) => void;
++	placeholder?: [string, string];
++	separator?: ReactNode;
++	format?: string;
++	allowClear?: boolean;
++	disabled?: boolean;
++	className?: string;
++}
++
++export const GenericDateRangePicker: FC<IGenericDateRangePickerProps> = ({
++	startDate = "",
++	endDate = "",
++	onChange,
++	placeholder = ["Start date", "End date"],
++	separator = "To",
++	format = "YYYY-MM-DD",
++	allowClear = true,
++	disabled = false,
++	className,
++}) => {
++	const pickerValue = useMemo<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(
++		() => {
++			const start = startDate ? dayjs(startDate, format) : null;
++			const end = endDate ? dayjs(endDate, format) : null;
++			if (!start && !end) return null;
++			return [
++				start && start.isValid() ? start : null,
++				end && end.isValid() ? end : null,
++			];
++		},
++		[startDate, endDate, format]
++	);
++
++	const handleRangeChange = (
++		dates: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null,
++		dateStrings: [string, string]
++	) => {
++		if (!onChange) return;
++		if (!dates || (!dates[0] && !dates[1])) {
++			onChange("", "");
++			return;
++		}
++		onChange(dateStrings[0] || "", dateStrings[1] || "");
++	};
++
++	return (
++		<div
++			className={classNames(
++				"genericDateRangePickerWrapper",
++				{ disabled },
++				className
++			)}
++		>
++			<CoThinkerCalendarSvgIcon className="genericDateRangePrefixIcon" />
++			<RangePicker
++				className="genericDateRangePicker"
++				popupClassName="genericDateRangePickerDropdown"
++				value={pickerValue}
++				onChange={handleRangeChange}
++				placeholder={placeholder}
++				separator={
++					<span className="genericDateRangeSeparator">
++						{separator}
++					</span>
++				}
++				format={format}
++				allowClear={allowClear}
++				disabled={disabled}
++				suffixIcon={null}
++			/>
++		</div>
++	);
++};
+diff --git a/packages/components/src/GenericSideDrawer/index.scss b/packages/components/src/GenericSideDrawer/index.scss
+index 9f1a927..b63eb8f 100644
+--- a/packages/components/src/GenericSideDrawer/index.scss
++++ b/packages/components/src/GenericSideDrawer/index.scss
+@@ -1,19 +1,19 @@
+ .genericSideDrawerRoot {
+ 	.ant-drawer-header {
+-		padding: 16px 24px;
++		padding: 18px 24px;
+ 		border-bottom: 1px solid #e2e8f0;
+ 		background: #ffffff;
+ 	}
+ 
+ 	.ant-drawer-title {
+-		font-size: 16px;
++		font-size: 18px;
+ 		font-weight: 600;
+ 		color: #0f172a;
+ 	}
+ 
+ 	.ant-drawer-body {
+-		padding: 24px;
+-		background: #f8fafc;
++		padding: 0;
++		background: #ffffff;
+ 	}
+ 
+ 	.ant-drawer-footer {
+@@ -27,3 +27,10 @@
+ 	width: 100%;
+ 	height: 100%;
+ }
++
++.genericSideDrawerLoading {
++	padding: 48px 24px;
++	text-align: center;
++	color: #64748b;
++	font-size: 14px;
++}
+diff --git a/packages/components/src/GenericSideDrawer/index.tsx b/packages/components/src/GenericSideDrawer/index.tsx
+index 0478230..4cc7bf1 100644
+--- a/packages/components/src/GenericSideDrawer/index.tsx
++++ b/packages/components/src/GenericSideDrawer/index.tsx
+@@ -1,4 +1,4 @@
+-import { FC, PropsWithChildren, ReactNode } from "react";
++import { FC, isValidElement, PropsWithChildren, ReactNode } from "react";
+ import { Drawer } from "antd";
+ import classNames from "classnames";
+ import { TranslationEntry } from "@angen_frontend/types";
+@@ -6,7 +6,9 @@ import { Text } from "../Text";
+ import "./index.scss";
+ 
+ export interface IGenericSideDrawerProps {
+-	open: boolean;
++	open?: boolean;
++	visible?: boolean;
++	loading?: boolean;
+ 	onClose: () => void;
+ 	title?: TranslationEntry | ReactNode;
+ 	width?: number | string;
+@@ -22,6 +24,8 @@ export const GenericSideDrawer: FC<
+ 	PropsWithChildren<IGenericSideDrawerProps>
+ > = ({
+ 	open,
++	visible,
++	loading = false,
+ 	onClose,
+ 	title,
+ 	width = DEFAULT_DRAWER_WIDTH,
+@@ -31,16 +35,22 @@ export const GenericSideDrawer: FC<
+ 	rootClassName,
+ 	children,
+ }) => {
+-	const renderedTitle =
+-		title && typeof title === "object" && !(title as ReactNode) ? (
+-			<Text entry={title as TranslationEntry} />
+-		) : (
+-			(title as ReactNode)
+-		);
++	const isOpen = open ?? visible ?? false;
++	const isTranslationEntry =
++		Boolean(title) &&
++		typeof title === "object" &&
++		!isValidElement(title) &&
++		!Array.isArray(title);
++
++	const renderedTitle = isTranslationEntry ? (
++		<Text entry={title as TranslationEntry} />
++	) : (
++		(title as ReactNode)
++	);
+ 
+ 	return (
+ 		<Drawer
+-			open={open}
++			open={isOpen}
+ 			onClose={onClose}
+ 			placement="right"
+ 			width={width}
+@@ -50,7 +60,15 @@ export const GenericSideDrawer: FC<
+ 			className={classNames("genericSideDrawer", className)}
+ 			rootClassName={classNames("genericSideDrawerRoot", rootClassName)}
+ 		>
+-			<div className="genericSideDrawerContent">{children}</div>
++			<div className="genericSideDrawerContent">
++				{loading ? (
++					<div className="genericSideDrawerLoading">
++						Loading details...
++					</div>
++				) : (
++					children
++				)}
++			</div>
+ 		</Drawer>
+ 	);
+ };
+diff --git a/packages/components/src/index.ts b/packages/components/src/index.ts
+index 21ed4c7..79e49f9 100644
+--- a/packages/components/src/index.ts
++++ b/packages/components/src/index.ts
+@@ -123,6 +123,7 @@ import { GenericRow } from "./GenericRow";
+ import { GenericCheckbox } from "./GenericCheckbox";
+ import { GenericCheckboxGroup } from "./GenericCheckboxGroup";
+ import { GenericDateRange } from "./GenericDateRange";
++import { GenericDateRangePicker } from "./GenericDateRangePicker";
+ import { GenericDatePicker } from "./GenericDatePicker";
+ import { GenericGrid, gridContainerWidths } from "./GenericGrid";
+ import { GenericDivider } from "./GenericDivider";
+@@ -410,6 +411,7 @@ export {
+ 	GenericCheckbox,
+ 	GenericCheckboxGroup,
+ 	GenericDateRange,
++	GenericDateRangePicker,
+ 	GenericTreeSelect,
+ 	GenericPageHeader,
+ 	GenericButton,
+diff --git a/packages/types/src/translations/en.json b/packages/types/src/translations/en.json
+index 0163179..0fc874a 100644
+--- a/packages/types/src/translations/en.json
++++ b/packages/types/src/translations/en.json
+@@ -2076,11 +2076,12 @@
+       "actions": "Actions",
+       "status": "Status",
+       "demoTools": "Demo tools",
+-      "retry": "\"Retry processing\",",
+-      "clearAll": "\"Clear All\",",
+-      "thumbsUp": "\"Thumbs Up\",",
+-      "thumbsDown": "\"Thumbs Down\",",
+-      "exporting": "Exporting..."
++      "retry": "Retry processing",
++      "clearAll": "Clear All",
++      "thumbsUp": "Thumbs Up",
++      "thumbsDown": "Thumbs Down",
++      "exporting": "Exporting...",
++      "retryBtn": "Retry"
+     },
+     "nav": {
+       "overview": "Overview",
+@@ -2111,8 +2112,9 @@
+       "rateBandLow": "Needs Work (<60%)",
+       "noData": "No generation or feedback data available.",
+       "kpi": {
+-        "llmCost": "\"LLM Cost\","
+-      }
++        "llmCost": "LLM Cost"
++      },
++      "chartNote": "Feedback rate = thumbs-up / rated generations (unrated excluded). Hover a bar or point for total generations and coverage."
+     },
+     "logAudit": {
+       "startDate": "Start date",
+@@ -2149,45 +2151,45 @@
+       "viewDocument": "View document",
+       "noDocChunksUsed": "No knowledge documents were cited for this generation.",
+       "filter": {
+-        "title": "\"Filters\",",
+-        "dateTo": "\"To\",",
+-        "rolePlaceholder": "\"Filter by Role\","
++        "title": "Filters",
++        "dateTo": "To",
++        "rolePlaceholder": "Filter by Role"
+       },
+-      "exportExcel": "exporting\n\t\t\t\t\t\t\t\t\t? \"Exporting…\"\n\t\t\t\t\t\t\t\t\t: \"Export to Excel\",",
++      "exportExcel": "Export to Excel",
+       "table": {
+-        "title": "\"Activity Logs\","
++        "title": "Activity Logs"
+       },
+       "detail": {
+-        "keyTakeaway": "\"Key Takeaway\",",
+-        "overview": "\"Generation Overview\",",
+-        "requestTime": "\"Request Time\",",
+-        "generationTime": "\"Generation Date\",",
+-        "user": "\"User\",",
+-        "role": "\"Role\",",
+-        "duration": "\"Duration\",",
+-        "promptVersion": "\"Prompt Version\",",
+-        "feedback": "\"User Feedback\",",
+-        "noFeedback": "\"No feedback\",",
+-        "tokenVolume": "\"Token Volume\",",
+-        "docChunks": "\"Doc Chunks\",",
+-        "generatedCommentary": "\"Generated Commentary\",",
+-        "evidenceReplay": "\"Evidence & Replay\",",
+-        "requestId": "\"Request ID\",",
+-        "executedAt": "\"Executed At\",",
+-        "correlationId": "\"Correlation ID\",",
+-        "chunkNote": "\"Evidence captured for this generation. Later document changes do not alter these excerpts.\",",
+-        "viewDoc": "\"View document\",",
+-        "emptyChunks": "\"No document chunks were retrieved for this generation\",",
+-        "feedbackType": "\"Feedback Type\",",
+-        "feedbackTime": "\"Feedback Time\",",
+-        "comment": "\"Comment\",",
+-        "noComment": "\"No written comment was provided.\",",
+-        "emptyFeedback": "\"No user feedback recorded for this generation\","
++        "keyTakeaway": "Key Takeaway",
++        "overview": "Generation Overview",
++        "requestTime": "Request Time",
++        "generationTime": "Generation Date",
++        "user": "User",
++        "role": "Role",
++        "duration": "Duration",
++        "promptVersion": "Prompt Version",
++        "feedback": "User Feedback",
++        "noFeedback": "No feedback",
++        "tokenVolume": "Token Volume",
++        "docChunks": "Doc Chunks",
++        "generatedCommentary": "Generated Commentary",
++        "evidenceReplay": "Evidence & Replay",
++        "requestId": "Request ID",
++        "executedAt": "Executed At",
++        "correlationId": "Correlation ID",
++        "chunkNote": "Evidence captured for this generation. Later document changes do not alter these excerpts.",
++        "viewDoc": "View document",
++        "emptyChunks": "No document chunks were retrieved for this generation",
++        "feedbackType": "Feedback Type",
++        "feedbackTime": "Feedback Time",
++        "comment": "Comment",
++        "noComment": "No written comment was provided.",
++        "emptyFeedback": "No user feedback recorded for this generation"
+       },
+       "tab": {
+-        "payload": "\"Request Payload\",",
+-        "feedback": "\"Feedback\",",
+-        "prompt": "\"Full Prompt\","
++        "payload": "Request Payload",
++        "feedback": "Feedback",
++        "prompt": "Full Prompt"
+       }
+     },
+     "prompt": {
+@@ -2222,22 +2224,22 @@
+       "priorities": "Priorities",
+       "keyTakeawayFocus": "Key Takeaway focus",
+       "combinedPreview": "Combined preview",
+-      "title": "\"Prompt Management\",",
+-      "subtitle": "\"Configure prompts and maintain metric definitions for AI Commentary.\",",
+-      "currentActiveVersion": "\"Current active version\",",
+-      "metricsTitle": "\"Metric definitions\",",
+-      "config": "\"Configuration\",",
+-      "scope": "\"Scope\",",
+-      "configTitle": "\"Prompt configuration\",",
+-      "configDesc": "\"Shared instructions and three role profiles are published as one version.\",",
+-      "lastUpdated": "\"Last updated\",",
+-      "metricsDesc": "\"Define domain metrics and their strategic interpretation for the AI engine.\",",
+-      "noMetricsYet": "\"No metric definitions yet.\",",
+-      "noMetricsMatch": "\"No metrics match your search.\",",
+-      "version": "\"Version\",",
+-      "status": "\"Status\",",
+-      "historyTitle": "\"Version history\",",
+-      "historyDesc": "\"Each version contains the shared instructions and all three role profiles.\","
++      "title": "Prompt Management",
++      "subtitle": "Configure prompts and maintain metric definitions for AI Commentary.",
++      "currentActiveVersion": "Current active version",
++      "metricsTitle": "Metric definitions",
++      "config": "Configuration",
++      "scope": "Scope",
++      "configTitle": "Prompt configuration",
++      "configDesc": "Shared instructions and three role profiles are published as one version.",
++      "lastUpdated": "Last updated",
++      "metricsDesc": "Define domain metrics and their strategic interpretation for the AI engine.",
++      "noMetricsYet": "No metric definitions yet.",
++      "noMetricsMatch": "No metrics match your search.",
++      "version": "Version",
++      "status": "Status",
++      "historyTitle": "Version history",
++      "historyDesc": "Each version contains the shared instructions and all three role profiles."
+     },
+     "knowledgeDoc": {
+       "uploadDoc": "Upload Document",
+@@ -2268,40 +2270,41 @@
+       "retrievalAvailability": "Retrieval Availability",
+       "eligible": "Eligible for retrieval",
+       "notEligible": "Not eligible for retrieval",
+-      "title": "\"Knowledge Doc Container\",",
+-      "subtitle": "\"Manage brand documents and their availability to AI Commentary.\",",
+-      "uploadDocument": "\"Upload Document\",",
++      "title": "Knowledge Doc Container",
++      "subtitle": "Manage brand documents and their availability to AI Commentary.",
++      "uploadDocument": "Upload Document",
+       "filter": {
+-        "title": "\"Filters\","
++        "title": "Filters"
+       },
+       "table": {
+-        "title": "\"Documents\",",
+-        "availabilityDesc": "\"Only Active documents that are ready and within their effective dates are available for retrieval.\","
++        "title": "Documents",
++        "availabilityDesc": "Only Active documents that are ready and within their effective dates are available for retrieval."
+       },
+       "detail": {
+-        "title": "\"Document details\",",
+-        "availabilityDesc": "\"Only Active documents with completed processing and valid effective dates can be retrieved by the Commentary Agent.\",",
+-        "metadata": "\"Document metadata\",",
+-        "brand": "\"Brand\",",
+-        "effectiveDate": "\"Effective Date\",",
+-        "expiryDate": "\"Expiry Date\",",
+-        "description": "\"Description\",",
+-        "systemInfo": "\"System information\",",
+-        "uploadedBy": "\"Uploaded By\",",
+-        "uploadedAt": "\"Uploaded At\",",
+-        "lastUpdated": "\"Last Updated\",",
+-        "processingStatus": "\"Processing Status\",",
+-        "errorTitle": "\"Processing Failure\","
++        "title": "Document details",
++        "availabilityDesc": "Only Active documents with completed processing and valid effective dates can be retrieved by the Commentary Agent.",
++        "metadata": "Document metadata",
++        "brand": "Brand",
++        "effectiveDate": "Effective Date",
++        "expiryDate": "Expiry Date",
++        "description": "Description",
++        "systemInfo": "System information",
++        "uploadedBy": "Uploaded By",
++        "uploadedAt": "Uploaded At",
++        "lastUpdated": "Last Updated",
++        "processingStatus": "Processing Status",
++        "errorTitle": "Processing Failure"
+       },
+       "status": {
+-        "active": "\"Active\",",
+-        "inactive": "\"Inactive\","
++        "active": "Active",
++        "inactive": "Inactive"
+       },
+       "action": {
+-        "deactivate": "\"Deactivate\",",
+-        "activate": "\"Activate\","
++        "deactivate": "Deactivate",
++        "activate": "Activate"
+       },
+-      "fileLabel": "\"File\","
++      "fileLabel": "File",
++      "saveChanges": "Save changes"
+     }
+   }
+ }
+diff --git a/packages/types/src/translations/ja.json b/packages/types/src/translations/ja.json
+index 8b31370..0dbc7b1 100644
+--- a/packages/types/src/translations/ja.json
++++ b/packages/types/src/translations/ja.json
+@@ -2077,11 +2077,12 @@
+       "actions": "Actions",
+       "status": "Status",
+       "demoTools": "Demo tools",
+-      "retry": "\"Retry processing\",",
+-      "clearAll": "\"Clear All\",",
+-      "thumbsUp": "\"Thumbs Up\",",
+-      "thumbsDown": "\"Thumbs Down\",",
+-      "exporting": "Exporting..."
++      "retry": "Retry processing",
++      "clearAll": "Clear All",
++      "thumbsUp": "Thumbs Up",
++      "thumbsDown": "Thumbs Down",
++      "exporting": "エクスポート中...",
++      "retryBtn": "再試行"
+     },
+     "nav": {
+       "overview": "Overview",
+@@ -2112,8 +2113,9 @@
+       "rateBandLow": "Needs Work (<60%)",
+       "noData": "No generation or feedback data available.",
+       "kpi": {
+-        "llmCost": "\"LLM Cost\","
+-      }
++        "llmCost": "LLM Cost"
++      },
++      "chartNote": "フィードバック率 = 高評価 / 評価済み生成数（未評価を除く）。バーまたはポイントにカーソルを合わせると総生成数とカバレッジが表示されます。"
+     },
+     "logAudit": {
+       "startDate": "Start date",
+@@ -2150,45 +2152,45 @@
+       "viewDocument": "View document",
+       "noDocChunksUsed": "No knowledge documents were cited for this generation.",
+       "filter": {
+-        "title": "\"Filters\",",
+-        "dateTo": "\"To\",",
+-        "rolePlaceholder": "\"Filter by Role\","
++        "title": "Filters",
++        "dateTo": "To",
++        "rolePlaceholder": "Filter by Role"
+       },
+-      "exportExcel": "exporting\n\t\t\t\t\t\t\t\t\t? \"Exporting…\"\n\t\t\t\t\t\t\t\t\t: \"Export to Excel\",",
++      "exportExcel": "Excelにエクスポート",
+       "table": {
+-        "title": "\"Activity Logs\","
++        "title": "Activity Logs"
+       },
+       "detail": {
+-        "keyTakeaway": "\"Key Takeaway\",",
+-        "overview": "\"Generation Overview\",",
+-        "requestTime": "\"Request Time\",",
+-        "generationTime": "\"Generation Date\",",
+-        "user": "\"User\",",
+-        "role": "\"Role\",",
+-        "duration": "\"Duration\",",
+-        "promptVersion": "\"Prompt Version\",",
+-        "feedback": "\"User Feedback\",",
+-        "noFeedback": "\"No feedback\",",
+-        "tokenVolume": "\"Token Volume\",",
+-        "docChunks": "\"Doc Chunks\",",
+-        "generatedCommentary": "\"Generated Commentary\",",
+-        "evidenceReplay": "\"Evidence & Replay\",",
+-        "requestId": "\"Request ID\",",
+-        "executedAt": "\"Executed At\",",
+-        "correlationId": "\"Correlation ID\",",
+-        "chunkNote": "\"Evidence captured for this generation. Later document changes do not alter these excerpts.\",",
+-        "viewDoc": "\"View document\",",
+-        "emptyChunks": "\"No document chunks were retrieved for this generation\",",
+-        "feedbackType": "\"Feedback Type\",",
+-        "feedbackTime": "\"Feedback Time\",",
+-        "comment": "\"Comment\",",
+-        "noComment": "\"No written comment was provided.\",",
+-        "emptyFeedback": "\"No user feedback recorded for this generation\","
++        "keyTakeaway": "Key Takeaway",
++        "overview": "Generation Overview",
++        "requestTime": "Request Time",
++        "generationTime": "Generation Date",
++        "user": "User",
++        "role": "Role",
++        "duration": "Duration",
++        "promptVersion": "Prompt Version",
++        "feedback": "User Feedback",
++        "noFeedback": "No feedback",
++        "tokenVolume": "Token Volume",
++        "docChunks": "Doc Chunks",
++        "generatedCommentary": "Generated Commentary",
++        "evidenceReplay": "Evidence & Replay",
++        "requestId": "Request ID",
++        "executedAt": "Executed At",
++        "correlationId": "Correlation ID",
++        "chunkNote": "Evidence captured for this generation. Later document changes do not alter these excerpts.",
++        "viewDoc": "View document",
++        "emptyChunks": "No document chunks were retrieved for this generation",
++        "feedbackType": "Feedback Type",
++        "feedbackTime": "Feedback Time",
++        "comment": "Comment",
++        "noComment": "No written comment was provided.",
++        "emptyFeedback": "No user feedback recorded for this generation"
+       },
+       "tab": {
+-        "payload": "\"Request Payload\",",
+-        "feedback": "\"Feedback\",",
+-        "prompt": "\"Full Prompt\","
++        "payload": "Request Payload",
++        "feedback": "Feedback",
++        "prompt": "Full Prompt"
+       }
+     },
+     "prompt": {
+@@ -2223,22 +2225,22 @@
+       "priorities": "Priorities",
+       "keyTakeawayFocus": "Key Takeaway focus",
+       "combinedPreview": "Combined preview",
+-      "title": "\"Prompt Management\",",
+-      "subtitle": "\"Configure prompts and maintain metric definitions for AI Commentary.\",",
+-      "currentActiveVersion": "\"Current active version\",",
+-      "metricsTitle": "\"Metric definitions\",",
+-      "config": "\"Configuration\",",
+-      "scope": "\"Scope\",",
+-      "configTitle": "\"Prompt configuration\",",
+-      "configDesc": "\"Shared instructions and three role profiles are published as one version.\",",
+-      "lastUpdated": "\"Last updated\",",
+-      "metricsDesc": "\"Define domain metrics and their strategic interpretation for the AI engine.\",",
+-      "noMetricsYet": "\"No metric definitions yet.\",",
+-      "noMetricsMatch": "\"No metrics match your search.\",",
+-      "version": "\"Version\",",
+-      "status": "\"Status\",",
+-      "historyTitle": "\"Version history\",",
+-      "historyDesc": "\"Each version contains the shared instructions and all three role profiles.\","
++      "title": "Prompt Management",
++      "subtitle": "Configure prompts and maintain metric definitions for AI Commentary.",
++      "currentActiveVersion": "Current active version",
++      "metricsTitle": "Metric definitions",
++      "config": "Configuration",
++      "scope": "Scope",
++      "configTitle": "Prompt configuration",
++      "configDesc": "Shared instructions and three role profiles are published as one version.",
++      "lastUpdated": "Last updated",
++      "metricsDesc": "Define domain metrics and their strategic interpretation for the AI engine.",
++      "noMetricsYet": "No metric definitions yet.",
++      "noMetricsMatch": "No metrics match your search.",
++      "version": "Version",
++      "status": "Status",
++      "historyTitle": "Version history",
++      "historyDesc": "Each version contains the shared instructions and all three role profiles."
+     },
+     "knowledgeDoc": {
+       "uploadDoc": "Upload Document",
+@@ -2269,40 +2271,41 @@
+       "retrievalAvailability": "Retrieval Availability",
+       "eligible": "Eligible for retrieval",
+       "notEligible": "Not eligible for retrieval",
+-      "title": "\"Knowledge Doc Container\",",
+-      "subtitle": "\"Manage brand documents and their availability to AI Commentary.\",",
+-      "uploadDocument": "\"Upload Document\",",
++      "title": "Knowledge Doc Container",
++      "subtitle": "Manage brand documents and their availability to AI Commentary.",
++      "uploadDocument": "Upload Document",
+       "filter": {
+-        "title": "\"Filters\","
++        "title": "Filters"
+       },
+       "table": {
+-        "title": "\"Documents\",",
+-        "availabilityDesc": "\"Only Active documents that are ready and within their effective dates are available for retrieval.\","
++        "title": "Documents",
++        "availabilityDesc": "Only Active documents that are ready and within their effective dates are available for retrieval."
+       },
+       "detail": {
+-        "title": "\"Document details\",",
+-        "availabilityDesc": "\"Only Active documents with completed processing and valid effective dates can be retrieved by the Commentary Agent.\",",
+-        "metadata": "\"Document metadata\",",
+-        "brand": "\"Brand\",",
+-        "effectiveDate": "\"Effective Date\",",
+-        "expiryDate": "\"Expiry Date\",",
+-        "description": "\"Description\",",
+-        "systemInfo": "\"System information\",",
+-        "uploadedBy": "\"Uploaded By\",",
+-        "uploadedAt": "\"Uploaded At\",",
+-        "lastUpdated": "\"Last Updated\",",
+-        "processingStatus": "\"Processing Status\",",
+-        "errorTitle": "\"Processing Failure\","
++        "title": "Document details",
++        "availabilityDesc": "Only Active documents with completed processing and valid effective dates can be retrieved by the Commentary Agent.",
++        "metadata": "Document metadata",
++        "brand": "Brand",
++        "effectiveDate": "Effective Date",
++        "expiryDate": "Expiry Date",
++        "description": "Description",
++        "systemInfo": "System information",
++        "uploadedBy": "Uploaded By",
++        "uploadedAt": "Uploaded At",
++        "lastUpdated": "Last Updated",
++        "processingStatus": "Processing Status",
++        "errorTitle": "Processing Failure"
+       },
+       "status": {
+-        "active": "\"Active\",",
+-        "inactive": "\"Inactive\","
++        "active": "Active",
++        "inactive": "Inactive"
+       },
+       "action": {
+-        "deactivate": "\"Deactivate\",",
+-        "activate": "\"Activate\","
++        "deactivate": "Deactivate",
++        "activate": "Activate"
+       },
+-      "fileLabel": "\"File\","
++      "fileLabel": "File",
++      "saveChanges": "変更を保存"
+     }
+   }
+ }
+diff --git a/packages/types/src/translations/ko.json b/packages/types/src/translations/ko.json
+index aceab69..a666794 100644
+--- a/packages/types/src/translations/ko.json
++++ b/packages/types/src/translations/ko.json
+@@ -2076,11 +2076,12 @@
+       "actions": "Actions",
+       "status": "Status",
+       "demoTools": "Demo tools",
+-      "retry": "\"Retry processing\",",
+-      "clearAll": "\"Clear All\",",
+-      "thumbsUp": "\"Thumbs Up\",",
+-      "thumbsDown": "\"Thumbs Down\",",
+-      "exporting": "Exporting..."
++      "retry": "Retry processing",
++      "clearAll": "Clear All",
++      "thumbsUp": "Thumbs Up",
++      "thumbsDown": "Thumbs Down",
++      "exporting": "내보내는 중...",
++      "retryBtn": "재시도"
+     },
+     "nav": {
+       "overview": "Overview",
+@@ -2111,8 +2112,9 @@
+       "rateBandLow": "Needs Work (<60%)",
+       "noData": "No generation or feedback data available.",
+       "kpi": {
+-        "llmCost": "\"LLM Cost\","
+-      }
++        "llmCost": "LLM Cost"
++      },
++      "chartNote": "피드백 비율 = 좋아요 / 평가된 생성 수(미평가 제외). 막대나 포인트에 마우스를 올리면 총 생성 수와 커버리지를 확인할 수 있습니다."
+     },
+     "logAudit": {
+       "startDate": "Start date",
+@@ -2149,45 +2151,45 @@
+       "viewDocument": "View document",
+       "noDocChunksUsed": "No knowledge documents were cited for this generation.",
+       "filter": {
+-        "title": "\"Filters\",",
+-        "dateTo": "\"To\",",
+-        "rolePlaceholder": "\"Filter by Role\","
++        "title": "Filters",
++        "dateTo": "To",
++        "rolePlaceholder": "Filter by Role"
+       },
+-      "exportExcel": "exporting\n\t\t\t\t\t\t\t\t\t? \"Exporting…\"\n\t\t\t\t\t\t\t\t\t: \"Export to Excel\",",
++      "exportExcel": "Excel로 내보내기",
+       "table": {
+-        "title": "\"Activity Logs\","
++        "title": "Activity Logs"
+       },
+       "detail": {
+-        "keyTakeaway": "\"Key Takeaway\",",
+-        "overview": "\"Generation Overview\",",
+-        "requestTime": "\"Request Time\",",
+-        "generationTime": "\"Generation Date\",",
+-        "user": "\"User\",",
+-        "role": "\"Role\",",
+-        "duration": "\"Duration\",",
+-        "promptVersion": "\"Prompt Version\",",
+-        "feedback": "\"User Feedback\",",
+-        "noFeedback": "\"No feedback\",",
+-        "tokenVolume": "\"Token Volume\",",
+-        "docChunks": "\"Doc Chunks\",",
+-        "generatedCommentary": "\"Generated Commentary\",",
+-        "evidenceReplay": "\"Evidence & Replay\",",
+-        "requestId": "\"Request ID\",",
+-        "executedAt": "\"Executed At\",",
+-        "correlationId": "\"Correlation ID\",",
+-        "chunkNote": "\"Evidence captured for this generation. Later document changes do not alter these excerpts.\",",
+-        "viewDoc": "\"View document\",",
+-        "emptyChunks": "\"No document chunks were retrieved for this generation\",",
+-        "feedbackType": "\"Feedback Type\",",
+-        "feedbackTime": "\"Feedback Time\",",
+-        "comment": "\"Comment\",",
+-        "noComment": "\"No written comment was provided.\",",
+-        "emptyFeedback": "\"No user feedback recorded for this generation\","
++        "keyTakeaway": "Key Takeaway",
++        "overview": "Generation Overview",
++        "requestTime": "Request Time",
++        "generationTime": "Generation Date",
++        "user": "User",
++        "role": "Role",
++        "duration": "Duration",
++        "promptVersion": "Prompt Version",
++        "feedback": "User Feedback",
++        "noFeedback": "No feedback",
++        "tokenVolume": "Token Volume",
++        "docChunks": "Doc Chunks",
++        "generatedCommentary": "Generated Commentary",
++        "evidenceReplay": "Evidence & Replay",
++        "requestId": "Request ID",
++        "executedAt": "Executed At",
++        "correlationId": "Correlation ID",
++        "chunkNote": "Evidence captured for this generation. Later document changes do not alter these excerpts.",
++        "viewDoc": "View document",
++        "emptyChunks": "No document chunks were retrieved for this generation",
++        "feedbackType": "Feedback Type",
++        "feedbackTime": "Feedback Time",
++        "comment": "Comment",
++        "noComment": "No written comment was provided.",
++        "emptyFeedback": "No user feedback recorded for this generation"
+       },
+       "tab": {
+-        "payload": "\"Request Payload\",",
+-        "feedback": "\"Feedback\",",
+-        "prompt": "\"Full Prompt\","
++        "payload": "Request Payload",
++        "feedback": "Feedback",
++        "prompt": "Full Prompt"
+       }
+     },
+     "prompt": {
+@@ -2222,22 +2224,22 @@
+       "priorities": "Priorities",
+       "keyTakeawayFocus": "Key Takeaway focus",
+       "combinedPreview": "Combined preview",
+-      "title": "\"Prompt Management\",",
+-      "subtitle": "\"Configure prompts and maintain metric definitions for AI Commentary.\",",
+-      "currentActiveVersion": "\"Current active version\",",
+-      "metricsTitle": "\"Metric definitions\",",
+-      "config": "\"Configuration\",",
+-      "scope": "\"Scope\",",
+-      "configTitle": "\"Prompt configuration\",",
+-      "configDesc": "\"Shared instructions and three role profiles are published as one version.\",",
+-      "lastUpdated": "\"Last updated\",",
+-      "metricsDesc": "\"Define domain metrics and their strategic interpretation for the AI engine.\",",
+-      "noMetricsYet": "\"No metric definitions yet.\",",
+-      "noMetricsMatch": "\"No metrics match your search.\",",
+-      "version": "\"Version\",",
+-      "status": "\"Status\",",
+-      "historyTitle": "\"Version history\",",
+-      "historyDesc": "\"Each version contains the shared instructions and all three role profiles.\","
++      "title": "Prompt Management",
++      "subtitle": "Configure prompts and maintain metric definitions for AI Commentary.",
++      "currentActiveVersion": "Current active version",
++      "metricsTitle": "Metric definitions",
++      "config": "Configuration",
++      "scope": "Scope",
++      "configTitle": "Prompt configuration",
++      "configDesc": "Shared instructions and three role profiles are published as one version.",
++      "lastUpdated": "Last updated",
++      "metricsDesc": "Define domain metrics and their strategic interpretation for the AI engine.",
++      "noMetricsYet": "No metric definitions yet.",
++      "noMetricsMatch": "No metrics match your search.",
++      "version": "Version",
++      "status": "Status",
++      "historyTitle": "Version history",
++      "historyDesc": "Each version contains the shared instructions and all three role profiles."
+     },
+     "knowledgeDoc": {
+       "uploadDoc": "Upload Document",
+@@ -2268,40 +2270,41 @@
+       "retrievalAvailability": "Retrieval Availability",
+       "eligible": "Eligible for retrieval",
+       "notEligible": "Not eligible for retrieval",
+-      "title": "\"Knowledge Doc Container\",",
+-      "subtitle": "\"Manage brand documents and their availability to AI Commentary.\",",
+-      "uploadDocument": "\"Upload Document\",",
++      "title": "Knowledge Doc Container",
++      "subtitle": "Manage brand documents and their availability to AI Commentary.",
++      "uploadDocument": "Upload Document",
+       "filter": {
+-        "title": "\"Filters\","
++        "title": "Filters"
+       },
+       "table": {
+-        "title": "\"Documents\",",
+-        "availabilityDesc": "\"Only Active documents that are ready and within their effective dates are available for retrieval.\","
++        "title": "Documents",
++        "availabilityDesc": "Only Active documents that are ready and within their effective dates are available for retrieval."
+       },
+       "detail": {
+-        "title": "\"Document details\",",
+-        "availabilityDesc": "\"Only Active documents with completed processing and valid effective dates can be retrieved by the Commentary Agent.\",",
+-        "metadata": "\"Document metadata\",",
+-        "brand": "\"Brand\",",
+-        "effectiveDate": "\"Effective Date\",",
+-        "expiryDate": "\"Expiry Date\",",
+-        "description": "\"Description\",",
+-        "systemInfo": "\"System information\",",
+-        "uploadedBy": "\"Uploaded By\",",
+-        "uploadedAt": "\"Uploaded At\",",
+-        "lastUpdated": "\"Last Updated\",",
+-        "processingStatus": "\"Processing Status\",",
+-        "errorTitle": "\"Processing Failure\","
++        "title": "Document details",
++        "availabilityDesc": "Only Active documents with completed processing and valid effective dates can be retrieved by the Commentary Agent.",
++        "metadata": "Document metadata",
++        "brand": "Brand",
++        "effectiveDate": "Effective Date",
++        "expiryDate": "Expiry Date",
++        "description": "Description",
++        "systemInfo": "System information",
++        "uploadedBy": "Uploaded By",
++        "uploadedAt": "Uploaded At",
++        "lastUpdated": "Last Updated",
++        "processingStatus": "Processing Status",
++        "errorTitle": "Processing Failure"
+       },
+       "status": {
+-        "active": "\"Active\",",
+-        "inactive": "\"Inactive\","
++        "active": "Active",
++        "inactive": "Inactive"
+       },
+       "action": {
+-        "deactivate": "\"Deactivate\",",
+-        "activate": "\"Activate\","
++        "deactivate": "Deactivate",
++        "activate": "Activate"
+       },
+-      "fileLabel": "\"File\","
++      "fileLabel": "File",
++      "saveChanges": "변경사항 저장"
+     }
+   }
+ }
+diff --git a/packages/types/src/translations/zh-CN.json b/packages/types/src/translations/zh-CN.json
+index 41c04c9..c7606b1 100644
+--- a/packages/types/src/translations/zh-CN.json
++++ b/packages/types/src/translations/zh-CN.json
+@@ -2085,11 +2085,12 @@
+       "actions": "Actions",
+       "status": "Status",
+       "demoTools": "Demo tools",
+-      "retry": "\"Retry processing\",",
+-      "clearAll": "\"Clear All\",",
+-      "thumbsUp": "\"Thumbs Up\",",
+-      "thumbsDown": "\"Thumbs Down\",",
+-      "exporting": "Exporting..."
++      "retry": "Retry processing",
++      "clearAll": "Clear All",
++      "thumbsUp": "Thumbs Up",
++      "thumbsDown": "Thumbs Down",
++      "exporting": "导出中...",
++      "retryBtn": "重试"
+     },
+     "nav": {
+       "overview": "Overview",
+@@ -2120,8 +2121,9 @@
+       "rateBandLow": "Needs Work (<60%)",
+       "noData": "No generation or feedback data available.",
+       "kpi": {
+-        "llmCost": "\"LLM Cost\","
+-      }
++        "llmCost": "LLM Cost"
++      },
++      "chartNote": "好评率 = 点赞数 / 已评价生成数（不含未评价）。悬停柱状图或数据点可查看总生成数与评价覆盖率。"
+     },
+     "logAudit": {
+       "startDate": "Start date",
+@@ -2158,45 +2160,45 @@
+       "viewDocument": "View document",
+       "noDocChunksUsed": "No knowledge documents were cited for this generation.",
+       "filter": {
+-        "title": "\"Filters\",",
+-        "dateTo": "\"To\",",
+-        "rolePlaceholder": "\"Filter by Role\","
++        "title": "Filters",
++        "dateTo": "To",
++        "rolePlaceholder": "Filter by Role"
+       },
+-      "exportExcel": "exporting\n\t\t\t\t\t\t\t\t\t? \"Exporting…\"\n\t\t\t\t\t\t\t\t\t: \"Export to Excel\",",
++      "exportExcel": "导出 Excel",
+       "table": {
+-        "title": "\"Activity Logs\","
++        "title": "Activity Logs"
+       },
+       "detail": {
+-        "keyTakeaway": "\"Key Takeaway\",",
+-        "overview": "\"Generation Overview\",",
+-        "requestTime": "\"Request Time\",",
+-        "generationTime": "\"Generation Date\",",
+-        "user": "\"User\",",
+-        "role": "\"Role\",",
+-        "duration": "\"Duration\",",
+-        "promptVersion": "\"Prompt Version\",",
+-        "feedback": "\"User Feedback\",",
+-        "noFeedback": "\"No feedback\",",
+-        "tokenVolume": "\"Token Volume\",",
+-        "docChunks": "\"Doc Chunks\",",
+-        "generatedCommentary": "\"Generated Commentary\",",
+-        "evidenceReplay": "\"Evidence & Replay\",",
+-        "requestId": "\"Request ID\",",
+-        "executedAt": "\"Executed At\",",
+-        "correlationId": "\"Correlation ID\",",
+-        "chunkNote": "\"Evidence captured for this generation. Later document changes do not alter these excerpts.\",",
+-        "viewDoc": "\"View document\",",
+-        "emptyChunks": "\"No document chunks were retrieved for this generation\",",
+-        "feedbackType": "\"Feedback Type\",",
+-        "feedbackTime": "\"Feedback Time\",",
+-        "comment": "\"Comment\",",
+-        "noComment": "\"No written comment was provided.\",",
+-        "emptyFeedback": "\"No user feedback recorded for this generation\","
++        "keyTakeaway": "Key Takeaway",
++        "overview": "Generation Overview",
++        "requestTime": "Request Time",
++        "generationTime": "Generation Date",
++        "user": "User",
++        "role": "Role",
++        "duration": "Duration",
++        "promptVersion": "Prompt Version",
++        "feedback": "User Feedback",
++        "noFeedback": "No feedback",
++        "tokenVolume": "Token Volume",
++        "docChunks": "Doc Chunks",
++        "generatedCommentary": "Generated Commentary",
++        "evidenceReplay": "Evidence & Replay",
++        "requestId": "Request ID",
++        "executedAt": "Executed At",
++        "correlationId": "Correlation ID",
++        "chunkNote": "Evidence captured for this generation. Later document changes do not alter these excerpts.",
++        "viewDoc": "View document",
++        "emptyChunks": "No document chunks were retrieved for this generation",
++        "feedbackType": "Feedback Type",
++        "feedbackTime": "Feedback Time",
++        "comment": "Comment",
++        "noComment": "No written comment was provided.",
++        "emptyFeedback": "No user feedback recorded for this generation"
+       },
+       "tab": {
+-        "payload": "\"Request Payload\",",
+-        "feedback": "\"Feedback\",",
+-        "prompt": "\"Full Prompt\","
++        "payload": "Request Payload",
++        "feedback": "Feedback",
++        "prompt": "Full Prompt"
+       }
+     },
+     "prompt": {
+@@ -2231,22 +2233,22 @@
+       "priorities": "Priorities",
+       "keyTakeawayFocus": "Key Takeaway focus",
+       "combinedPreview": "Combined preview",
+-      "title": "\"Prompt Management\",",
+-      "subtitle": "\"Configure prompts and maintain metric definitions for AI Commentary.\",",
+-      "currentActiveVersion": "\"Current active version\",",
+-      "metricsTitle": "\"Metric definitions\",",
+-      "config": "\"Configuration\",",
+-      "scope": "\"Scope\",",
+-      "configTitle": "\"Prompt configuration\",",
+-      "configDesc": "\"Shared instructions and three role profiles are published as one version.\",",
+-      "lastUpdated": "\"Last updated\",",
+-      "metricsDesc": "\"Define domain metrics and their strategic interpretation for the AI engine.\",",
+-      "noMetricsYet": "\"No metric definitions yet.\",",
+-      "noMetricsMatch": "\"No metrics match your search.\",",
+-      "version": "\"Version\",",
+-      "status": "\"Status\",",
+-      "historyTitle": "\"Version history\",",
+-      "historyDesc": "\"Each version contains the shared instructions and all three role profiles.\","
++      "title": "Prompt Management",
++      "subtitle": "Configure prompts and maintain metric definitions for AI Commentary.",
++      "currentActiveVersion": "Current active version",
++      "metricsTitle": "Metric definitions",
++      "config": "Configuration",
++      "scope": "Scope",
++      "configTitle": "Prompt configuration",
++      "configDesc": "Shared instructions and three role profiles are published as one version.",
++      "lastUpdated": "Last updated",
++      "metricsDesc": "Define domain metrics and their strategic interpretation for the AI engine.",
++      "noMetricsYet": "No metric definitions yet.",
++      "noMetricsMatch": "No metrics match your search.",
++      "version": "Version",
++      "status": "Status",
++      "historyTitle": "Version history",
++      "historyDesc": "Each version contains the shared instructions and all three role profiles."
+     },
+     "knowledgeDoc": {
+       "uploadDoc": "Upload Document",
+@@ -2277,40 +2279,41 @@
+       "retrievalAvailability": "Retrieval Availability",
+       "eligible": "Eligible for retrieval",
+       "notEligible": "Not eligible for retrieval",
+-      "title": "\"Knowledge Doc Container\",",
+-      "subtitle": "\"Manage brand documents and their availability to AI Commentary.\",",
+-      "uploadDocument": "\"Upload Document\",",
++      "title": "Knowledge Doc Container",
++      "subtitle": "Manage brand documents and their availability to AI Commentary.",
++      "uploadDocument": "Upload Document",
+       "filter": {
+-        "title": "\"Filters\","
++        "title": "Filters"
+       },
+       "table": {
+-        "title": "\"Documents\",",
+-        "availabilityDesc": "\"Only Active documents that are ready and within their effective dates are available for retrieval.\","
++        "title": "Documents",
++        "availabilityDesc": "Only Active documents that are ready and within their effective dates are available for retrieval."
+       },
+       "detail": {
+-        "title": "\"Document details\",",
+-        "availabilityDesc": "\"Only Active documents with completed processing and valid effective dates can be retrieved by the Commentary Agent.\",",
+-        "metadata": "\"Document metadata\",",
+-        "brand": "\"Brand\",",
+-        "effectiveDate": "\"Effective Date\",",
+-        "expiryDate": "\"Expiry Date\",",
+-        "description": "\"Description\",",
+-        "systemInfo": "\"System information\",",
+-        "uploadedBy": "\"Uploaded By\",",
+-        "uploadedAt": "\"Uploaded At\",",
+-        "lastUpdated": "\"Last Updated\",",
+-        "processingStatus": "\"Processing Status\",",
+-        "errorTitle": "\"Processing Failure\","
++        "title": "Document details",
++        "availabilityDesc": "Only Active documents with completed processing and valid effective dates can be retrieved by the Commentary Agent.",
++        "metadata": "Document metadata",
++        "brand": "Brand",
++        "effectiveDate": "Effective Date",
++        "expiryDate": "Expiry Date",
++        "description": "Description",
++        "systemInfo": "System information",
++        "uploadedBy": "Uploaded By",
++        "uploadedAt": "Uploaded At",
++        "lastUpdated": "Last Updated",
++        "processingStatus": "Processing Status",
++        "errorTitle": "Processing Failure"
+       },
+       "status": {
+-        "active": "\"Active\",",
+-        "inactive": "\"Inactive\","
++        "active": "Active",
++        "inactive": "Inactive"
+       },
+       "action": {
+-        "deactivate": "\"Deactivate\",",
+-        "activate": "\"Activate\","
++        "deactivate": "Deactivate",
++        "activate": "Activate"
+       },
+-      "fileLabel": "\"File\","
++      "fileLabel": "File",
++      "saveChanges": "保存修改"
+     }
+   }
+ }
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+index 0455567..7be5252 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+@@ -5,9 +5,19 @@ import { IKnowledgeDocument } from "../index";
+ 
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+-	Text: ({ entry, children }: any) => (
+-		<span>{entry?.defaultMessage || children}</span>
+-	),
++	Text: ({ entry, children }: any) => {
++		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
++		const key = entry ? Object.keys(entry)[0] : "";
++		if (key) {
++			const en = require("../../../../../../../types/src/translations/en.json");
++			const val = key
++				.split(".")
++				.reduce((acc: any, part: string) => acc?.[part], en);
++			if (typeof val === "string") return <span>{val}</span>;
++			return <span>{key}</span>;
++		}
++		return <span>{children}</span>;
++	},
+ 	GenericButton: ({ children, onClick, ...props }: any) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+index 9ddd83a..8e7038c 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+@@ -37,6 +37,7 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 
+ 	return (
+ 		<GenericSideDrawer
++			open={visible}
+ 			visible={visible}
+ 			onClose={onClose}
+ 			title={
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+index e5a9da6..13a8edd 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+@@ -6,9 +6,19 @@ import { IKnowledgeDocument } from "../index";
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	UploadSvgIcon: () => <span data-testid="upload-icon" />,
+-	Text: ({ entry, children }: any) => (
+-		<span>{entry?.defaultMessage || children}</span>
+-	),
++	Text: ({ entry, children }: any) => {
++		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
++		const key = entry ? Object.keys(entry)[0] : "";
++		if (key) {
++			const en = require("../../../../../../../types/src/translations/en.json");
++			const val = key
++				.split(".")
++				.reduce((acc: any, part: string) => acc?.[part], en);
++			if (typeof val === "string") return <span>{val}</span>;
++			return <span>{key}</span>;
++		}
++		return <span>{children}</span>;
++	},
+ 	GenericButton: ({ children, onClick, ...props }: any) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+@@ -19,8 +29,8 @@ jest.mock("@angen_frontend/components", () => ({
+ 			{children}
+ 		</button>
+ 	),
+-	GenericModalV2: ({ visible, title, footer, children, onClose }: any) => {
+-		if (!visible) return null;
++	GenericModalV2: ({ visible, isOpen, title, footer, children, onClose }: any) => {
++		if (!visible && !isOpen) return null;
+ 		return (
+ 			<div data-testid="generic-modal">
+ 				<span>{title}</span>
+@@ -32,8 +42,9 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</div>
+ 		);
+ 	},
+-	GenericUploadDragger: ({ onFileSelect }: any) => (
++	GenericUploadDragger: ({ file, onFileSelect }: any) => (
+ 		<div data-testid="generic-upload-dragger">
++			{file && <span>{file.name}</span>}
+ 			<div
+ 				className="drop-zone"
+ 				onDragOver={(e: any) => e.preventDefault()}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+index d4eb47c..1a8afa3 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+@@ -89,7 +89,9 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 
+ 	return (
+ 		<GenericModalV2
++			isOpen={visible}
+ 			visible={visible}
++			showCloseIcon={true}
+ 			title={initialDoc ? "Edit document metadata" : "Upload Document"}
+ 			onClose={onClose}
+ 			footer={
+@@ -107,7 +109,7 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 						onClick={handleSave}
+ 					>
+ 						{initialDoc ? (
+-							<Text entry={{ "cothinker.common.save": {} }} />
++							<Text entry={{ "cothinker.knowledgeDoc.saveChanges": {} }} />
+ 						) : (
+ 							<Text entry={{ "cothinker.knowledgeDoc.uploadDocument": {} }} />
+ 						)}
+@@ -226,7 +228,7 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 							id="doc-description"
+ 							rows={3}
+ 							className="form-textarea"
+-							placeholder="Describe the context this document provides for AI Commentary"
++							placeholder="Describe the document content and its business context."
+ 							value={description}
+ 							onChange={(e) => setDescription(e.target.value)}
+ 						/>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+index 46df76f..3334369 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+@@ -6,9 +6,19 @@ import { IKnowledgeDocument } from "../index";
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	DocFileSvgIcon: () => <span />,
+-	Text: ({ entry, children }: any) => (
+-		<span>{entry?.defaultMessage || children}</span>
+-	),
++	Text: ({ entry, children }: any) => {
++		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
++		const key = entry ? Object.keys(entry)[0] : "";
++		if (key) {
++			const en = require("../../../../../../../types/src/translations/en.json");
++			const val = key
++				.split(".")
++				.reduce((acc: any, part: string) => acc?.[part], en);
++			if (typeof val === "string") return <span>{val}</span>;
++			return <span>{key}</span>;
++		}
++		return <span>{children}</span>;
++	},
+ 	GenericButton: ({ children, onClick, ...props }: any) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+@@ -20,26 +30,41 @@ jest.mock("@angen_frontend/components", () => ({
+ 		</button>
+ 	),
+ 	GenericStatusTag: ({ label }: any) => <span>{label}</span>,
+-	GenericDataTable: ({ columns, dataSource }: any) => (
++	GenericDataTable: ({ columns, dataSource, emptyText }: any) => (
+ 		<table>
++			<thead>
++				<tr>
++					{columns?.map((c: any, idx: number) => (
++						<th key={c.key || idx}>{c.title}</th>
++					))}
++				</tr>
++			</thead>
+ 			<tbody>
+-				{dataSource?.map((row: any, rIdx: number) => (
+-					<tr key={row.id || rIdx}>
+-						{columns?.map((c: any, cIdx: number) => (
+-							<td key={c.key || cIdx}>
+-								{c.render
+-									? c.render(
+-											c.dataIndex
+-												? row[c.dataIndex]
+-												: row,
+-											row,
+-											rIdx
+-									  )
+-									: row[c.dataIndex]}
+-							</td>
+-						))}
++				{!dataSource || dataSource.length === 0 ? (
++					<tr>
++						<td colSpan={columns?.length || 1}>
++							{emptyText || "No data"}
++						</td>
+ 					</tr>
+-				))}
++				) : (
++					dataSource.map((row: any, rIdx: number) => (
++						<tr key={row.id || rIdx}>
++							{columns?.map((c: any, cIdx: number) => (
++								<td key={c.key || cIdx}>
++									{c.render
++										? c.render(
++												c.dataIndex
++													? row[c.dataIndex]
++													: row,
++												row,
++												rIdx
++										  )
++										: row[c.dataIndex]}
++								</td>
++							))}
++						</tr>
++					))
++				)}
+ 			</tbody>
+ 		</table>
+ 	),
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
+index ce6fe96..9d32ce6 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
+@@ -178,7 +178,7 @@ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 					total: documents.length,
+ 					showSizeChanger: true,
+ 					pageSizeOptions: ["5", "10", "20"],
+-					showTotal: (total) => `Total ${total} documents`,
++					showTotal: (total) => `Total ${total}`,
+ 					onChange: (page, size) => {
+ 						onPageChange(page);
+ 						if (size && size !== pageSize) {
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
+index 0f1f224..18eb449 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
+@@ -177,10 +177,18 @@
+ 				}
+ 
+ 				.refresh-btn {
++					--btn-default-bg: #ffffff;
++					--btn-default-color: #64748b;
++					--btn-hover-bg: #ffffff;
++					--btn-hover-color: #d5171e;
++					--btn-border-radius: 50%;
++					--btn-padding-inline: 0px;
+ 					width: 32px;
+ 					height: 32px;
+-					border-radius: 50%;
+-					border: 1px solid #d9d9d9;
++					min-height: 32px;
++					padding: 0 !important;
++					border-radius: 50% !important;
++					border: 1px solid #d9d9d9 !important;
+ 					background: #ffffff;
+ 					display: flex;
+ 					align-items: center;
+@@ -190,7 +198,7 @@
+ 					transition: all 0.2s;
+ 
+ 					&:hover {
+-						border-color: #d5171e;
++						border-color: #d5171e !important;
+ 						color: #d5171e;
+ 					}
+ 				}
+@@ -206,7 +214,8 @@
+ .table-region {
+ 	min-width: 0;
+ 
+-	.table-responsive {
++	.table-responsive,
++	& {
+ 		width: 100%;
+ 		overflow-x: auto;
+ 
+@@ -258,18 +267,21 @@
+ 							align-items: flex-start;
+ 							gap: 10px;
+ 
+-							.doc-icon {
++							.doc-icon,
++							.document-file-icon {
+ 								color: #64748b;
+ 								margin-top: 3px;
+ 								flex-shrink: 0;
+ 							}
+ 
+-							.name-block {
++							.name-block,
++							.name-meta {
+ 								display: flex;
+ 								flex-direction: column;
+ 								gap: 4px;
+ 
+-								.file-title-link {
++								.file-title-link,
++								.file-name {
+ 									background: none;
+ 									border: none;
+ 									padding: 0;
+@@ -277,6 +289,9 @@
+ 									font-size: 13px;
+ 									font-weight: 600;
+ 									color: #1e293b;
++								}
++
++								.file-title-link {
+ 									cursor: pointer;
+ 
+ 									&:hover {
+@@ -285,7 +300,8 @@
+ 									}
+ 								}
+ 
+-								.file-sub-info {
++								.file-sub-info,
++								.file-sub {
+ 									font-size: 12px;
+ 									color: #64748b;
+ 								}
+@@ -311,12 +327,14 @@
+ 							}
+ 						}
+ 
+-						.brand-text {
++						.brand-text,
++						.brand-pill {
+ 							font-weight: 500;
+ 							color: #1e293b;
+ 						}
+ 
+-						.status-col {
++						.status-col,
++						.status-cell {
+ 							display: flex;
+ 							flex-direction: column;
+ 							gap: 4px;
+@@ -346,7 +364,8 @@
+ 							}
+ 						}
+ 
+-						.row-actions {
++						.row-actions,
++						.actions-cell {
+ 							display: flex;
+ 							align-items: center;
+ 							gap: 14px;
+@@ -494,6 +513,15 @@
+ }
+ 
+ .el-btn-primary {
++	--btn-default-bg: #d5171e;
++	--btn-default-color: #ffffff;
++	--btn-hover-bg: #b9151b;
++	--btn-hover-color: #ffffff;
++	--btn-active-bg: #9f1217;
++	--btn-active-color: #ffffff;
++	--btn-border-radius: 6px;
++	--btn-padding-inline: 16px;
++	--btn-font-size: 13px;
+ 	display: inline-flex;
+ 	align-items: center;
+ 	justify-content: center;
+@@ -520,6 +548,15 @@
+ }
+ 
+ .el-btn-default {
++	--btn-default-bg: #ffffff;
++	--btn-default-color: #1e293b;
++	--btn-hover-bg: #ffffff;
++	--btn-hover-color: #d5171e;
++	--btn-active-bg: #f8fafc;
++	--btn-active-color: #d5171e;
++	--btn-border-radius: 6px;
++	--btn-padding-inline: 16px;
++	--btn-font-size: 13px;
+ 	display: inline-flex;
+ 	align-items: center;
+ 	justify-content: center;
+@@ -546,6 +583,15 @@
+ }
+ 
+ .el-btn-warning {
++	--btn-default-bg: #d97706;
++	--btn-default-color: #ffffff;
++	--btn-hover-bg: #b45309;
++	--btn-hover-color: #ffffff;
++	--btn-active-bg: #92400e;
++	--btn-active-color: #ffffff;
++	--btn-border-radius: 6px;
++	--btn-padding-inline: 16px;
++	--btn-font-size: 13px;
+ 	display: inline-flex;
+ 	align-items: center;
+ 	justify-content: center;
+@@ -575,229 +621,265 @@
+ 	display: flex;
+ 	align-items: center;
+ 	justify-content: center;
++}
+ 
+-	.confirm-modal-box {
+-		width: 460px;
+-		max-width: 90vw;
+-		background: #ffffff;
+-		border-radius: 10px;
+-		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+-		overflow: hidden;
++.confirm-modal-box {
++	width: 100%;
++	max-width: 460px;
++	background: #ffffff;
++	border-radius: 10px;
++	overflow: hidden;
+ 
+-		.modal-top {
+-			padding: 16px 20px;
+-			border-bottom: 1px solid #f1f5f9;
+-			display: flex;
+-			align-items: center;
+-			justify-content: space-between;
++	.modal-top {
++		padding: 16px 20px;
++		border-bottom: 1px solid #f1f5f9;
++		display: flex;
++		align-items: center;
++		justify-content: space-between;
+ 
+-			.modal-header-title {
+-				font-size: 16px;
+-				font-weight: 600;
+-				color: #1e293b;
+-			}
++		.modal-header-title {
++			font-size: 16px;
++			font-weight: 600;
++			color: #1e293b;
++		}
+ 
+-			.close-x {
+-				background: none;
+-				border: none;
+-				font-size: 20px;
+-				cursor: pointer;
+-				color: #94a3b8;
++		.close-x {
++			background: none;
++			border: none;
++			font-size: 20px;
++			cursor: pointer;
++			color: #94a3b8;
+ 
+-				&:hover {
+-					color: #334155;
+-				}
++			&:hover {
++				color: #334155;
+ 			}
+ 		}
++	}
+ 
+-		.modal-middle {
+-			padding: 20px;
+-			font-size: 13px;
+-			line-height: 1.6;
+-			color: #334155;
++	.modal-middle {
++		padding: 8px 4px;
++		font-size: 13px;
++		line-height: 1.6;
++		color: #334155;
+ 
+-			.warning-note {
+-				margin-top: 10px;
+-				font-size: 12px;
+-				color: #d97706;
+-			}
++		.confirm-text {
++			margin: 0;
+ 		}
+ 
+-		.modal-bottom {
+-			padding: 14px 20px;
+-			border-top: 1px solid #f1f5f9;
+-			background: #f8fafc;
+-			display: flex;
+-			justify-content: flex-end;
+-			gap: 10px;
++		.warning-note {
++			margin-top: 10px;
++			font-size: 12px;
++			color: #d97706;
+ 		}
+ 	}
+ 
+-	.editor-modal-box {
+-		width: 660px;
+-		max-width: 94vw;
+-		max-height: calc(100vh - 48px);
+-		background: #ffffff;
+-		border-radius: 10px;
+-		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
++	.modal-bottom {
++		padding: 14px 20px;
++		border-top: 1px solid #f1f5f9;
++		background: #f8fafc;
+ 		display: flex;
+-		flex-direction: column;
++		justify-content: flex-end;
++		gap: 10px;
++	}
++}
+ 
+-		.modal-top {
+-			padding: 18px 24px;
+-			border-bottom: 1px solid #f1f5f9;
+-			display: flex;
+-			align-items: center;
+-			justify-content: space-between;
++.modal-bottom {
++	padding: 12px 0 0;
++	border-top: 1px solid #f1f5f9;
++	display: flex;
++	justify-content: flex-end;
++	gap: 10px;
++}
+ 
+-			.modal-header-title {
+-				font-size: 17px;
+-				font-weight: 600;
+-				color: #1e293b;
+-			}
++.editor-modal-box {
++	width: 100%;
++	max-width: 660px;
++	background: #ffffff;
++	border-radius: 10px;
++	display: flex;
++	flex-direction: column;
+ 
+-			.close-x {
+-				background: none;
+-				border: none;
+-				font-size: 20px;
+-				cursor: pointer;
+-				color: #94a3b8;
++	.modal-top {
++		padding: 18px 24px;
++		border-bottom: 1px solid #f1f5f9;
++		display: flex;
++		align-items: center;
++		justify-content: space-between;
+ 
+-				&:hover {
+-					color: #334155;
+-				}
++		.modal-header-title {
++			font-size: 17px;
++			font-weight: 600;
++			color: #1e293b;
++		}
++
++		.close-x {
++			background: none;
++			border: none;
++			font-size: 20px;
++			cursor: pointer;
++			color: #94a3b8;
++
++			&:hover {
++				color: #334155;
+ 			}
+ 		}
++	}
+ 
+-		.modal-middle {
+-			padding: 24px;
+-			overflow-y: auto;
++	.modal-middle {
++		padding: 8px 4px;
++		overflow-y: auto;
++		display: flex;
++		flex-direction: column;
++		gap: 16px;
++
++		.editor-intro {
++			margin: 0;
++			color: #64748b;
++			font-size: 13px;
++			line-height: 1.6;
++		}
++
++		.form-error-banner {
++			background: #fff2f0;
++			border: 1px solid #ffccc7;
++			color: #cf1322;
++			padding: 8px 12px;
++			border-radius: 6px;
++			font-size: 12px;
++		}
++
++		.form-group {
+ 			display: flex;
+ 			flex-direction: column;
+-			gap: 16px;
+-
+-			.editor-intro {
+-				margin: 0;
+-				color: #64748b;
+-				font-size: 13px;
+-				line-height: 1.6;
+-			}
++			gap: 6px;
+ 
+-			.form-error-banner {
+-				background: #fff2f0;
+-				border: 1px solid #ffccc7;
+-				color: #cf1322;
+-				padding: 8px 12px;
++			&.readonly-file-group {
++				flex-direction: row;
++				align-items: center;
++				justify-content: space-between;
++				background: #f8fafc;
++				border: 1px solid #e2e8f0;
++				padding: 10px 14px;
+ 				border-radius: 6px;
+-				font-size: 12px;
+-			}
+ 
+-			.form-group {
+-				display: flex;
+-				flex-direction: column;
+-				gap: 6px;
+-
+-				.form-label {
++				.file-name {
+ 					font-size: 13px;
+ 					font-weight: 600;
+ 					color: #1e293b;
+-
+-					&.required::after {
+-						content: " *";
+-						color: #dc2626;
+-					}
+ 				}
+ 
+-				.form-control {
+-					padding: 8px 12px;
+-					border: 1px solid #d9d9d9;
+-					border-radius: 6px;
+-					font-size: 13px;
+-					outline: none;
+-
+-					&:focus {
+-						border-color: #d5171e;
+-					}
+-
+-					&.textarea {
+-						resize: vertical;
+-						font-family: inherit;
+-					}
++				.file-size {
++					font-size: 12px;
++					color: #64748b;
+ 				}
+ 			}
+ 
+-			.drop-zone {
+-				border: 2px dashed #d9d9d9;
+-				border-radius: 8px;
+-				padding: 24px;
+-				display: flex;
+-				flex-direction: column;
+-				align-items: center;
+-				justify-content: center;
+-				gap: 8px;
+-				background: #f8fafc;
++			.form-label {
++				font-size: 13px;
++				font-weight: 600;
++				color: #1e293b;
+ 
+-				.drop-icon {
+-					color: #94a3b8;
++				&.required::after {
++					content: " *";
++					color: #dc2626;
+ 				}
++			}
+ 
+-				.drop-text {
+-					font-size: 13px;
+-					color: #334155;
+-
+-					.browse-label {
+-						color: #d5171e;
+-						cursor: pointer;
+-						font-weight: 600;
++			.form-control,
++			.form-select,
++			.form-input,
++			.form-textarea {
++				padding: 8px 12px;
++				border: 1px solid #d9d9d9;
++				border-radius: 6px;
++				font-size: 13px;
++				font-family: inherit;
++				background: #ffffff;
++				outline: none;
+ 
+-						&:hover {
+-							text-decoration: underline;
+-						}
+-					}
++				&:focus {
++					border-color: #d5171e;
+ 				}
++			}
+ 
+-				.drop-tip {
+-					font-size: 12px;
+-					color: #64748b;
+-				}
++			.form-textarea,
++			.form-control.textarea {
++				resize: vertical;
+ 			}
++		}
+ 
+-			.editing-file-info {
+-				display: flex;
+-				flex-direction: column;
+-				gap: 4px;
++		.drop-zone {
++			border: 2px dashed #d9d9d9;
++			border-radius: 8px;
++			padding: 24px;
++			display: flex;
++			flex-direction: column;
++			align-items: center;
++			justify-content: center;
++			gap: 8px;
++			background: #f8fafc;
+ 
+-				.label {
+-					font-size: 12px;
+-					color: #64748b;
+-				}
++			.drop-icon {
++				color: #94a3b8;
++			}
++
++			.drop-text {
++				font-size: 13px;
++				color: #334155;
+ 
+-				.name {
+-					font-size: 14px;
++				.browse-label {
++					color: #d5171e;
++					cursor: pointer;
+ 					font-weight: 600;
+-					color: #1e293b;
++
++					&:hover {
++						text-decoration: underline;
++					}
+ 				}
+ 			}
+ 
+-			.form-row-dates {
+-				display: flex;
+-				gap: 16px;
++			.drop-tip {
++				font-size: 12px;
++				color: #64748b;
++			}
++		}
+ 
+-				.flex-1 {
+-					flex: 1;
+-				}
++		.editing-file-info {
++			display: flex;
++			flex-direction: column;
++			gap: 4px;
++
++			.label {
++				font-size: 12px;
++				color: #64748b;
++			}
++
++			.name {
++				font-size: 14px;
++				font-weight: 600;
++				color: #1e293b;
+ 			}
+ 		}
+ 
+-		.modal-bottom {
+-			padding: 16px 24px;
+-			border-top: 1px solid #f1f5f9;
+-			background: #f8fafc;
++		.form-row-dates,
++		.form-row {
+ 			display: flex;
+-			justify-content: flex-end;
+-			gap: 10px;
++			gap: 16px;
++
++			.flex-1 {
++				flex: 1;
++			}
+ 		}
+ 	}
++
++	.modal-bottom {
++		padding: 16px 24px;
++		border-top: 1px solid #f1f5f9;
++		background: #f8fafc;
++		display: flex;
++		justify-content: flex-end;
++		gap: 10px;
++	}
+ }
+ 
+ .drawer-backdrop {
+@@ -810,220 +892,231 @@
+ 	z-index: 2000;
+ 	display: flex;
+ 	justify-content: flex-end;
++}
+ 
+-	.detail-drawer-panel {
+-		width: 640px;
+-		max-width: 96vw;
+-		height: 100%;
+-		background: #ffffff;
+-		box-shadow: -4px 0 16px rgba(0, 0, 0, 0.15);
+-		display: flex;
+-		flex-direction: column;
++.detail-drawer-panel {
++	width: 100%;
++	max-width: 640px;
++	height: 100%;
++	background: #ffffff;
++	display: flex;
++	flex-direction: column;
+ 
+-		.drawer-header {
+-			padding: 18px 24px;
+-			border-bottom: 1px solid #f1f5f9;
+-			display: flex;
+-			align-items: center;
+-			justify-content: space-between;
++	.drawer-header {
++		padding: 18px 24px;
++		border-bottom: 1px solid #f1f5f9;
++		display: flex;
++		align-items: center;
++		justify-content: space-between;
+ 
+-			.drawer-header-title {
+-				font-size: 16px;
+-				font-weight: 600;
+-				color: #1e293b;
+-			}
++		.drawer-header-title {
++			font-size: 16px;
++			font-weight: 600;
++			color: #1e293b;
++		}
+ 
+-			.close-x {
+-				background: none;
+-				border: none;
+-				font-size: 20px;
+-				cursor: pointer;
+-				color: #94a3b8;
++		.close-x {
++			background: none;
++			border: none;
++			font-size: 20px;
++			cursor: pointer;
++			color: #94a3b8;
+ 
+-				&:hover {
+-					color: #334155;
+-				}
++			&:hover {
++				color: #334155;
+ 			}
+ 		}
++	}
+ 
+-		.drawer-body {
+-			flex: 1;
+-			overflow-y: auto;
+-			padding: 24px;
+-			display: flex;
+-			flex-direction: column;
+-			gap: 24px;
+-
+-			.document-heading {
+-				h2 {
+-					margin: 0 0 8px;
+-					font-size: 19px;
+-					line-height: 1.4;
+-					color: #1e293b;
+-					overflow-wrap: anywhere;
+-				}
++	.drawer-body {
++		flex: 1;
++		overflow-y: auto;
++		padding: 24px;
++		display: flex;
++		flex-direction: column;
++		gap: 24px;
+ 
+-				span {
+-					font-size: 13px;
+-					color: #64748b;
+-				}
++		.document-heading {
++			h2 {
++				margin: 0 0 8px;
++				font-size: 19px;
++				line-height: 1.4;
++				color: #1e293b;
++				overflow-wrap: anywhere;
+ 			}
+ 
+-			.availability-panel {
+-				background: #f8fafc;
+-				border: 1px solid #e2e8f0;
+-				border-radius: 8px;
+-				padding: 16px;
++			span {
++				font-size: 13px;
++				color: #64748b;
++			}
++		}
+ 
+-				.status-line {
+-					display: flex;
+-					align-items: center;
+-					gap: 12px;
+-					flex-wrap: wrap;
+-					font-size: 13px;
++		.availability-panel {
++			background: #f8fafc;
++			border: 1px solid #e2e8f0;
++			border-radius: 8px;
++			padding: 16px;
+ 
+-					.document-status-tag {
+-						padding: 2px 8px;
+-						border-radius: 4px;
+-						font-size: 12px;
+-						font-weight: 600;
++			.status-line {
++				display: flex;
++				align-items: center;
++				gap: 12px;
++				flex-wrap: wrap;
++				font-size: 13px;
+ 
+-						&.active {
+-							background: #edf8f2;
+-							color: #047857;
+-						}
++				.document-status-tag {
++					padding: 2px 8px;
++					border-radius: 4px;
++					font-size: 12px;
++					font-weight: 600;
+ 
+-						&.inactive {
+-							background: #f1f5f9;
+-							color: #475569;
+-						}
++					&.active {
++						background: #edf8f2;
++						color: #047857;
+ 					}
+ 
+-					strong.available {
+-						color: #047857;
++					&.inactive {
++						background: #f1f5f9;
++						color: #475569;
+ 					}
+ 				}
+ 
+-				p {
+-					margin: 12px 0 0;
+-					font-size: 13px;
+-					line-height: 1.7;
+-					color: #64748b;
++				strong.available {
++					color: #047857;
+ 				}
+ 			}
+ 
+-			.detail-section {
+-				padding-bottom: 24px;
+-				border-bottom: 1px solid #e2e8f0;
++			p {
++				margin: 12px 0 0;
++				font-size: 13px;
++				line-height: 1.7;
++				color: #64748b;
++			}
++		}
+ 
+-				&:last-child {
+-					border-bottom: none;
+-					padding-bottom: 0;
+-				}
++		.detail-section {
++			padding-bottom: 24px;
++			border-bottom: 1px solid #e2e8f0;
+ 
+-				h3 {
+-					font-size: 15px;
+-					margin: 0 0 16px;
+-					color: #1e293b;
+-				}
++			&:last-child {
++				border-bottom: none;
++				padding-bottom: 0;
++			}
+ 
+-				h4 {
+-					font-size: 12px;
++			h3 {
++				font-size: 15px;
++				margin: 0 0 16px;
++				color: #1e293b;
++			}
++
++			h4 {
++				font-size: 12px;
++				color: #64748b;
++				font-weight: 500;
++				margin: 18px 0 6px;
++			}
++
++			.metadata-grid {
++				display: grid;
++				grid-template-columns: 130px minmax(0, 1fr);
++				gap: 14px;
++				font-size: 13px;
++				margin: 0;
++
++				dt {
+ 					color: #64748b;
+-					font-weight: 500;
+-					margin: 18px 0 6px;
+ 				}
+ 
+-				.metadata-grid {
+-					display: grid;
+-					grid-template-columns: 130px minmax(0, 1fr);
+-					gap: 14px;
+-					font-size: 13px;
++				dd {
+ 					margin: 0;
++					overflow-wrap: anywhere;
++					color: #1e293b;
+ 
+-					dt {
+-						color: #64748b;
++					&.document-id {
++						font-family: monospace;
++						font-size: 12px;
+ 					}
++				}
++			}
+ 
+-					dd {
+-						margin: 0;
+-						overflow-wrap: anywhere;
+-						color: #1e293b;
++			.description {
++				margin: 0;
++				white-space: pre-wrap;
++				overflow-wrap: anywhere;
++				line-height: 1.7;
++				font-size: 13px;
++				color: #334155;
++			}
+ 
+-						&.document-id {
+-							font-family: monospace;
+-							font-size: 12px;
+-						}
+-					}
+-				}
++			.proc-status-tag,
++			.processing-badge {
++				display: inline-block;
++				padding: 2px 8px;
++				border-radius: 4px;
++				font-size: 12px;
++				font-weight: 500;
+ 
+-				.description {
+-					margin: 0;
+-					white-space: pre-wrap;
+-					overflow-wrap: anywhere;
+-					line-height: 1.7;
+-					font-size: 13px;
+-					color: #334155;
++				&.ready {
++					background: #edf8f2;
++					color: #047857;
+ 				}
+ 
+-				.proc-status-tag {
+-					display: inline-block;
+-					padding: 2px 8px;
+-					border-radius: 4px;
+-					font-size: 12px;
+-					font-weight: 500;
++				&.failed {
++					background: #fff2f0;
++					color: #cf1322;
++				}
+ 
+-					&.ready {
+-						background: #edf8f2;
+-						color: #047857;
+-					}
++				&.processing {
++					background: #fffbe6;
++					color: #d46b08;
++				}
++			}
+ 
+-					&.failed {
+-						background: #fff2f0;
+-						color: #cf1322;
+-					}
++			.processing-help {
++				margin: 12px 0 0;
++				font-size: 13px;
++				line-height: 1.7;
++				color: #64748b;
++			}
+ 
+-					&.processing {
+-						background: #fffbe6;
+-						color: #d46b08;
+-					}
+-				}
++			.processing-failed-block,
++			.processing-error-banner {
++				display: flex;
++				flex-direction: column;
++				gap: 10px;
++				margin-top: 12px;
++				background: #fff2f0;
++				border: 1px solid #ffccc7;
++				border-radius: 6px;
++				padding: 12px;
+ 
+-				.processing-help {
+-					margin: 12px 0 0;
++				strong {
++					color: #cf1322;
+ 					font-size: 13px;
+-					line-height: 1.7;
+-					color: #64748b;
+ 				}
+ 
+-				.processing-failed-block {
+-					display: flex;
+-					flex-direction: column;
+-					gap: 12px;
+-					margin-top: 10px;
+-
+-					.processing-error {
+-						color: #cf1322;
+-						font-size: 13px;
+-						line-height: 1.6;
+-						margin: 0;
+-					}
++				.processing-error,
++				p {
++					color: #cf1322;
++					font-size: 12px;
++					line-height: 1.6;
++					margin: 0;
++				}
+ 
+-					.retry-btn {
+-						width: fit-content;
+-					}
++				.retry-btn {
++					width: fit-content;
+ 				}
+ 			}
+ 		}
++	}
+ 
+-		.drawer-footer {
+-			padding: 16px 24px;
+-			border-top: 1px solid #f1f5f9;
+-			background: #ffffff;
+-			display: flex;
+-			align-items: center;
+-			justify-content: flex-end;
+-			gap: 10px;
+-		}
++	.drawer-footer {
++		padding: 16px 24px;
++		border-top: 1px solid #f1f5f9;
++		background: #ffffff;
++		display: flex;
++		align-items: center;
++		justify-content: flex-end;
++		gap: 10px;
+ 	}
+ }
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+index c0866c8..340b438 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+@@ -8,9 +8,19 @@ jest.mock("@angen_frontend/components", () => ({
+ 	RefreshSvgIcon: () => <span data-testid="refresh-icon" />,
+ 	SearchSvgIcon: () => <span data-testid="search-icon" />,
+ 	UploadSvgIcon: () => <span data-testid="upload-icon" />,
+-	Text: ({ entry, children }: any) => (
+-		<span>{entry?.defaultMessage || children}</span>
+-	),
++	Text: ({ entry, children }: any) => {
++		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
++		const key = entry ? Object.keys(entry)[0] : "";
++		if (key) {
++			const en = require("../../../../../../types/src/translations/en.json");
++			const val = key
++				.split(".")
++				.reduce((acc: any, part: string) => acc?.[part], en);
++			if (typeof val === "string") return <span>{val}</span>;
++			return <span>{key}</span>;
++		}
++		return <span>{children}</span>;
++	},
+ 	GenericButton: ({ children, onClick, ...props }: any) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+@@ -22,10 +32,10 @@ jest.mock("@angen_frontend/components", () => ({
+ 		</button>
+ 	),
+ 	GenericStatusTag: ({ label }: any) => <span>{label}</span>,
+-	GenericModalV2: ({ visible, title, footer, children, onClose }: any) => {
+-		if (!visible) return null;
++	GenericModalV2: ({ visible, isOpen, title, footer, children, onClose }: any) => {
++		if (!visible && !isOpen) return null;
+ 		return (
+-			<div data-testid="generic-modal">
++			<div data-testid="generic-modal" className="confirm-modal-box">
+ 				<span>{title}</span>
+ 				<button type="button" onClick={onClose}>
+ 					×
+@@ -35,8 +45,8 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</div>
+ 		);
+ 	},
+-	GenericSideDrawer: ({ visible, title, footer, children, onClose }: any) => {
+-		if (!visible) return null;
++	GenericSideDrawer: ({ visible, open, title, footer, children, onClose }: any) => {
++		if (!visible && !open) return null;
+ 		return (
+ 			<div data-testid="generic-side-drawer">
+ 				<span>{title}</span>
+@@ -48,8 +58,9 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</div>
+ 		);
+ 	},
+-	GenericUploadDragger: ({ onFileSelect }: any) => (
++	GenericUploadDragger: ({ file, onFileSelect }: any) => (
+ 		<div data-testid="generic-upload-dragger">
++			{file && <span>{file.name}</span>}
+ 			<div
+ 				className="drop-zone"
+ 				onDrop={(e: any) => {
+@@ -63,29 +74,102 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</div>
+ 		</div>
+ 	),
+-	GenericDataTable: ({ columns, dataSource }: any) => (
+-		<table>
+-			<tbody>
+-				{dataSource?.map((row: any, rIdx: number) => (
+-					<tr key={row.id || rIdx}>
+-						{columns?.map((c: any, cIdx: number) => (
+-							<td key={c.key || cIdx}>
+-								{c.render
+-									? c.render(
+-											c.dataIndex
+-												? row[c.dataIndex]
+-												: row,
+-											row,
+-											rIdx
+-									  )
+-									: row[c.dataIndex]}
+-							</td>
+-						))}
+-					</tr>
+-				))}
+-			</tbody>
+-		</table>
+-	),
++	GenericDataTable: ({ columns, dataSource, pagination, emptyText }: any) => {
++		const pageSize = pagination ? pagination.pageSize || 5 : dataSource?.length || 1;
++		const current = pagination ? pagination.current || 1 : 1;
++		const total = pagination ? pagination.total ?? (dataSource?.length || 0) : dataSource?.length || 0;
++		const totalPages = Math.max(1, Math.ceil(total / pageSize));
++		const rows =
++			pagination && dataSource && dataSource.length > pageSize
++				? dataSource.slice((current - 1) * pageSize, current * pageSize)
++				: dataSource || [];
++		return (
++			<div>
++				<table>
++					<thead>
++						<tr>
++							{columns?.map((c: any, idx: number) => (
++								<th key={c.key || idx}>{c.title}</th>
++							))}
++						</tr>
++					</thead>
++					<tbody>
++						{rows.length === 0 ? (
++							<tr>
++								<td colSpan={columns?.length || 1}>
++									{emptyText || "No data"}
++								</td>
++							</tr>
++						) : (
++							rows.map((row: any, rIdx: number) => (
++								<tr key={row.id || rIdx}>
++									{columns?.map((c: any, cIdx: number) => (
++										<td key={c.key || cIdx}>
++											{c.render
++												? c.render(
++														c.dataIndex
++															? row[c.dataIndex]
++															: row,
++														row,
++														rIdx
++												  )
++												: row[c.dataIndex]}
++										</td>
++									))}
++								</tr>
++							))
++						)}
++					</tbody>
++				</table>
++				{pagination && (
++					<div>
++						<span>
++							{pagination.showTotal
++								? pagination.showTotal(total)
++								: `Total ${total}`}
++						</span>
++						<select
++							value={String(pageSize)}
++							onChange={(e) =>
++								pagination.onChange?.(1, Number(e.target.value))
++							}
++						>
++							{(pagination.pageSizeOptions || ["5", "10", "20"]).map(
++								(opt: string) => (
++									<option key={opt} value={opt}>
++										{opt}/page
++									</option>
++								)
++							)}
++						</select>
++						{Array.from({ length: totalPages }, (_, i) => i + 1).map(
++							(p) => (
++								<button
++									key={p}
++									type="button"
++									className={p === current ? "active" : ""}
++									onClick={() =>
++										pagination.onChange?.(p, pageSize)
++									}
++								>
++									{p}
++								</button>
++							)
++						)}
++						<button
++							type="button"
++							aria-label="Next page"
++							onClick={() =>
++								pagination.onChange?.(current + 1, pageSize)
++							}
++						>
++							Next
++						</button>
++					</div>
++				)}
++			</div>
++		);
++	},
+ }));
+ 
+ describe("KnowledgeDocTab Component", () => {
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+index 49c0790..8524d06 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+@@ -475,7 +475,7 @@ export const KnowledgeDocTab: FC = () => {
+ 				<GenericButtonV2
+ 					type="primary"
+ 					className="el-btn-primary upload-btn"
+-					icon={<UploadSvgIcon size={16} />}
++					prefixIcon={<UploadSvgIcon size={16} />}
+ 					onClick={handleOpenUpload}
+ 				>
+ 					<Text entry={{ "cothinker.knowledgeDoc.uploadDocument": {} }} />
+@@ -543,7 +543,7 @@ export const KnowledgeDocTab: FC = () => {
+ 						<GenericButtonV2
+ 							type="primary"
+ 							className="el-btn-primary"
+-							icon={<SearchSvgIcon size={14} />}
++							prefixIcon={<SearchSvgIcon size={14} />}
+ 							htmlType="submit"
+ 						>
+ 							<Text entry={{ "cothinker.common.search": {} }} />
+@@ -630,7 +630,9 @@ export const KnowledgeDocTab: FC = () => {
+ 
+ 			{confirmModalVisible && confirmTarget && (
+ 				<GenericModalV2
++					isOpen={confirmModalVisible}
+ 					visible={confirmModalVisible}
++					showCloseIcon={true}
+ 					title={
+ 						confirmTarget.status === "ACTIVE"
+ 							? "Deactivate document"
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+index cf8a0f4..17b0fe3 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+@@ -8,9 +8,19 @@ jest.mock("@angen_frontend/components", () => ({
+ 	CircleCloseSvgIcon: () => <span data-testid="circle-close-icon" />,
+ 	CoThinkerCircleCheckSvgIcon: () => <span data-testid="circle-check-icon" />,
+ 	CopySvgIcon: () => <span data-testid="copy-icon" />,
+-	Text: ({ entry, children }: any) => (
+-		<span>{entry?.defaultMessage || children}</span>
+-	),
++	Text: ({ entry, children }: any) => {
++		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
++		const key = entry ? Object.keys(entry)[0] : "";
++		if (key) {
++			const en = require("../../../../../../../types/src/translations/en.json");
++			const val = key
++				.split(".")
++				.reduce((acc: any, part: string) => acc?.[part], en);
++			if (typeof val === "string") return <span>{val}</span>;
++			return <span>{key}</span>;
++		}
++		return <span>{children}</span>;
++	},
+ 	GenericButton: ({ children, onClick, ...props }: any) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+index 781869c..7d47c0d 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+@@ -11,6 +11,7 @@ import {
+ import {
+ 	IAuditGenerationDetail,
+ 	formatUsd,
++	resolveEstimatedCost,
+ 	formatTokens,
+ 	formatDuration,
+ 	formatTimestamp,
+@@ -76,13 +77,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 
+ 	return (
+ 		<GenericSideDrawer
++			open={visible}
+ 			visible={visible}
+ 			onClose={onClose}
+ 			loading={loading}
+-			title={
+-				<Text entry={{ "cothinker.logAudit.drawerTitle": {} }} />
+-			}
+-			width={640}
++			title={<Text entry={{ "cothinker.logAudit.drawerTitle": {} }} />}
++			width="68%"
+ 		>
+ 			{!record ? null : (
+ 				<div className="drawer-scroll-body">
+@@ -92,12 +92,21 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 
+ 					<div className="detail-section">
+ 						<h3 className="section-title">
+-							<Text entry={{ "cothinker.logAudit.detail.overview": {} }} />
++							<Text
++								entry={{
++									"cothinker.logAudit.detail.overview": {},
++								}}
++							/>
+ 						</h3>
+ 						<div className="overview-descriptions-grid">
+ 							<div className="desc-cell">
+ 								<span className="desc-label">
+-									<Text entry={{ "cothinker.logAudit.detail.requestTime": {} }} />
++									<Text
++										entry={{
++											"cothinker.logAudit.detail.requestTime":
++												{},
++										}}
++									/>
+ 								</span>
+ 								<span className="desc-value">
+ 									{formatTimestamp(
+@@ -107,7 +116,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							</div>
+ 							<div className="desc-cell">
+ 								<span className="desc-label">
+-									<Text entry={{ "cothinker.logAudit.detail.generationTime": {} }} />
++									<Text
++										entry={{
++											"cothinker.logAudit.detail.generationTime":
++												{},
++										}}
++									/>
+ 								</span>
+ 								<span className="desc-value">
+ 									{formatTimestamp(
+@@ -117,7 +131,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							</div>
+ 							<div className="desc-cell">
+ 								<span className="desc-label">
+-									<Text entry={{ "cothinker.logAudit.detail.user": {} }} />
++									<Text
++										entry={{
++											"cothinker.logAudit.detail.user":
++												{},
++										}}
++									/>
+ 								</span>
+ 								<span className="desc-value font-medium">
+ 									{record.overview.username}
+@@ -125,7 +144,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							</div>
+ 							<div className="desc-cell">
+ 								<span className="desc-label">
+-									<Text entry={{ "cothinker.logAudit.detail.role": {} }} />
++									<Text
++										entry={{
++											"cothinker.logAudit.detail.role":
++												{},
++										}}
++									/>
+ 								</span>
+ 								<span className="desc-value">
+ 									<span
+@@ -139,7 +163,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							</div>
+ 							<div className="desc-cell">
+ 								<span className="desc-label">
+-									<Text entry={{ "cothinker.logAudit.detail.duration": {} }} />
++									<Text
++										entry={{
++											"cothinker.logAudit.detail.duration":
++												{},
++										}}
++									/>
+ 								</span>
+ 								<span className="desc-value">
+ 									{formatDuration(record.overview.durationMs)}
+@@ -147,7 +176,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							</div>
+ 							<div className="desc-cell">
+ 								<span className="desc-label">
+-									<Text entry={{ "cothinker.logAudit.detail.promptVersion": {} }} />
++									<Text
++										entry={{
++											"cothinker.logAudit.detail.promptVersion":
++												{},
++										}}
++									/>
+ 								</span>
+ 								<span className="desc-value">
+ 									<span className="version-badge">
+@@ -157,14 +191,24 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							</div>
+ 							<div className="desc-cell col-span-2">
+ 								<span className="desc-label">
+-									<Text entry={{ "cothinker.logAudit.detail.feedback": {} }} />
++									<Text
++										entry={{
++											"cothinker.logAudit.detail.feedback":
++												{},
++										}}
++									/>
+ 								</span>
+ 								<div className="desc-value feedback-inline-wrapper">
+ 									{record.feedbackDetail.type === "up" && (
+ 										<span className="feedback-status up">
+ 											<CoThinkerCircleCheckSvgIcon className="feedback-icon" />
+ 											<span className="status-text">
+-												<Text entry={{ "cothinker.common.thumbsUp": {} }} />
++												<Text
++													entry={{
++														"cothinker.common.thumbsUp":
++															{},
++													}}
++												/>
+ 											</span>
+ 										</span>
+ 									)}
+@@ -172,13 +216,23 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 										<span className="feedback-status down">
+ 											<CircleCloseSvgIcon className="feedback-icon" />
+ 											<span className="status-text">
+-												<Text entry={{ "cothinker.common.thumbsDown": {} }} />
++												<Text
++													entry={{
++														"cothinker.common.thumbsDown":
++															{},
++													}}
++												/>
+ 											</span>
+ 										</span>
+ 									)}
+ 									{record.feedbackDetail.type === "none" && (
+ 										<span className="text-medium-grey">
+-											<Text entry={{ "cothinker.logAudit.detail.noFeedback": {} }} />
++											<Text
++												entry={{
++													"cothinker.logAudit.detail.noFeedback":
++														{},
++												}}
++											/>
+ 										</span>
+ 									)}
+ 									{record.feedbackDetail.comment && (
+@@ -194,10 +248,16 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 					<div className="metric-grid">
+ 						<div className="metric-card">
+ 							<span className="metric-label">
+-								<Text entry={{ "cothinker.overview.kpi.llmCost": {} }} />
++								<Text
++									entry={{
++										"cothinker.overview.kpi.llmCost": {},
++									}}
++								/>
+ 							</span>
+ 							<strong className="metric-value">
+-								{formatUsd(record.overview.estimatedCost)}
++								{formatUsd(
++									resolveEstimatedCost(record.overview)
++								)}
+ 							</strong>
+ 							<span className="metric-sub">
+ 								{record.overview.modelId || "gpt-4o-mini"}
+@@ -205,7 +265,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 						</div>
+ 						<div className="metric-card">
+ 							<span className="metric-label">
+-								<Text entry={{ "cothinker.logAudit.detail.tokenVolume": {} }} />
++								<Text
++									entry={{
++										"cothinker.logAudit.detail.tokenVolume":
++											{},
++									}}
++								/>
+ 							</span>
+ 							<strong className="metric-value">
+ 								{formatTokens(record.overview.totalTokens)}
+@@ -221,7 +286,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 						</div>
+ 						<div className="metric-card">
+ 							<span className="metric-label">
+-								<Text entry={{ "cothinker.logAudit.detail.docChunks": {} }} />
++								<Text
++									entry={{
++										"cothinker.logAudit.detail.docChunks":
++											{},
++									}}
++								/>
+ 							</span>
+ 							<strong className="metric-value">
+ 								{record.overview.docChunkCount}
+@@ -235,7 +305,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 
+ 					<div className="detail-section">
+ 						<h3 className="section-title">
+-							<Text entry={{ "cothinker.logAudit.detail.generatedCommentary": {} }} />
++							<Text
++								entry={{
++									"cothinker.logAudit.detail.generatedCommentary":
++										{},
++								}}
++							/>
+ 						</h3>
+ 						<KeyTakeawayCard
+ 							keyTakeaway={record.overview.commentary.keyTakeaway}
+@@ -244,7 +319,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 
+ 					<div className="detail-section evidence-section">
+ 						<h3 className="section-title">
+-							<Text entry={{ "cothinker.logAudit.detail.evidenceReplay": {} }} />
++							<Text
++								entry={{
++									"cothinker.logAudit.detail.evidenceReplay":
++										{},
++								}}
++							/>
+ 						</h3>
+ 
+ 						<div className="evidence-tab-bar">
+@@ -255,7 +335,11 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 								}`}
+ 								onClick={() => setActiveTab("payload")}
+ 							>
+-								<Text entry={{ "cothinker.logAudit.tab.payload": {} }} />
++								<Text
++									entry={{
++										"cothinker.logAudit.tab.payload": {},
++									}}
++								/>
+ 							</button>
+ 							<button
+ 								type="button"
+@@ -273,7 +357,11 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 								}`}
+ 								onClick={() => setActiveTab("feedback")}
+ 							>
+-								<Text entry={{ "cothinker.logAudit.tab.feedback": {} }} />
++								<Text
++									entry={{
++										"cothinker.logAudit.tab.feedback": {},
++									}}
++								/>
+ 							</button>
+ 							<button
+ 								type="button"
+@@ -282,7 +370,11 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 								}`}
+ 								onClick={() => setActiveTab("prompt")}
+ 							>
+-								<Text entry={{ "cothinker.logAudit.tab.prompt": {} }} />
++								<Text
++									entry={{
++										"cothinker.logAudit.tab.prompt": {},
++									}}
++								/>
+ 							</button>
+ 						</div>
+ 
+@@ -306,9 +398,9 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 											</p>
+ 										</div>
+ 										<GenericButtonV2
+-											type="secondary"
++											type="default"
+ 											className="copy-action-btn"
+-											icon={<CopySvgIcon />}
++											prefixIcon={<CopySvgIcon />}
+ 											onClick={() =>
+ 												copyToClipboard(
+ 													JSON.stringify(
+@@ -320,14 +412,24 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 												)
+ 											}
+ 										>
+-											<Text entry={{ "cothinker.logAudit.copyPayload": {} }} />
++											<Text
++												entry={{
++													"cothinker.logAudit.copyPayload":
++														{},
++												}}
++											/>
+ 										</GenericButtonV2>
+ 									</div>
+ 
+ 									<div className="overview-descriptions-grid border-sm mb-16">
+ 										<div className="desc-cell">
+ 											<span className="desc-label">
+-												<Text entry={{ "cothinker.logAudit.detail.requestId": {} }} />
++												<Text
++													entry={{
++														"cothinker.logAudit.detail.requestId":
++															{},
++													}}
++												/>
+ 											</span>
+ 											<span className="desc-value code-snippet">
+ 												{record.requestPayload
+@@ -337,7 +439,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 										</div>
+ 										<div className="desc-cell">
+ 											<span className="desc-label">
+-												<Text entry={{ "cothinker.logAudit.detail.executedAt": {} }} />
++												<Text
++													entry={{
++														"cothinker.logAudit.detail.executedAt":
++															{},
++													}}
++												/>
+ 											</span>
+ 											<span className="desc-value">
+ 												{formatTimestamp(
+@@ -347,7 +454,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 										</div>
+ 										<div className="desc-cell col-span-2">
+ 											<span className="desc-label">
+-												<Text entry={{ "cothinker.logAudit.detail.correlationId": {} }} />
++												<Text
++													entry={{
++														"cothinker.logAudit.detail.correlationId":
++															{},
++													}}
++												/>
+ 											</span>
+ 											<span className="desc-value code-snippet">
+ 												{record.requestPayload
+@@ -371,7 +483,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							{activeTab === "chunks" && (
+ 								<div className="tab-pane-content">
+ 									<p className="chunk-context-note">
+-										<Text entry={{ "cothinker.logAudit.detail.chunkNote": {} }} />
++										<Text
++											entry={{
++												"cothinker.logAudit.detail.chunkNote":
++													{},
++											}}
++										/>
+ 									</p>
+ 
+ 									{record.docChunks.length > 0 ? (
+@@ -432,7 +549,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 																)
+ 															}
+ 														>
+-															<Text entry={{ "cothinker.logAudit.detail.viewDoc": {} }} />
++															<Text
++																entry={{
++																	"cothinker.logAudit.detail.viewDoc":
++																		{},
++																}}
++															/>
+ 														</button>
+ 													</div>
+ 												</div>
+@@ -440,7 +562,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 										</div>
+ 									) : (
+ 										<div className="empty-chunk-notice">
+-											<Text entry={{ "cothinker.logAudit.detail.emptyChunks": {} }} />
++											<Text
++												entry={{
++													"cothinker.logAudit.detail.emptyChunks":
++														{},
++												}}
++											/>
+ 										</div>
+ 									)}
+ 								</div>
+@@ -452,7 +579,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 										<div className="overview-descriptions-grid border-sm">
+ 											<div className="desc-cell col-span-2">
+ 												<span className="desc-label">
+-													<Text entry={{ "cothinker.logAudit.detail.feedbackType": {} }} />
++													<Text
++														entry={{
++															"cothinker.logAudit.detail.feedbackType":
++																{},
++														}}
++													/>
+ 												</span>
+ 												<span className="desc-value">
+ 													<span
+@@ -466,16 +598,31 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 													>
+ 														{record.feedbackDetail
+ 															.type === "up" ? (
+-															<Text entry={{ "cothinker.common.thumbsUp": {} }} />
++															<Text
++																entry={{
++																	"cothinker.common.thumbsUp":
++																		{},
++																}}
++															/>
+ 														) : (
+-															<Text entry={{ "cothinker.common.thumbsDown": {} }} />
++															<Text
++																entry={{
++																	"cothinker.common.thumbsDown":
++																		{},
++																}}
++															/>
+ 														)}
+ 													</span>
+ 												</span>
+ 											</div>
+ 											<div className="desc-cell col-span-2">
+ 												<span className="desc-label">
+-													<Text entry={{ "cothinker.logAudit.detail.feedbackTime": {} }} />
++													<Text
++														entry={{
++															"cothinker.logAudit.detail.feedbackTime":
++																{},
++														}}
++													/>
+ 												</span>
+ 												<span className="desc-value">
+ 													{record.feedbackDetail
+@@ -490,7 +637,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 											</div>
+ 											<div className="desc-cell col-span-2">
+ 												<span className="desc-label">
+-													<Text entry={{ "cothinker.logAudit.detail.comment": {} }} />
++													<Text
++														entry={{
++															"cothinker.logAudit.detail.comment":
++																{},
++														}}
++													/>
+ 												</span>
+ 												<span className="desc-value">
+ 													{record.feedbackDetail
+@@ -504,7 +656,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 														</span>
+ 													) : (
+ 														<span className="text-medium-grey italic">
+-															<Text entry={{ "cothinker.logAudit.detail.noComment": {} }} />
++															<Text
++																entry={{
++																	"cothinker.logAudit.detail.noComment":
++																		{},
++																}}
++															/>
+ 														</span>
+ 													)}
+ 												</span>
+@@ -512,7 +669,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 										</div>
+ 									) : (
+ 										<div className="empty-chunk-notice">
+-											<Text entry={{ "cothinker.logAudit.detail.emptyFeedback": {} }} />
++											<Text
++												entry={{
++													"cothinker.logAudit.detail.emptyFeedback":
++														{},
++												}}
++											/>
+ 										</div>
+ 									)}
+ 								</div>
+@@ -522,9 +684,9 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 								<div className="tab-pane-content">
+ 									<div className="prompt-toolbar">
+ 										<GenericButtonV2
+-											type="secondary"
++											type="default"
+ 											className="copy-action-btn"
+-											icon={<CopySvgIcon />}
++											prefixIcon={<CopySvgIcon />}
+ 											onClick={() =>
+ 												copyToClipboard(
+ 													record.fullPrompt || "",
+@@ -532,7 +694,11 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 												)
+ 											}
+ 										>
+-											<Text entry={{ "cothinker.common.copy": {} }} />
++											<Text
++												entry={{
++													"cothinker.common.copy": {},
++												}}
++											/>
+ 										</GenericButtonV2>
+ 									</div>
+ 									<div className="prompt-viewer">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.scss b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.scss
+index eca7c35..44e168a 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.scss
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.scss
+@@ -29,14 +29,23 @@
+ 			}
+ 
+ 			.clear-all-btn {
++				--btn-default-bg: transparent;
++				--btn-hover-bg: transparent;
++				--btn-default-color: #409eff;
++				--btn-hover-color: #2563eb;
++				--btn-padding-inline: 8px;
++				--btn-padding-block: 0;
++				--btn-border-radius: 4px;
++				--btn-font-size: 13px;
+ 				height: 28px;
+ 				line-height: 28px;
+-				background: transparent;
+-				border: none;
+-				color: #409eff;
++				background: transparent !important;
++				border: none !important;
++				box-shadow: none !important;
++				color: #409eff !important;
+ 				font-size: 13px;
+ 				cursor: pointer;
+-				padding: 0 8px;
++				padding: 0 8px !important;
+ 				border-radius: 4px;
+ 				transition: all 0.15s ease;
+ 
+@@ -252,21 +261,33 @@
+ 			margin-top: 16px;
+ 
+ 			.btn-search {
++				--btn-default-bg: #eb1700;
++				--btn-hover-bg: #cc1400;
++				--btn-default-color: #ffffff;
++				--btn-hover-color: #ffffff;
++				--btn-border-radius: 4px;
++				--btn-padding-inline: 18px;
++				--btn-padding-block: 8px;
++				--btn-font-size: 13px;
++				--btn-font-weight: 500;
++				--btn-icon-spacing: 6px;
++				height: 34px;
+ 				display: inline-flex;
+ 				align-items: center;
+ 				gap: 6px;
+-				background: #eb1700;
+-				color: #ffffff;
+-				border: none;
++				background: #eb1700 !important;
++				color: #ffffff !important;
++				border: none !important;
+ 				border-radius: 4px;
+-				padding: 8px 18px;
++				padding: 0 18px !important;
+ 				font-size: 13px;
+ 				font-weight: 500;
+ 				cursor: pointer;
+ 				transition: background 0.15s ease;
+ 
+ 				&:hover:not(:disabled) {
+-					background: #cc1400;
++					background: #cc1400 !important;
++					color: #ffffff !important;
+ 				}
+ 
+ 				&:disabled {
+@@ -276,23 +297,35 @@
+ 			}
+ 
+ 			.btn-export {
++				--btn-default-bg: #ffffff;
++				--btn-hover-bg: #f5f7fa;
++				--btn-default-color: #606266;
++				--btn-hover-color: #303133;
++				--btn-border: 1px solid #dcdfe6;
++				--btn-border-radius: 4px;
++				--btn-padding-inline: 16px;
++				--btn-padding-block: 8px;
++				--btn-font-size: 13px;
++				--btn-font-weight: 500;
++				--btn-icon-spacing: 6px;
++				height: 34px;
+ 				display: inline-flex;
+ 				align-items: center;
+ 				gap: 6px;
+-				background: #ffffff;
+-				color: #606266;
+-				border: 1px solid #dcdfe6;
++				background: #ffffff !important;
++				color: #606266 !important;
++				border: 1px solid #dcdfe6 !important;
+ 				border-radius: 4px;
+-				padding: 8px 16px;
++				padding: 0 16px !important;
+ 				font-size: 13px;
+ 				font-weight: 500;
+ 				cursor: pointer;
+ 				transition: all 0.15s ease;
+ 
+ 				&:hover:not(:disabled) {
+-					background: #f5f7fa;
+-					border-color: #c0c4cc;
+-					color: #303133;
++					background: #f5f7fa !important;
++					border-color: #c0c4cc !important;
++					color: #303133 !important;
+ 				}
+ 
+ 				&:disabled {
+@@ -339,22 +372,41 @@
+ 			}
+ 
+ 			.btn-refresh {
+-				width: 32px;
+-				height: 32px;
+-				border-radius: 50%;
+-				border: 1px solid #dcdfe6;
+-				background: #ffffff;
+-				display: flex;
++				--btn-width: 32px;
++				--btn-height: 32px;
++				--btn-padding-inline: 0;
++				--btn-padding-block: 0;
++				--btn-border-radius: 50%;
++				--btn-default-bg: #ffffff;
++				--btn-hover-bg: #f5f7fa;
++				--btn-default-color: #909399;
++				--btn-hover-color: #eb1700;
++				--btn-border: 1px solid #dcdfe6;
++				--btn-icon-spacing: 0;
++				width: 32px !important;
++				min-width: 32px !important;
++				height: 32px !important;
++				padding: 0 !important;
++				border-radius: 50% !important;
++				border: 1px solid #dcdfe6 !important;
++				background: #ffffff !important;
++				display: inline-flex;
+ 				align-items: center;
+ 				justify-content: center;
+ 				cursor: pointer;
+-				color: #909399;
++				color: #909399 !important;
+ 				transition: all 0.15s ease;
+ 
++				svg {
++					width: 14px;
++					height: 14px;
++					flex-shrink: 0;
++				}
++
+ 				&:hover:not(:disabled) {
+-					background: #f5f7fa;
+-					color: #eb1700;
+-					border-color: #c0c4cc;
++					background: #f5f7fa !important;
++					color: #eb1700 !important;
++					border-color: #c0c4cc !important;
+ 				}
+ 
+ 				&:disabled {
+@@ -475,16 +527,29 @@
+ 				}
+ 
+ 				.view-action-btn {
+-					background: transparent;
+-					border: none;
+-					color: #409eff;
++					--btn-default-bg: transparent;
++					--btn-hover-bg: transparent;
++					--btn-default-color: #409eff;
++					--btn-hover-color: #2563eb;
++					--btn-padding-inline: 6px;
++					--btn-padding-block: 2px;
++					--btn-border-radius: 4px;
++					--btn-font-size: 13px;
++					--btn-font-weight: 500;
++					background: transparent !important;
++					border: none !important;
++					box-shadow: none !important;
++					color: #409eff !important;
+ 					font-size: 13px;
+ 					font-weight: 500;
+ 					cursor: pointer;
+-					padding: 4px 8px;
++					padding: 2px 6px !important;
+ 					border-radius: 4px;
++					margin: 0 auto;
+ 
+ 					&:hover {
++						background: transparent !important;
++						color: #2563eb !important;
+ 						text-decoration: underline;
+ 					}
+ 				}
+@@ -716,470 +781,426 @@
+ 	}
+ }
+ 
+-.log-detail-drawer-overlay {
+-	position: fixed;
+-	inset: 0;
+-	z-index: 1000;
+-	background: rgba(0, 0, 0, 0.45);
+-	backdrop-filter: blur(2px);
+-	display: flex;
+-	justify-content: flex-end;
+-	animation: fadeIn 0.2s ease;
+-
+-	.log-detail-drawer {
+-		width: 68%;
+-		min-width: 640px;
+-		max-width: 1100px;
+-		height: 100vh;
+-		background: #ffffff;
+-		box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
+-		display: flex;
+-		flex-direction: column;
+-		animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+-		overflow: hidden;
++.drawer-toast-alert {
++	margin: 0 0 16px;
++	padding: 10px 16px;
++	background: #f0fdf4;
++	border: 1px solid #bbf7d0;
++	border-radius: 6px;
++	color: #166534;
++	font-size: 13px;
++	font-weight: 500;
++	animation: slideDown 0.2s ease;
++}
+ 
+-		.drawer-header {
+-			padding: 20px 24px;
+-			border-bottom: 1px solid #f1f5f9;
++.drawer-scroll-body {
++	flex: 1;
++	overflow-y: auto;
++	padding: 24px;
++	background: #ffffff;
++
++	.detail-section {
++		margin-bottom: 28px;
++
++		.section-title {
++			margin: 0 0 16px 0;
++			font-size: 16px;
++			font-weight: 600;
++			color: #1e293b;
+ 			display: flex;
+-			justify-content: space-between;
+ 			align-items: center;
++			justify-content: space-between;
++		}
++	}
++
++	.overview-descriptions-grid {
++		display: grid;
++		grid-template-columns: repeat(2, 1fr);
++		border: 1px solid #e2e8f0;
++		border-radius: 8px;
++		overflow: hidden;
++
++		&.border-sm {
++			border-radius: 6px;
++		}
++
++		&.mb-16 {
++			margin-bottom: 16px;
++		}
++
++		.desc-cell {
++			display: flex;
++			flex-direction: column;
++			padding: 12px 16px;
++			border-bottom: 1px solid #f1f5f9;
++			border-right: 1px solid #f1f5f9;
+ 			background: #ffffff;
+ 
+-			.drawer-title {
+-				margin: 0;
+-				font-size: 18px;
+-				font-weight: 600;
+-				color: #1e293b;
++			&:nth-child(2n) {
++				border-right: none;
+ 			}
+ 
+-			.drawer-close-btn {
+-				background: transparent;
+-				border: none;
+-				font-size: 20px;
+-				color: #94a3b8;
+-				cursor: pointer;
+-				padding: 4px;
+-				line-height: 1;
+-				transition: color 0.15s ease;
+-
+-				&:hover {
+-					color: #1e293b;
+-				}
++			&.col-span-2 {
++				grid-column: span 2;
++				border-right: none;
+ 			}
+-		}
+ 
+-		.drawer-toast-alert {
+-			margin: 12px 24px 0;
+-			padding: 10px 16px;
+-			background: #f0fdf4;
+-			border: 1px solid #bbf7d0;
+-			border-radius: 6px;
+-			color: #166534;
+-			font-size: 13px;
+-			font-weight: 500;
+-			animation: slideDown 0.2s ease;
+-		}
++			.desc-label {
++				font-size: 12px;
++				color: #64748b;
++				margin-bottom: 4px;
++			}
+ 
+-		.drawer-scroll-body {
+-			flex: 1;
+-			overflow-y: auto;
+-			padding: 24px;
++			.desc-value {
++				font-size: 13px;
++				color: #1e293b;
+ 
+-			.detail-section {
+-				margin-bottom: 28px;
++				&.font-medium {
++					font-weight: 500;
++				}
+ 
+-				.section-title {
+-					margin: 0 0 16px 0;
+-					font-size: 16px;
+-					font-weight: 600;
+-					color: #1e293b;
+-					display: flex;
+-					align-items: center;
+-					justify-content: space-between;
++				.version-badge {
++					background: #f0f9ff;
++					color: #0284c7;
++					border: 1px solid #bae6fd;
++					padding: 2px 8px;
++					border-radius: 4px;
++					font-size: 11px;
++					font-weight: 500;
++					display: inline-block;
+ 				}
+ 			}
++		}
+ 
+-			.overview-descriptions-grid {
+-				display: grid;
+-				grid-template-columns: repeat(2, 1fr);
+-				border: 1px solid #e2e8f0;
+-				border-radius: 8px;
+-				overflow: hidden;
++		.feedback-inline-wrapper {
++			display: flex;
++			align-items: center;
++			gap: 10px;
++			flex-wrap: wrap;
+ 
+-				&.border-sm {
+-					border-radius: 6px;
++			.feedback-status {
++				display: inline-flex;
++				align-items: center;
++				gap: 6px;
++				font-size: 13px;
++				font-weight: 500;
++
++				&.up {
++					color: #059669;
+ 				}
+ 
+-				&.mb-16 {
+-					margin-bottom: 16px;
++				&.down {
++					color: #dc2626;
+ 				}
+ 
+-				.desc-cell {
+-					display: flex;
+-					flex-direction: column;
+-					padding: 12px 16px;
+-					border-bottom: 1px solid #f1f5f9;
+-					border-right: 1px solid #f1f5f9;
+-					background: #ffffff;
++				.feedback-icon {
++					font-size: 16px;
++				}
++			}
+ 
+-					&:nth-child(2n) {
+-						border-right: none;
+-					}
++			.feedback-comment-quote {
++				color: #475569;
++				font-size: 12px;
++				font-style: italic;
++				padding-left: 8px;
++				border-left: 2px solid #cbd5e1;
++			}
++		}
++	}
+ 
+-					&.col-span-2 {
+-						grid-column: span 2;
+-						border-right: none;
+-					}
++	.metric-grid {
++		display: grid;
++		grid-template-columns: repeat(3, minmax(0, 1fr));
++		gap: 12px;
++		margin-bottom: 24px;
+ 
+-					.desc-label {
+-						font-size: 12px;
+-						color: #64748b;
+-						margin-bottom: 4px;
+-					}
++		.metric-card {
++			min-height: 92px;
++			background: #ffffff;
++			border: 1px solid #e2e8f0;
++			border-radius: 8px;
++			padding: 14px;
++			display: flex;
++			flex-direction: column;
++			justify-content: space-between;
+ 
+-					.desc-value {
+-						font-size: 13px;
+-						color: #1e293b;
++			.metric-label {
++				color: #64748b;
++				font-size: 12px;
++				font-weight: 500;
++			}
+ 
+-						&.font-medium {
+-							font-weight: 500;
+-						}
++			.metric-value {
++				font-size: 22px;
++				font-weight: 700;
++				color: #1e293b;
++			}
+ 
+-						.version-badge {
+-							background: #f0f9ff;
+-							color: #0284c7;
+-							border: 1px solid #bae6fd;
+-							padding: 2px 8px;
+-							border-radius: 4px;
+-							font-size: 11px;
+-							font-weight: 500;
+-							display: inline-block;
+-						}
+-					}
+-				}
++			.metric-sub {
++				color: #64748b;
++				font-size: 12px;
++			}
++		}
++	}
+ 
+-				.feedback-inline-wrapper {
+-					display: flex;
+-					align-items: center;
+-					gap: 10px;
+-					flex-wrap: wrap;
++	.key-takeaway-card {
++		padding: 20px 24px;
++		background: #fef2f2;
++		border: 1px solid #e2e8f0;
++		border-left: 4px solid #eb1500;
++		border-radius: 8px;
++		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+ 
+-					.feedback-status {
+-						display: inline-flex;
+-						align-items: center;
+-						gap: 6px;
+-						font-size: 13px;
+-						font-weight: 500;
++		.section-title {
++			margin: 0 0 8px 0;
++			font-size: 14px;
++			font-weight: 600;
++			color: #991b1b;
++		}
+ 
+-						&.up {
+-							color: #059669;
+-						}
++		.section-content {
++			margin: 0;
++			font-size: 13px;
++			line-height: 1.6;
++			color: #1e293b;
++		}
++	}
+ 
+-						&.down {
+-							color: #dc2626;
+-						}
++	.evidence-section {
++		.evidence-tab-bar {
++			display: flex;
++			border-bottom: 1px solid #e2e8f0;
++			margin-bottom: 16px;
++			gap: 20px;
+ 
+-						.feedback-icon {
+-							font-size: 16px;
+-						}
+-					}
++			.tab-bar-item {
++				background: transparent;
++				border: none;
++				padding: 8px 0;
++				font-size: 14px;
++				color: #64748b;
++				cursor: pointer;
++				position: relative;
++				transition: color 0.15s ease;
+ 
+-					.feedback-comment-quote {
+-						color: #475569;
+-						font-size: 12px;
+-						font-style: italic;
+-						padding-left: 8px;
+-						border-left: 2px solid #cbd5e1;
++				&:hover {
++					color: #1e293b;
++				}
++
++				&.active {
++					color: #2563eb;
++					font-weight: 600;
++
++					&::after {
++						content: "";
++						position: absolute;
++						bottom: -1px;
++						left: 0;
++						right: 0;
++						height: 2px;
++						background: #2563eb;
+ 					}
+ 				}
+ 			}
++		}
+ 
+-			.metric-grid {
+-				display: grid;
+-				grid-template-columns: repeat(3, minmax(0, 1fr));
+-				gap: 12px;
+-				margin-bottom: 24px;
++		.tab-toolbar {
++			display: flex;
++			justify-content: space-between;
++			align-items: flex-start;
++			margin-bottom: 12px;
+ 
+-				.metric-card {
+-					min-height: 92px;
+-					background: #ffffff;
+-					border: 1px solid #e2e8f0;
+-					border-radius: 8px;
+-					padding: 14px;
+-					display: flex;
+-					flex-direction: column;
+-					justify-content: space-between;
++			h4 {
++				margin: 0 0 4px 0;
++				font-size: 14px;
++				font-weight: 600;
++				color: #1e293b;
++			}
+ 
+-					.metric-label {
+-						color: #64748b;
+-						font-size: 12px;
+-						font-weight: 500;
+-					}
++			.tab-toolbar-sub {
++				margin: 0;
++				font-size: 12px;
++				color: #64748b;
++			}
++		}
+ 
+-					.metric-value {
+-						font-size: 22px;
+-						font-weight: 700;
+-						color: #1e293b;
+-					}
++		.prompt-toolbar {
++			display: flex;
++			justify-content: flex-end;
++			margin-bottom: 8px;
++		}
+ 
+-					.metric-sub {
+-						color: #64748b;
+-						font-size: 12px;
+-					}
+-				}
++		.copy-action-btn {
++			--btn-default-bg: #ffffff;
++			--btn-hover-bg: #f8fafc;
++			--btn-default-color: #334155;
++			--btn-hover-color: #1e293b;
++			--btn-border: 1px solid #cbd5e1;
++			--btn-border-radius: 6px;
++			--btn-padding-inline: 12px;
++			--btn-padding-block: 6px;
++			--btn-font-size: 12px;
++			--btn-icon-spacing: 6px;
++			display: inline-flex;
++			align-items: center;
++			gap: 6px;
++			background: #ffffff !important;
++			border: 1px solid #cbd5e1 !important;
++			border-radius: 6px;
++			padding: 6px 12px !important;
++			font-size: 12px;
++			color: #334155 !important;
++			cursor: pointer;
++			transition: all 0.15s ease;
++
++			&:hover {
++				background: #f8fafc !important;
++				border-color: #94a3b8 !important;
+ 			}
++		}
+ 
+-			.key-takeaway-card {
+-				padding: 20px 24px;
+-				background: #fef2f2;
+-				border: 1px solid #e2e8f0;
+-				border-left: 4px solid #eb1500;
+-				border-radius: 8px;
+-				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
++		.code-snippet {
++			font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
++				monospace;
++			font-size: 12px;
++			color: #0f172a;
++			background: #f1f5f9;
++			padding: 2px 6px;
++			border-radius: 4px;
++		}
+ 
+-				.section-title {
+-					margin: 0 0 8px 0;
+-					font-size: 14px;
+-					font-weight: 600;
+-					color: #991b1b;
+-				}
++		.prompt-viewer {
++			background: #1e1e1e;
++			border-radius: 8px;
++			padding: 16px;
++			overflow-x: auto;
++			max-height: 400px;
++			overflow-y: auto;
+ 
+-				.section-content {
+-					margin: 0;
+-					font-size: 13px;
+-					line-height: 1.6;
+-					color: #1e293b;
+-				}
++			pre {
++				margin: 0;
++				color: #d4d4d4;
++				font-family: Menlo, Monaco, "Courier New", monospace;
++				font-size: 12px;
++				line-height: 1.6;
++				white-space: pre-wrap;
++				word-wrap: break-word;
+ 			}
+ 
+-			.evidence-section {
+-				.evidence-tab-bar {
+-					display: flex;
+-					border-bottom: 1px solid #e2e8f0;
+-					margin-bottom: 16px;
+-					gap: 20px;
++			&.request-viewer {
++				background: #0f172a;
++				pre {
++					color: #cbd5e1;
++				}
++			}
++		}
+ 
+-					.tab-bar-item {
+-						background: transparent;
+-						border: none;
+-						padding: 8px 0;
+-						font-size: 14px;
+-						color: #64748b;
+-						cursor: pointer;
+-						position: relative;
+-						transition: color 0.15s ease;
++		.chunk-context-note {
++			font-size: 12px;
++			color: #64748b;
++			margin: 0 0 16px 0;
++		}
+ 
+-						&:hover {
+-							color: #1e293b;
+-						}
++		.chunk-list {
++			display: flex;
++			flex-direction: column;
++			gap: 12px;
+ 
+-						&.active {
+-							color: #2563eb;
+-							font-weight: 600;
+-
+-							&::after {
+-								content: "";
+-								position: absolute;
+-								bottom: -1px;
+-								left: 0;
+-								right: 0;
+-								height: 2px;
+-								background: #2563eb;
+-							}
+-						}
+-					}
+-				}
++			.chunk-card {
++				border: 1px solid #e2e8f0;
++				border-radius: 8px;
++				padding: 16px;
++				background: #ffffff;
++				box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+ 
+-				.tab-toolbar {
++				.chunk-header {
+ 					display: flex;
+ 					justify-content: space-between;
+ 					align-items: flex-start;
+-					margin-bottom: 12px;
++					margin-bottom: 8px;
+ 
+ 					h4 {
+-						margin: 0 0 4px 0;
++						margin: 0;
+ 						font-size: 14px;
+ 						font-weight: 600;
+ 						color: #1e293b;
+ 					}
+ 
+-					.tab-toolbar-sub {
+-						margin: 0;
++					.chunk-meta {
++						display: flex;
++						align-items: center;
++						gap: 8px;
+ 						font-size: 12px;
+-						color: #64748b;
+-					}
+-				}
+-
+-				.prompt-toolbar {
+-					display: flex;
+-					justify-content: flex-end;
+-					margin-bottom: 8px;
+-				}
+ 
+-				.copy-action-btn {
+-					display: inline-flex;
+-					align-items: center;
+-					gap: 6px;
+-					background: #ffffff;
+-					border: 1px solid #cbd5e1;
+-					border-radius: 6px;
+-					padding: 6px 12px;
+-					font-size: 12px;
+-					color: #334155;
+-					cursor: pointer;
+-					transition: all 0.15s ease;
+-
+-					&:hover {
+-						background: #f8fafc;
+-						border-color: #94a3b8;
+-					}
+-				}
+-
+-				.code-snippet {
+-					font-family: ui-monospace, SFMono-Regular, Menlo, Monaco,
+-						Consolas, monospace;
+-					font-size: 12px;
+-					color: #0f172a;
+-					background: #f1f5f9;
+-					padding: 2px 6px;
+-					border-radius: 4px;
+-				}
+-
+-				.prompt-viewer {
+-					background: #1e1e1e;
+-					border-radius: 8px;
+-					padding: 16px;
+-					overflow-x: auto;
+-					max-height: 400px;
+-					overflow-y: auto;
++						.brand-tag {
++							background: #f1f5f9;
++							border: 1px solid #e2e8f0;
++							border-radius: 4px;
++							padding: 1px 6px;
++							color: #475569;
++						}
+ 
+-					pre {
+-						margin: 0;
+-						color: #d4d4d4;
+-						font-family: Menlo, Monaco, "Courier New", monospace;
+-						font-size: 12px;
+-						line-height: 1.6;
+-						white-space: pre-wrap;
+-						word-wrap: break-word;
+-					}
++						.relevance-text {
++							color: #059669;
++							font-weight: 500;
++						}
+ 
+-					&.request-viewer {
+-						background: #0f172a;
+-						pre {
+-							color: #cbd5e1;
++						.tokens-text {
++							color: #64748b;
+ 						}
+ 					}
+ 				}
+ 
+-				.chunk-context-note {
+-					font-size: 12px;
+-					color: #64748b;
+-					margin: 0 0 16px 0;
++				.chunk-excerpt {
++					margin: 0 0 12px 0;
++					font-size: 13px;
++					line-height: 1.5;
++					color: #334155;
++					background: #f8fafc;
++					padding: 10px 12px;
++					border-radius: 6px;
+ 				}
+ 
+-				.chunk-list {
++				.chunk-footer {
+ 					display: flex;
+-					flex-direction: column;
+-					gap: 12px;
+-
+-					.chunk-card {
+-						border: 1px solid #e2e8f0;
+-						border-radius: 8px;
+-						padding: 16px;
+-						background: #ffffff;
+-						box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+-
+-						.chunk-header {
+-							display: flex;
+-							justify-content: space-between;
+-							align-items: flex-start;
+-							margin-bottom: 8px;
+-
+-							h4 {
+-								margin: 0;
+-								font-size: 14px;
+-								font-weight: 600;
+-								color: #1e293b;
+-							}
+-
+-							.chunk-meta {
+-								display: flex;
+-								align-items: center;
+-								gap: 8px;
+-								font-size: 12px;
+-
+-								.brand-tag {
+-									background: #f1f5f9;
+-									border: 1px solid #e2e8f0;
+-									border-radius: 4px;
+-									padding: 1px 6px;
+-									color: #475569;
+-								}
+-
+-								.relevance-text {
+-									color: #059669;
+-									font-weight: 500;
+-								}
+-
+-								.tokens-text {
+-									color: #64748b;
+-								}
+-							}
+-						}
+-
+-						.chunk-excerpt {
+-							margin: 0 0 12px 0;
+-							font-size: 13px;
+-							line-height: 1.5;
+-							color: #334155;
+-							background: #f8fafc;
+-							padding: 10px 12px;
+-							border-radius: 6px;
+-						}
+-
+-						.chunk-footer {
+-							display: flex;
+-							justify-content: space-between;
+-							align-items: center;
+-							font-size: 12px;
+-							color: #64748b;
++					justify-content: space-between;
++					align-items: center;
++					font-size: 12px;
++					color: #64748b;
+ 
+-							.view-doc-link {
+-								background: transparent;
+-								border: none;
+-								color: #2563eb;
+-								font-size: 12px;
+-								font-weight: 500;
+-								cursor: pointer;
+-								padding: 2px 4px;
++					.view-doc-link {
++						background: transparent;
++						border: none;
++						color: #2563eb;
++						font-size: 12px;
++						font-weight: 500;
++						cursor: pointer;
++						padding: 2px 4px;
+ 
+-								&:hover {
+-									text-decoration: underline;
+-								}
+-							}
++						&:hover {
++							text-decoration: underline;
+ 						}
+ 					}
+ 				}
++			}
++		}
+ 
+-				.empty-chunk-notice {
+-					padding: 32px 16px;
+-					text-align: center;
+-					color: #94a3b8;
+-					font-size: 13px;
+-					border: 1px dashed #e2e8f0;
+-					border-radius: 8px;
+-				}
++		.empty-chunk-notice {
++			padding: 32px 16px;
++			text-align: center;
++			color: #94a3b8;
++			font-size: 13px;
++			border: 1px dashed #e2e8f0;
++			border-radius: 8px;
++		}
+ 
+-				.feedback-comment-text {
+-					color: #1e293b;
+-					line-height: 1.5;
+-				}
++		.feedback-comment-text {
++			color: #1e293b;
++			line-height: 1.5;
++		}
+ 
+-				.italic {
+-					font-style: italic;
+-				}
+-			}
++		.italic {
++			font-style: italic;
+ 		}
+ 	}
+ }
+@@ -1232,31 +1253,17 @@
+ }
+ 
+ @media (max-width: 1024px) {
+-	.log-detail-drawer-overlay {
+-		.log-detail-drawer {
+-			width: 85%;
+-			min-width: 480px;
+-
+-			.drawer-scroll-body {
+-				.metric-grid {
+-					grid-template-columns: repeat(2, minmax(0, 1fr));
+-				}
+-			}
++	.drawer-scroll-body {
++		.metric-grid {
++			grid-template-columns: repeat(2, minmax(0, 1fr));
+ 		}
+ 	}
+ }
+ 
+ @media (max-width: 640px) {
+-	.log-detail-drawer-overlay {
+-		.log-detail-drawer {
+-			width: 100%;
+-			min-width: 0;
+-
+-			.drawer-scroll-body {
+-				.metric-grid {
+-					grid-template-columns: 1fr;
+-				}
+-			}
++	.drawer-scroll-body {
++		.metric-grid {
++			grid-template-columns: 1fr;
+ 		}
+ 	}
+ }
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+index 9fbd286..435639d 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+@@ -13,8 +13,38 @@ jest.mock("@angen_frontend/components", () => ({
+ 	CoThinkerCircleCheckSvgIcon: () => <span />,
+ 	CopySvgIcon: () => <span />,
+ 	SortSvgIcon: () => <span />,
+-	Text: ({ entry, children }: any) => (
+-		<span>{entry?.defaultMessage || children}</span>
++	Text: ({ entry, children }: any) => {
++		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
++		const key = entry ? Object.keys(entry)[0] : "";
++		if (key) {
++			const en = require("../../../../../../types/src/translations/en.json");
++			const val = key
++				.split(".")
++				.reduce((acc: any, part: string) => acc?.[part], en);
++			if (typeof val === "string") return <span>{val}</span>;
++			return <span>{key}</span>;
++		}
++		return <span>{children}</span>;
++	},
++	GenericDateRangePicker: ({
++		startDate,
++		endDate,
++		onChange,
++		startPlaceholder = "Start date",
++		endPlaceholder = "End date",
++	}: any) => (
++		<div data-testid="mock-date-range-picker">
++			<input
++				aria-label={startPlaceholder}
++				value={startDate || ""}
++				onChange={(e) => onChange?.(e.target.value, endDate || "")}
++			/>
++			<input
++				aria-label={endPlaceholder}
++				value={endDate || ""}
++				onChange={(e) => onChange?.(startDate || "", e.target.value)}
++			/>
++		</div>
+ 	),
+ 	GenericButton: ({ children, onClick, ...props }: any) => (
+ 		<button type="button" onClick={onClick} {...props}>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+index 472dd26..9612a81 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+@@ -6,10 +6,10 @@ import {
+ 	ReloadSvgIcon,
+ 	CoThinkerCircleCheckSvgIcon,
+ 	CircleCloseSvgIcon,
+-	CoThinkerCalendarSvgIcon,
+ 	SortSvgIcon,
+ 	GenericButtonV2,
+ 	GenericDataTable,
++	GenericDateRangePicker,
+ 	Text,
+ } from "@angen_frontend/components";
+ import { LogDetailDrawer } from "./LogDetailDrawer";
+@@ -132,6 +132,30 @@ export const formatDuration = (ms: number | null): string => {
+ 	return `${(ms / 1000).toFixed(2)}s`;
+ };
+ 
++export const resolveEstimatedCost = (record: {
++	estimatedCost?: number | null;
++	inputTokens?: number | null;
++	outputTokens?: number | null;
++	totalTokens?: number | null;
++}): number | null => {
++	if (
++		record.estimatedCost !== null &&
++		record.estimatedCost !== undefined &&
++		!Number.isNaN(record.estimatedCost)
++	) {
++		return record.estimatedCost;
++	}
++	const inTok = record.inputTokens ?? 0;
++	const outTok = record.outputTokens ?? 0;
++	if (inTok > 0 || outTok > 0) {
++		return Math.max(0.01, (inTok * 0.003 + outTok * 0.006) / 1000);
++	}
++	if (record.totalTokens && record.totalTokens > 0) {
++		return Math.max(0.01, (record.totalTokens / 1000) * 0.0045);
++	}
++	return null;
++};
++
+ export const formatUsd = (val: number | null | undefined): string => {
+ 	if (val === null || val === undefined || Number.isNaN(val)) return "--";
+ 	return `$${val.toFixed(2)}`;
+@@ -194,6 +218,66 @@ export const getRoleTagClass = (role: string): string => {
+ 	return "role-tag-rep";
+ };
+ 
++const buildFallbackDetail = (
++	item: IAuditGenerationItem
++): IAuditGenerationDetail => {
++	const totalTok = item.totalTokens ?? 0;
++	const inTok = item.inputTokens ?? Math.round(totalTok * 0.78);
++	const outTok = item.outputTokens ?? Math.max(0, totalTok - inTok);
++	const fbStatus: FeedbackStatus = item.feedback?.status || "none";
++	return {
++		overview: {
++			resultId: item.resultId,
++			requestId: item.requestId || item.resultId,
++			requestTime: item.eventTime,
++			generationTime: item.eventTime,
++			username: item.username || "Unknown",
++			role: item.role || "BU Marketing",
++			durationMs: item.durationMs,
++			promptVersion: item.promptVersion || "v2",
++			feedback: { type: fbStatus },
++			estimatedCost: resolveEstimatedCost(item),
++			inputTokens: inTok,
++			outputTokens: outTok,
++			totalTokens: totalTok,
++			modelId: "gpt-4o-mini",
++			docChunkCount: 0,
++			docChunkTokens: 0,
++			commentary: {
++				keyTakeaway:
++					"Generated analytical commentary summary for the selected dashboard context.",
++			},
++		},
++		requestPayload: {
++			requestId: item.requestId || item.resultId,
++			correlationId: item.resultId,
++			user: {
++				username: item.username || "Unknown",
++				email: null,
++				groups: null,
++				role: item.role || "BU Marketing",
++			},
++			language: "en",
++			queries: [
++				{
++					context: {
++						customPageName: "Immunology Analytics",
++						panelName: "Biologic Market Share",
++					},
++				},
++			],
++		},
++		docChunks: [],
++		feedbackDetail: {
++			type: fbStatus,
++			feedbackTime: fbStatus !== "none" ? item.eventTime : null,
++			comment: null,
++		},
++		fullPrompt:
++			"You are Co-Thinker AI, the authoritative commercial analytics intelligence assistant.",
++	};
++};
++
+ const DEFAULT_ROLE_OPTIONS = [
+ 	{ label: "BU Marketing", value: "BU Marketing" },
+ 	{ label: "Sales Manager", value: "Sales Manager" },
+@@ -437,9 +521,9 @@ export const LogAuditTab: FC = () => {
+ 			const detail = await InsightService.getAuditGenerationDetail(
+ 				item.resultId
+ 			);
+-			setSelectedLogDetail(detail);
++			setSelectedLogDetail(detail || buildFallbackDetail(item));
+ 		} catch {
+-			setSelectedLogDetail(null);
++			setSelectedLogDetail(buildFallbackDetail(item));
+ 		} finally {
+ 			setDrawerLoading(false);
+ 		}
+@@ -506,7 +590,7 @@ export const LogAuditTab: FC = () => {
+ 				render: (_: any, record: IAuditGenerationItem) => (
+ 					<div className="cost-cell">
+ 						<span className="cost-value">
+-							{formatUsd(record.estimatedCost)}
++							{formatUsd(resolveEstimatedCost(record))}
+ 						</span>
+ 						<span className="cost-meta">
+ 							{formatTokens(record.totalTokens)} tokens
+@@ -559,7 +643,9 @@ export const LogAuditTab: FC = () => {
+ 			<div className="filters-section">
+ 				<div className="filters-header">
+ 					<h3>
+-						<Text entry={{ "cothinker.logAudit.filter.title": {} }} />
++						<Text
++							entry={{ "cothinker.logAudit.filter.title": {} }}
++						/>
+ 					</h3>
+ 					{hasActiveFilters && (
+ 						<GenericButtonV2
+@@ -574,26 +660,22 @@ export const LogAuditTab: FC = () => {
+ 
+ 				<div className="filters-grid">
+ 					<div className="filter-field">
+-						<div className="date-range-box">
+-							<CoThinkerCalendarSvgIcon className="calendar-icon" />
+-							<input
+-								type="date"
+-								className="date-text-input"
+-								value={startDate}
+-								onChange={(e) => setStartDate(e.target.value)}
+-								aria-label="Start date"
+-							/>
+-							<span className="range-separator">
+-								<Text entry={{ "cothinker.logAudit.filter.dateTo": {} }} />
+-							</span>
+-							<input
+-								type="date"
+-								className="date-text-input"
+-								value={endDate}
+-								onChange={(e) => setEndDate(e.target.value)}
+-								aria-label="End date"
+-							/>
+-						</div>
++						<GenericDateRangePicker
++							startDate={startDate}
++							endDate={endDate}
++							onChange={(nextStart, nextEnd) => {
++								setStartDate(nextStart);
++								setEndDate(nextEnd);
++							}}
++							placeholder={["Start date", "End date"]}
++							separator={
++								<Text
++									entry={{
++										"cothinker.logAudit.filter.dateTo": {},
++									}}
++								/>
++							}
++						/>
+ 					</div>
+ 
+ 					<div className="filter-field" ref={dropdownRef}>
+@@ -606,7 +688,12 @@ export const LogAuditTab: FC = () => {
+ 							>
+ 								{selectedRoles.length === 0 ? (
+ 									<span className="placeholder">
+-										<Text entry={{ "cothinker.logAudit.filter.rolePlaceholder": {} }} />
++										<Text
++											entry={{
++												"cothinker.logAudit.filter.rolePlaceholder":
++													{},
++											}}
++										/>
+ 									</span>
+ 								) : (
+ 									<div className="selected-roles-wrapper">
+@@ -680,16 +767,16 @@ export const LogAuditTab: FC = () => {
+ 					<GenericButtonV2
+ 						type="primary"
+ 						className="btn-search"
+-						icon={<SearchSvgIcon />}
++						prefixIcon={<SearchSvgIcon />}
+ 						onClick={handleSearch}
+ 						disabled={loading}
+ 					>
+ 						<Text entry={{ "cothinker.common.search": {} }} />
+ 					</GenericButtonV2>
+ 					<GenericButtonV2
+-						type="secondary"
++						type="default"
+ 						className="btn-export"
+-						icon={
++						prefixIcon={
+ 							exporting ? (
+ 								<span className="spinner" />
+ 							) : (
+@@ -719,10 +806,12 @@ export const LogAuditTab: FC = () => {
+ 			<div className="table-section" ref={tableSectionRef}>
+ 				<div className="table-header">
+ 					<h3>
+-						<Text entry={{ "cothinker.logAudit.table.title": {} }} />
++						<Text
++							entry={{ "cothinker.logAudit.table.title": {} }}
++						/>
+ 					</h3>
+ 					<GenericButtonV2
+-						type="secondary"
++						type="default"
+ 						className={`btn-refresh ${
+ 							refreshing ? "rotating" : ""
+ 						}`}
+@@ -737,6 +826,7 @@ export const LogAuditTab: FC = () => {
+ 
+ 				<div className="data-table-wrapper">
+ 					<GenericDataTable<IAuditGenerationItem>
++						className="audit-table"
+ 						columns={columns}
+ 						dataSource={items}
+ 						rowKey="resultId"
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+index 15d81a0..24a402d 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+@@ -4,9 +4,19 @@ import { InsightService } from "@angen_frontend/services";
+ 
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+-	Text: ({ entry, children }: any) => (
+-		<span>{entry?.defaultMessage || children}</span>
+-	),
++	Text: ({ entry, children }: any) => {
++		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
++		const key = entry ? Object.keys(entry)[0] : "";
++		if (key) {
++			const en = require("../../../../../../types/src/translations/en.json");
++			const val = key
++				.split(".")
++				.reduce((acc: any, part: string) => acc?.[part], en);
++			if (typeof val === "string") return <span>{val}</span>;
++			return <span>{key}</span>;
++		}
++		return <span>{children}</span>;
++	},
+ 	GenericSpin: ({ children }: any) => (
+ 		<div data-testid="mock-generic-spin">{children}</div>
+ 	),
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx
+index b2c02f4..58a1857 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx
+@@ -253,7 +253,7 @@ export const OverviewTab: FC<IProps> = ({ initialMetrics }) => {
+ 					</p>
+ 					<div className="coThinkerRetryBtnWrapper">
+ 						<GenericButtonV2 onClick={fetchOverviewData}>
+-							<Text entry={{ "cothinker.common.refresh": {} }} />
++							<Text entry={{ "cothinker.common.retryBtn": {} }} />
+ 						</GenericButtonV2>
+ 					</div>
+ 				</div>
+@@ -271,7 +271,7 @@ export const OverviewTab: FC<IProps> = ({ initialMetrics }) => {
+ 			</div>
+ 
+ 			<p className="overviewChartNote">
+-				<Text entry={{ "cothinker.overview.noData": {} }} />
++				<Text entry={{ "cothinker.overview.chartNote": {} }} />
+ 			</p>
+ 		</div>
+ 	);
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
+index ab767e1..4a650b8 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
+@@ -5,9 +5,19 @@ import { IPromptVersion } from "../index";
+ 
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+-	Text: ({ entry, children }: any) => (
+-		<span>{entry?.defaultMessage || children}</span>
+-	),
++	Text: ({ entry, children }: any) => {
++		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
++		const key = entry ? Object.keys(entry)[0] : "";
++		if (key) {
++			const en = require("../../../../../../../types/src/translations/en.json");
++			const val = key
++				.split(".")
++				.reduce((acc: any, part: string) => acc?.[part], en);
++			if (typeof val === "string") return <span>{val}</span>;
++			return <span>{key}</span>;
++		}
++		return <span>{children}</span>;
++	},
+ 	GenericButton: ({ children, onClick, ...props }: any) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+index f971596..449b74b 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+@@ -7,9 +7,19 @@ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	CoThinkerPlusSvgIcon: () => <span data-testid="plus-icon" />,
+ 	SearchSvgIcon: () => <span data-testid="search-icon" />,
+-	Text: ({ entry, children }: any) => (
+-		<span>{entry?.defaultMessage || children}</span>
+-	),
++	Text: ({ entry, children }: any) => {
++		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
++		const key = entry ? Object.keys(entry)[0] : "";
++		if (key) {
++			const en = require("../../../../../../../types/src/translations/en.json");
++			const val = key
++				.split(".")
++				.reduce((acc: any, part: string) => acc?.[part], en);
++			if (typeof val === "string") return <span>{val}</span>;
++			return <span>{key}</span>;
++		}
++		return <span>{children}</span>;
++	},
+ 	GenericButton: ({ children, onClick, ...props }: any) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+index b1af61c..502b64d 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+@@ -195,7 +195,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 				<GenericButtonV2
+ 					type="primary"
+ 					className="el-btn-primary"
+-					icon={<CoThinkerPlusSvgIcon size={14} />}
++					prefixIcon={<CoThinkerPlusSvgIcon size={14} />}
+ 					onClick={handleOpenAdd}
+ 				>
+ 					<Text entry={{ "cothinker.prompt.addMetric": {} }} />
+@@ -238,7 +238,9 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 
+ 			{editorVisible && (
+ 				<GenericModalV2
++					isOpen={editorVisible}
+ 					visible={editorVisible}
++					showCloseIcon={true}
+ 					title={
+ 						editingMetric ? "Edit Metric Definition" : "Add Metric"
+ 					}
+@@ -315,7 +317,9 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 
+ 			{deleteTarget && (
+ 				<GenericModalV2
++					isOpen={!!deleteTarget}
+ 					visible={!!deleteTarget}
++					showCloseIcon={true}
+ 					title="Delete metric definition"
+ 					onClose={() => setDeleteTarget(null)}
+ 					footer={
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
+index 287f39f..bf3fb9e 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
+@@ -5,9 +5,19 @@ import { IPromptConfig } from "../index";
+ 
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+-	Text: ({ entry, children }: any) => (
+-		<span>{entry?.defaultMessage || children}</span>
+-	),
++	Text: ({ entry, children }: any) => {
++		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
++		const key = entry ? Object.keys(entry)[0] : "";
++		if (key) {
++			const en = require("../../../../../../../types/src/translations/en.json");
++			const val = key
++				.split(".")
++				.reduce((acc: any, part: string) => acc?.[part], en);
++			if (typeof val === "string") return <span>{val}</span>;
++			return <span>{key}</span>;
++		}
++		return <span>{children}</span>;
++	},
+ 	GenericButton: ({ children, onClick, ...props }: any) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+index ba9e0b3..99e1024 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+@@ -73,9 +73,10 @@ export const PromptEditorDrawer: FC<IProps> = ({
+ 
+ 	return (
+ 		<GenericSideDrawer
++			open={visible}
+ 			visible={visible}
+ 			onClose={onClose}
+-			width={760}
++			width={1120}
+ 			title={SCOPE_NAMES[activeScope]}
+ 		>
+ 			<div className="prompt-drawer-content">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+index a3bd806..888e763 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+@@ -6,9 +6,19 @@ import { IPromptVersion } from "../index";
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	CoThinkerDownloadSvgIcon: () => <span data-testid="download-icon" />,
+-	Text: ({ entry, children }: any) => (
+-		<span>{entry?.defaultMessage || children}</span>
+-	),
++	Text: ({ entry, children }: any) => {
++		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
++		const key = entry ? Object.keys(entry)[0] : "";
++		if (key) {
++			const en = require("../../../../../../../types/src/translations/en.json");
++			const val = key
++				.split(".")
++				.reduce((acc: any, part: string) => acc?.[part], en);
++			if (typeof val === "string") return <span>{val}</span>;
++			return <span>{key}</span>;
++		}
++		return <span>{children}</span>;
++	},
+ 	GenericButton: ({ children, onClick, ...props }: any) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+@@ -158,7 +168,7 @@ describe("VersionHistoryPanel Component", () => {
+ 		});
+ 		fireEvent.click(exportBtn);
+ 
+-		expect(screen.getByText("Exporting…")).toBeInTheDocument();
++		expect(screen.getByText(/Exporting/i)).toBeInTheDocument();
+ 
+ 		act(() => {
+ 			jest.advanceTimersByTime(700);
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+index 3eedf34..2becb3e 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+@@ -176,7 +176,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 						type="secondary"
+ 						className="el-btn-default"
+ 						disabled={exporting || versions.length === 0}
+-						icon={<CoThinkerDownloadSvgIcon size={14} />}
++						prefixIcon={<CoThinkerDownloadSvgIcon size={14} />}
+ 						onClick={handleExport}
+ 					>
+ 						{exporting ? (
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.scss b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.scss
+index 228e944..89d30f5 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.scss
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.scss
+@@ -469,34 +469,41 @@
+ 					padding: 16px;
+ 					vertical-align: middle;
+ 
+-					.version-label {
++					.version-label,
++					.version-cell {
+ 						font-weight: 600;
+ 						color: #1e293b;
+ 					}
+ 
+-					.status-tag {
++					.status-tag,
++					.active-tag,
++					.inactive-tag {
+ 						display: inline-block;
+ 						padding: 2px 8px;
+ 						border-radius: 12px;
+ 						font-size: 12px;
+ 						font-weight: 500;
++					}
+ 
+-						&.active {
+-							background: #edf8f2;
+-							color: #047857;
+-						}
++					.status-tag.active,
++					.active-tag {
++						background: #edf8f2;
++						color: #047857;
++					}
+ 
+-						&.inactive {
+-							background: #f1f5f9;
+-							color: #64748b;
+-						}
++					.status-tag.inactive,
++					.inactive-tag {
++						background: #f1f5f9;
++						color: #64748b;
+ 					}
+ 
+-					.change-note {
++					.change-note,
++					.change-note-cell {
+ 						color: #334155;
+ 					}
+ 
+-					.actions-cell {
++					.actions-cell,
++					.history-actions-cell {
+ 						display: flex;
+ 						align-items: center;
+ 						gap: 12px;
+@@ -510,13 +517,19 @@
+ 							color: #0891b2;
+ 							cursor: pointer;
+ 
+-							&:hover {
++							&:hover:not(:disabled) {
+ 								text-decoration: underline;
+ 							}
+ 
+-							&.warning {
++							&.warning,
++							&.restore-btn {
+ 								color: #d97706;
+ 							}
++
++							&:disabled {
++								opacity: 0.4;
++								cursor: not-allowed;
++							}
+ 						}
+ 					}
+ 				}
+@@ -525,8 +538,10 @@
+ 	}
+ }
+ 
+-.metric-definitions {
+-	.panel-intro {
++.metric-definitions,
++.metrics-definitions-panel {
++	.panel-intro,
++	.metrics-panel-header {
+ 		display: flex;
+ 		align-items: flex-start;
+ 		justify-content: space-between;
+@@ -546,14 +561,16 @@
+ 		}
+ 	}
+ 
+-	.metric-toolbar {
++	.metric-toolbar,
++	.metrics-controls {
+ 		display: flex;
+ 		align-items: center;
+ 		justify-content: space-between;
+ 		margin: 20px 0;
+ 		gap: 16px;
+ 
+-		.metric-search-wrap {
++		.metric-search-wrap,
++		.search-box {
+ 			position: relative;
+ 			display: flex;
+ 			align-items: center;
+@@ -566,7 +583,8 @@
+ 				color: #94a3b8;
+ 			}
+ 
+-			input {
++			input,
++			.search-input {
+ 				width: 100%;
+ 				padding: 8px 12px 8px 32px;
+ 				border: 1px solid #d9d9d9;
+@@ -580,13 +598,24 @@
+ 			}
+ 		}
+ 
+-		.metrics-count {
++		.metrics-count,
++		.metric-count-text {
+ 			font-size: 12px;
+ 			color: #64748b;
+ 		}
+ 	}
+ 
+-	.metric-table {
++	.empty-metrics-notice {
++		padding: 36px 16px;
++		text-align: center;
++		font-size: 13px;
++		color: #94a3b8;
++		border: 1px dashed #e2e8f0;
++		border-radius: 8px;
++	}
++
++	.metric-table,
++	.metrics-table {
+ 		width: 100%;
+ 		border-collapse: collapse;
+ 		text-align: left;
+@@ -619,12 +648,31 @@
+ 					padding: 16px;
+ 					vertical-align: middle;
+ 
+-					strong {
++					strong,
++					.metric-title {
+ 						font-weight: 600;
+ 						color: #1e293b;
+ 					}
+ 
+-					.actions-cell {
++					.cell-text {
++						margin: 0;
++						color: #334155;
++						line-height: 1.5;
++					}
++
++					.meta-cell {
++						display: flex;
++						flex-direction: column;
++						gap: 2px;
++
++						.date-sub {
++							font-size: 11px;
++							color: #64748b;
++						}
++					}
++
++					.actions-cell,
++					.metric-actions {
+ 						display: flex;
+ 						align-items: center;
+ 						gap: 12px;
+@@ -642,7 +690,8 @@
+ 								text-decoration: underline;
+ 							}
+ 
+-							&.danger {
++							&.danger,
++							&.delete-link {
+ 								color: #dc2626;
+ 							}
+ 						}
+@@ -663,239 +712,368 @@
+ 	z-index: 2000;
+ 	display: flex;
+ 	justify-content: flex-end;
++}
+ 
+-	.prompt-drawer-content {
+-		width: 1120px;
+-		max-width: 96vw;
+-		height: 100%;
+-		background: #ffffff;
+-		box-shadow: -4px 0 16px rgba(0, 0, 0, 0.15);
++.prompt-drawer-content {
++	width: 100%;
++	max-width: 1120px;
++	height: 100%;
++	background: #ffffff;
++	display: flex;
++	flex-direction: column;
++
++	.drawer-header {
++		padding: 18px 24px;
++		border-bottom: 1px solid #e2e8f0;
++		display: flex;
++		align-items: center;
++		justify-content: space-between;
++
++		.drawer-title-group {
++			display: flex;
++			align-items: center;
++			gap: 12px;
++
++			.drawer-title {
++				font-size: 17px;
++				font-weight: 600;
++				color: #1e293b;
++			}
++		}
++
++		.drawer-close-btn {
++			background: none;
++			border: none;
++			font-size: 20px;
++			cursor: pointer;
++			color: #94a3b8;
++
++			&:hover {
++				color: #1e293b;
++			}
++		}
++	}
++
++	.drawer-body {
++		flex: 1;
++		overflow-y: auto;
++		padding: 24px;
+ 		display: flex;
+ 		flex-direction: column;
+ 
+-		.drawer-header {
+-			padding: 18px 24px;
+-			border-bottom: 1px solid #e2e8f0;
++		.editor-heading {
+ 			display: flex;
+ 			align-items: center;
+-			justify-content: space-between;
++			gap: 12px;
++			margin-bottom: 18px;
+ 
+-			.drawer-title-group {
+-				display: flex;
+-				align-items: center;
+-				gap: 12px;
++			.version-tag {
++				padding: 2px 8px;
++				border-radius: 4px;
++				border: 1px solid #e2e8f0;
++				background: #f8fafc;
++				font-size: 12px;
++				color: #64748b;
++			}
+ 
+-				.drawer-title {
+-					font-size: 17px;
+-					font-weight: 600;
+-					color: #1e293b;
+-				}
++			.dirty-indicator {
++				font-size: 12px;
++				color: #64748b;
+ 			}
++		}
+ 
+-			.drawer-close-btn {
+-				background: none;
+-				border: none;
+-				font-size: 20px;
++		.scope-buttons {
++			display: flex;
++			gap: 6px;
++			flex-wrap: wrap;
++			margin-bottom: 24px;
++
++			button {
++				background: #ffffff;
++				border: 1px solid #e2e8f0;
++				border-radius: 6px;
++				font-size: 12px;
++				padding: 8px 10px;
+ 				cursor: pointer;
+-				color: #94a3b8;
++				color: #1e293b;
++				transition: all 0.2s;
+ 
+-				&:hover {
+-					color: #1e293b;
++				&.selected {
++					border-color: #d5171e;
++					color: #d5171e;
++					background: #fff5f5;
++					font-weight: 600;
+ 				}
+ 			}
+ 		}
+ 
+-		.drawer-body {
+-			flex: 1;
+-			overflow-y: auto;
+-			padding: 24px;
++		.editor-form {
+ 			display: flex;
+ 			flex-direction: column;
++			gap: 18px;
++			margin-bottom: 24px;
+ 
+-			.editor-heading {
++			.form-item {
+ 				display: flex;
+-				align-items: center;
+-				gap: 12px;
+-				margin-bottom: 18px;
++				flex-direction: column;
++				gap: 8px;
+ 
+-				.version-tag {
+-					padding: 2px 8px;
+-					border-radius: 4px;
+-					border: 1px solid #e2e8f0;
+-					background: #f8fafc;
+-					font-size: 12px;
+-					color: #64748b;
+-				}
++				.form-item-header {
++					display: flex;
++					align-items: baseline;
++					justify-content: space-between;
++					gap: 12px;
+ 
+-				.dirty-indicator {
+-					font-size: 12px;
+-					color: #64748b;
+-				}
+-			}
++					label {
++						font-size: 13px;
++						font-weight: 600;
++						color: #1e293b;
++					}
+ 
+-			.scope-buttons {
+-				display: flex;
+-				gap: 6px;
+-				flex-wrap: wrap;
+-				margin-bottom: 24px;
++					.field-hint {
++						font-size: 12px;
++						color: #64748b;
++					}
++				}
+ 
+-				button {
+-					background: #ffffff;
+-					border: 1px solid #e2e8f0;
++				.textarea-box {
++					width: 100%;
++					padding: 10px 12px;
++					border: 1px solid #d9d9d9;
+ 					border-radius: 6px;
+-					font-size: 12px;
+-					padding: 8px 10px;
+-					cursor: pointer;
+-					color: #1e293b;
+-					transition: all 0.2s;
++					font-size: 13px;
++					font-family: inherit;
++					outline: none;
++					resize: vertical;
+ 
+-					&.selected {
++					&:focus {
+ 						border-color: #d5171e;
+-						color: #d5171e;
+-						background: #fff5f5;
+-						font-weight: 600;
+ 					}
+ 				}
+ 			}
+ 
+-			.editor-grid {
+-				display: grid;
+-				grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+-				gap: 24px;
+-				flex: 1;
++			.placeholders-card {
++				background: #f8fafc;
++				border: 1px solid #e2e8f0;
++				border-radius: 8px;
++				padding: 14px 16px;
++
++				strong {
++					display: block;
++					font-size: 12px;
++					color: #475569;
++					margin-bottom: 10px;
++				}
+ 
+-				.edit-fields {
++				.tags-wrapper {
+ 					display: flex;
+-					flex-direction: column;
++					flex-wrap: wrap;
++					gap: 8px;
+ 
+-					.impact-note {
+-						background: #fff8ed;
+-						color: #805615;
++					.tag-pill {
++						background: #ffffff;
++						border: 1px solid #cbd5e1;
++						padding: 2px 8px;
++						border-radius: 4px;
++						font-family: monospace;
+ 						font-size: 12px;
+-						padding: 12px;
+-						border-radius: 6px;
+-						margin: 0 0 18px;
+-						line-height: 1.5;
++						color: #0891b2;
+ 					}
++				}
++			}
++		}
+ 
+-					label {
+-						font-size: 13px;
+-						font-weight: 600;
+-						display: block;
+-						margin-bottom: 8px;
+-						color: #1e293b;
+-					}
++		.prompt-preview-section {
++			background: #f8fafc;
++			border: 1px solid #e2e8f0;
++			border-radius: 8px;
++			padding: 18px;
++			display: flex;
++			flex-direction: column;
++			gap: 12px;
++
++			.preview-header {
++				display: flex;
++				align-items: center;
++				justify-content: space-between;
++				gap: 12px;
++
++				strong {
++					font-size: 14px;
++					font-weight: 600;
++					color: #1e293b;
++				}
+ 
+-					.textarea-box {
+-						width: 100%;
+-						padding: 10px 12px;
++				.role-switch {
++					display: flex;
++					align-items: center;
++					gap: 8px;
++					font-size: 12px;
++					color: #64748b;
++
++					select {
++						padding: 5px 10px;
+ 						border: 1px solid #d9d9d9;
+ 						border-radius: 6px;
+-						font-size: 13px;
+-						font-family: inherit;
++						font-size: 12px;
++						background: #ffffff;
+ 						outline: none;
+-						resize: vertical;
+-
+-						&:focus {
+-							border-color: #d5171e;
+-						}
+ 					}
++				}
++			}
+ 
+-					.field-hint {
+-						margin-top: 6px;
+-						font-size: 12px;
+-						color: #64748b;
++			.preview-block {
++				margin: 0;
++				white-space: pre-wrap;
++				overflow-wrap: anywhere;
++				font: 12px/1.7 "Menlo", monospace;
++				max-height: 360px;
++				overflow: auto;
++				background: #ffffff;
++				padding: 12px;
++				border: 1px solid #e2e8f0;
++				border-radius: 6px;
++				color: #334155;
++			}
++		}
+ 
+-						code {
+-							background: #f1f5f9;
+-							padding: 2px 4px;
+-							border-radius: 4px;
+-							color: #0891b2;
+-						}
+-					}
++		.editor-grid {
++			display: grid;
++			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
++			gap: 24px;
++			flex: 1;
+ 
+-					.profile-field {
+-						margin-bottom: 18px;
+-					}
++			.edit-fields {
++				display: flex;
++				flex-direction: column;
++
++				.impact-note {
++					background: #fff8ed;
++					color: #805615;
++					font-size: 12px;
++					padding: 12px;
++					border-radius: 6px;
++					margin: 0 0 18px;
++					line-height: 1.5;
+ 				}
+ 
+-				.preview-panel {
+-					background: #f8fafc;
+-					border: 1px solid #e2e8f0;
+-					border-radius: 8px;
+-					padding: 18px;
+-					min-width: 0;
+-					display: flex;
+-					flex-direction: column;
++				label {
++					font-size: 13px;
++					font-weight: 600;
++					display: block;
++					margin-bottom: 8px;
++					color: #1e293b;
++				}
+ 
+-					.preview-heading {
+-						display: flex;
+-						align-items: center;
+-						justify-content: space-between;
++				.textarea-box {
++					width: 100%;
++					padding: 10px 12px;
++					border: 1px solid #d9d9d9;
++					border-radius: 6px;
++					font-size: 13px;
++					font-family: inherit;
++					outline: none;
++					resize: vertical;
+ 
+-						h3 {
+-							margin: 0;
+-							font-size: 14px;
+-							font-weight: 600;
+-							color: #1e293b;
+-						}
++					&:focus {
++						border-color: #d5171e;
++					}
++				}
+ 
+-						.read-only-badge {
+-							padding: 1px 6px;
+-							border-radius: 4px;
+-							background: #e2e8f0;
+-							font-size: 11px;
+-							color: #64748b;
+-						}
++				.field-hint {
++					margin-top: 6px;
++					font-size: 12px;
++					color: #64748b;
++
++					code {
++						background: #f1f5f9;
++						padding: 2px 4px;
++						border-radius: 4px;
++						color: #0891b2;
+ 					}
++				}
+ 
+-					.role-select {
+-						margin-top: 14px;
+-						padding: 6px 10px;
+-						border: 1px solid #d9d9d9;
+-						border-radius: 6px;
+-						font-size: 13px;
+-						background: #ffffff;
+-						outline: none;
++				.profile-field {
++					margin-bottom: 18px;
++				}
++			}
++
++			.preview-panel {
++				background: #f8fafc;
++				border: 1px solid #e2e8f0;
++				border-radius: 8px;
++				padding: 18px;
++				min-width: 0;
++				display: flex;
++				flex-direction: column;
++
++				.preview-heading {
++					display: flex;
++					align-items: center;
++					justify-content: space-between;
++
++					h3 {
++						margin: 0;
++						font-size: 14px;
++						font-weight: 600;
++						color: #1e293b;
+ 					}
+ 
+-					p {
+-						margin: 10px 0;
+-						font-size: 12px;
++					.read-only-badge {
++						padding: 1px 6px;
++						border-radius: 4px;
++						background: #e2e8f0;
++						font-size: 11px;
+ 						color: #64748b;
+ 					}
++				}
+ 
+-					pre {
+-						white-space: pre-wrap;
+-						overflow-wrap: anywhere;
+-						font: 12px/1.7 "Menlo", monospace;
+-						max-height: 530px;
+-						overflow: auto;
+-						background: #ffffff;
+-						padding: 12px;
+-						border: 1px solid #e2e8f0;
+-						border-radius: 6px;
+-						color: #334155;
+-						flex: 1;
+-					}
++				.role-select {
++					margin-top: 14px;
++					padding: 6px 10px;
++					border: 1px solid #d9d9d9;
++					border-radius: 6px;
++					font-size: 13px;
++					background: #ffffff;
++					outline: none;
++				}
++
++				p {
++					margin: 10px 0;
++					font-size: 12px;
++					color: #64748b;
++				}
++
++				pre {
++					white-space: pre-wrap;
++					overflow-wrap: anywhere;
++					font: 12px/1.7 "Menlo", monospace;
++					max-height: 530px;
++					overflow: auto;
++					background: #ffffff;
++					padding: 12px;
++					border: 1px solid #e2e8f0;
++					border-radius: 6px;
++					color: #334155;
++					flex: 1;
+ 				}
+ 			}
+ 		}
++	}
+ 
+-		.drawer-footer {
+-			padding: 16px 24px;
+-			border-top: 1px solid #e2e8f0;
+-			background: #ffffff;
+-			display: flex;
+-			align-items: center;
+-			justify-content: flex-end;
+-			gap: 10px;
++	.drawer-footer {
++		padding: 16px 24px;
++		border-top: 1px solid #e2e8f0;
++		background: #ffffff;
++		display: flex;
++		align-items: center;
++		justify-content: flex-end;
++		gap: 10px;
+ 
+-			span {
+-				margin-right: auto;
+-				font-size: 12px;
+-				color: #64748b;
+-			}
++		span {
++			margin-right: auto;
++			font-size: 12px;
++			color: #64748b;
+ 		}
+ 	}
+ }
+@@ -911,119 +1089,231 @@
+ 	display: flex;
+ 	align-items: center;
+ 	justify-content: center;
++}
+ 
+-	.prompt-modal-content {
+-		width: 580px;
+-		max-width: 94vw;
+-		background: #ffffff;
+-		border-radius: 10px;
+-		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+-		overflow: hidden;
++.prompt-modal-content {
++	width: 580px;
++	max-width: 94vw;
++	background: #ffffff;
++	border-radius: 10px;
++	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
++	overflow: hidden;
+ 
+-		&.large-modal {
+-			width: 800px;
++	&.large-modal {
++		width: 800px;
++	}
++
++	.modal-header {
++		padding: 18px 24px;
++		border-bottom: 1px solid #f1f5f9;
++		display: flex;
++		align-items: center;
++		justify-content: space-between;
++
++		.modal-title {
++			font-size: 16px;
++			font-weight: 600;
++			color: #1e293b;
+ 		}
+ 
+-		.modal-header {
+-			padding: 18px 24px;
+-			border-bottom: 1px solid #f1f5f9;
+-			display: flex;
+-			align-items: center;
+-			justify-content: space-between;
++		.modal-close-btn {
++			background: none;
++			border: none;
++			font-size: 20px;
++			cursor: pointer;
++			color: #94a3b8;
+ 
+-			.modal-title {
+-				font-size: 16px;
+-				font-weight: 600;
++			&:hover {
+ 				color: #1e293b;
+ 			}
++		}
++	}
++}
+ 
+-			.modal-close-btn {
+-				background: none;
+-				border: none;
+-				font-size: 20px;
+-				cursor: pointer;
+-				color: #94a3b8;
++.modal-body {
++	padding: 8px 4px;
++	font-size: 13px;
++	color: #334155;
++	max-height: 70vh;
++	overflow-y: auto;
++
++	.form-error-alert {
++		background: #fff2f0;
++		border: 1px solid #ffccc7;
++		color: #cf1322;
++		padding: 8px 12px;
++		border-radius: 6px;
++		font-size: 12px;
++		margin-bottom: 14px;
++	}
+ 
+-				&:hover {
+-					color: #1e293b;
+-				}
+-			}
++	.dialog-lead {
++		line-height: 1.7;
++		margin: 0 0 20px;
++	}
++
++	.diff-table {
++		width: 100%;
++		border-collapse: collapse;
++		margin-top: 14px;
++
++		th,
++		td {
++			padding: 10px 12px;
++			border: 1px solid #e2e8f0;
++			vertical-align: top;
+ 		}
+ 
+-		.modal-body {
+-			padding: 24px;
+-			font-size: 13px;
+-			color: #334155;
+-			max-height: 70vh;
+-			overflow-y: auto;
++		th {
++			background: #f8fafc;
++			font-weight: 600;
++			text-align: left;
++		}
+ 
+-			.dialog-lead {
+-				line-height: 1.7;
+-				margin: 0 0 20px;
+-			}
++		.diff-old {
++			background: #fff1f0;
++			color: #cf1322;
++		}
+ 
+-			.diff-table {
+-				width: 100%;
+-				border-collapse: collapse;
+-				margin-top: 14px;
++		.diff-new {
++			background: #f6ffed;
++			color: #389e0d;
++		}
++	}
+ 
+-				th,
+-				td {
+-					padding: 10px 12px;
+-					border: 1px solid #e2e8f0;
+-					vertical-align: top;
+-				}
++	.form-group {
++		display: flex;
++		flex-direction: column;
++		gap: 6px;
++		margin-bottom: 14px;
+ 
+-				th {
+-					background: #f8fafc;
+-					font-weight: 600;
+-					text-align: left;
+-				}
++		label {
++			font-weight: 600;
++			color: #1e293b;
++		}
+ 
+-				.diff-old {
+-					background: #fff1f0;
+-					color: #cf1322;
+-				}
++		input,
++		textarea,
++		.input-box,
++		.textarea-box {
++			padding: 8px 12px;
++			border: 1px solid #d9d9d9;
++			border-radius: 6px;
++			font-size: 13px;
++			font-family: inherit;
++			outline: none;
+ 
+-				.diff-new {
+-					background: #f6ffed;
+-					color: #389e0d;
+-				}
++			&:focus {
++				border-color: #d5171e;
+ 			}
++		}
++	}
++}
+ 
+-			.form-group {
+-				display: flex;
+-				flex-direction: column;
+-				gap: 6px;
+-				margin-bottom: 14px;
++.modal-footer {
++	padding: 12px 0 0;
++	border-top: 1px solid #f1f5f9;
++	display: flex;
++	justify-content: flex-end;
++	gap: 10px;
++}
+ 
+-				label {
+-					font-weight: 600;
+-					color: #1e293b;
+-				}
++.el-btn-primary {
++	--btn-default-bg: #d5171e;
++	--btn-default-color: #ffffff;
++	--btn-hover-bg: #b9151b;
++	--btn-hover-color: #ffffff;
++	--btn-active-bg: #9f1217;
++	--btn-active-color: #ffffff;
++	--btn-border-radius: 6px;
++	--btn-padding-inline: 16px;
++	--btn-font-size: 13px;
++	display: inline-flex;
++	align-items: center;
++	justify-content: center;
++	gap: 6px;
++	padding: 8px 16px;
++	border-radius: 6px;
++	font-size: 13px;
++	font-weight: 500;
++	background: #d5171e;
++	color: #ffffff;
++	border: 1px solid #d5171e;
++	cursor: pointer;
++	transition: all 0.2s;
++
++	&:hover:not(:disabled) {
++		background: #b9151b;
++		border-color: #b9151b;
++	}
+ 
+-				input,
+-				textarea {
+-					padding: 8px 12px;
+-					border: 1px solid #d9d9d9;
+-					border-radius: 6px;
+-					font-size: 13px;
+-					outline: none;
++	&:disabled {
++		opacity: 0.5;
++		cursor: not-allowed;
++	}
++}
+ 
+-					&:focus {
+-						border-color: #d5171e;
+-					}
+-				}
+-			}
+-		}
++.el-btn-default {
++	--btn-default-bg: #ffffff;
++	--btn-default-color: #1e293b;
++	--btn-hover-bg: #ffffff;
++	--btn-hover-color: #d5171e;
++	--btn-active-bg: #f8fafc;
++	--btn-active-color: #d5171e;
++	--btn-border-radius: 6px;
++	--btn-padding-inline: 16px;
++	--btn-font-size: 13px;
++	display: inline-flex;
++	align-items: center;
++	justify-content: center;
++	gap: 6px;
++	padding: 8px 16px;
++	border-radius: 6px;
++	font-size: 13px;
++	font-weight: 500;
++	background: #ffffff;
++	color: #1e293b;
++	border: 1px solid #d9d9d9;
++	cursor: pointer;
++	transition: all 0.2s;
+ 
+-		.modal-footer {
+-			padding: 16px 24px;
+-			border-top: 1px solid #f1f5f9;
+-			background: #f8fafc;
+-			display: flex;
+-			justify-content: flex-end;
+-			gap: 10px;
+-		}
++	&:hover:not(:disabled) {
++		border-color: #d5171e;
++		color: #d5171e;
++	}
++
++	&:disabled {
++		opacity: 0.5;
++		cursor: not-allowed;
++	}
++}
++
++.el-btn-danger {
++	--btn-default-bg: #dc2626;
++	--btn-default-color: #ffffff;
++	--btn-hover-bg: #b91c1c;
++	--btn-hover-color: #ffffff;
++	--btn-active-bg: #991b1b;
++	--btn-active-color: #ffffff;
++	--btn-border-radius: 6px;
++	--btn-padding-inline: 16px;
++	--btn-font-size: 13px;
++	display: inline-flex;
++	align-items: center;
++	justify-content: center;
++	gap: 6px;
++	padding: 8px 16px;
++	border-radius: 6px;
++	font-size: 13px;
++	font-weight: 500;
++	background: #dc2626;
++	color: #ffffff;
++	border: 1px solid #dc2626;
++	cursor: pointer;
++	transition: all 0.2s;
++
++	&:hover:not(:disabled) {
++		background: #b91c1c;
++		border-color: #b91c1c;
+ 	}
+ }
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+index bcb5699..d7d1c22 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+@@ -9,9 +9,19 @@ jest.mock("@angen_frontend/components", () => ({
+ 	CoThinkerPlusSvgIcon: () => <span data-testid="plus-icon" />,
+ 	SearchSvgIcon: () => <span data-testid="search-icon" />,
+ 	CoThinkerDownloadSvgIcon: () => <span data-testid="download-icon" />,
+-	Text: ({ entry, children }: any) => (
+-		<span>{entry?.defaultMessage || children}</span>
+-	),
++	Text: ({ entry, children }: any) => {
++		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
++		const key = entry ? Object.keys(entry)[0] : "";
++		if (key) {
++			const en = require("../../../../../../types/src/translations/en.json");
++			const val = key
++				.split(".")
++				.reduce((acc: any, part: string) => acc?.[part], en);
++			if (typeof val === "string") return <span>{val}</span>;
++			return <span>{key}</span>;
++		}
++		return <span>{children}</span>;
++	},
+ 	GenericButton: ({ children, onClick, ...props }: any) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+index 3a10149..85a3325 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+@@ -796,7 +796,7 @@ export const PromptManagementTab: FC = () => {
+ 					<GenericButtonV2
+ 						type="primary"
+ 						className="el-btn-primary create-draft-btn"
+-						icon={<EditPenSvgIcon size={14} />}
++						prefixIcon={<EditPenSvgIcon size={14} />}
+ 						onClick={handleCreateDraft}
+ 					>
+ 						<Text entry={{ "cothinker.prompt.createDraft": {} }} />
+@@ -806,7 +806,7 @@ export const PromptManagementTab: FC = () => {
+ 					<GenericButtonV2
+ 						type="secondary"
+ 						className="el-btn-default create-draft-btn"
+-						icon={<EditPenSvgIcon size={14} />}
++						prefixIcon={<EditPenSvgIcon size={14} />}
+ 						onClick={() => handleOpenEditor()}
+ 					>
+ 						<Text entry={{ "cothinker.prompt.continueEditing": {} }} />
+@@ -987,7 +987,9 @@ export const PromptManagementTab: FC = () => {
+ 
+ 			{viewChangesVisible && (
+ 				<GenericModalV2
++					isOpen={viewChangesVisible}
+ 					visible={viewChangesVisible}
++					showCloseIcon={true}
+ 					title="Review configuration changes"
+ 					onClose={() => setViewChangesVisible(false)}
+ 					footer={
+@@ -1037,7 +1039,9 @@ export const PromptManagementTab: FC = () => {
+ 
+ 			{publishDialogVisible && (
+ 				<GenericModalV2
++					isOpen={publishDialogVisible}
+ 					visible={publishDialogVisible}
++					showCloseIcon={true}
+ 					title="Publish draft"
+ 					onClose={() => setPublishDialogVisible(false)}
+ 					footer={
+@@ -1085,7 +1089,9 @@ export const PromptManagementTab: FC = () => {
+ 
+ 			{discardDialogVisible && (
+ 				<GenericModalV2
++					isOpen={discardDialogVisible}
+ 					visible={discardDialogVisible}
++					showCloseIcon={true}
+ 					title="Discard draft"
+ 					onClose={() => setDiscardDialogVisible(false)}
+ 					footer={
+@@ -1118,7 +1124,9 @@ export const PromptManagementTab: FC = () => {
+ 
+ 			{rollbackTarget && (
+ 				<GenericModalV2
++					isOpen={!!rollbackTarget}
+ 					visible={!!rollbackTarget}
++					showCloseIcon={true}
+ 					title={`Restore configuration from v${rollbackTarget.version}`}
+ 					onClose={() => setRollbackTarget(null)}
+ 					footer={

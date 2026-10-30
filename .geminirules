@@ -1,0 +1,188 @@
+# Antigravity / Gemini 项目记忆与开发行为规范 (.geminirules)
+
+---
+
+## 🧠 核心角色与业务背景 (Context & Role)
+
+1. **用户角色**：
+   - 纯前端研发工程师。
+   - **无需关心任何后端逻辑、接口实现或数据存储**，专注纯前端页面、路由、交互与组件开发。
+2. **当前项目基线与需求状态**：
+   - **当前聚焦阶段：一期需求 Feedback Dashboard 问题修复与 CR 意见修改**。
+   - JIRA 卡号：`JEJQ-15592`。
+   - 云电脑分支：`feature/JEJQ-15592-feedback-dashboard-fix-cr-ai`。
+   - 本地工作基线目录：`angen_frontend-feature-JEJQ-15592-feedback-dashboard-fix-cr-ai@a9a4b7279f0`（初始基线 Tag：`baseline_a9a4b7279f0`）。
+   - 工程类型：基于 npm workspaces 的前端 Monorepo（包含 `packages/web`, `packages/components`, `packages/services`, `packages/types`）。
+   - **二期业务状态：暂时搁置**（二期需求为独立全屏脱壳管理分析平台 `Co-Thinker Portal`，卡号 `JEJQ-15590`，之前已完成 `patch_01` 至 `patch_45`）。
+3. **一期核心业务与功能范围（全部 AI 解读卡片生态体系）**：
+   - **业务场景定位**：Custom Pages（自定义大盘报表页面）顶部的自动化洞察解读（Master Commentary）以及单面板级（Panel Scope）AI 辅助解读。
+   - **核心视觉与交互组成（AI-Generated Insights）**：
+     1. **顶部操作动作栏 (`CustomPageInsightHeaderAction`)**：
+        - 角色选择器 (`InsightRoleSelect`)：支持 BU Marketing, Sales Manager, Brand Director 等业务角色切换；
+        - 解读生成触发按钮 (`InsightGenerateButton`)：支持 Generate Master Commentary 触发、加载旋转动画、禁用态与超时态处理。
+     2. **解读卡片主体 (`InsightCard`)**：
+        - 头部状态栏：`AI-Generated Insights` 标题、生成状态标签徽章（如 `Generation Complete`）、`Request ID` 一键复制、大模型版本标识（如 `Model: gpt-5.6-...`）、展开/折叠控件（`Hide ^` / `Show v`）；
+        - 分析上下文与筛选区 (`Analysis Context & Filters`)：当前解读角色标签、分析范围面板统计（`Page scope · X panels`）与面板列表展开（`Show All v` 显示所有关联 Panel 标签）；
+        - 核心解读内容区：`KEY TAKEAWAYS` 重点结论（灯泡图标）及富文本正文，扩展支持 `CRITICAL INSIGHT` 与 `RECOMMENDED NEXT STEPS`；
+        - 底部免责声明与反馈区：AI 合规免责声明条（`AI-generated insights are designed to support analysis and decision-making.`）；点赞 👍 / 点踩 👎 反馈交互，点击弹出评价模态框（`GenericModalV2`），支持输入评论文本与点踩原因多选标签（`InsightFeedbackReason`）。
+     3. **单面板解读与富文本集成**：
+        - `PanelInsightCardWithEditor` / `PanelInsightCard`：单 Panel 视角的局部洞察解读，支持一键添加到 Text Editor。
+   - **一期核心代码模块清单**：
+     - `packages/web/src/components/InsightCard/`（卡片主体、生成按钮、角色选择器、IndexedDB 缓存状态机、样式与单测）
+     - `packages/web/src/components/CustomPageInsightSlot/`（页面与面板级插槽容器、Header 动作栏与单测）
+     - `packages/web/src/components/CustomPageInsightProvider/`（Context 全局状态驱动、缓存管理、筛选参数抽取工具 `utils.ts` 与单测）
+     - `packages/web/src/components/PanelInsightCardWithEditor/`（Panel 级解读与富文本集成）
+     - `packages/web/src/pages/customPage/view/index.tsx`（Custom Page 宿主页面视图集成）
+     - `packages/services/src/InsightService/`（后端 API 通信、超时错误处理 `InsightTimeoutError`、反馈上报与轮询）
+     - `packages/types/src/index.ts`（Insight 相关数据契约与枚举定义）
+
+---
+
+## 📦 Patch 补丁生成与交付铁律 (Patch Delivery Rules - 最高优先级)
+
+1. **全新独立递增命名**：
+   - **严禁复用或覆盖已有的 Patch 文件名**。
+   - 每次新修改必须生成**全新递增命名的独立 Patch**（例如：`patch_01_xxx.patch`、`patch_02_xxx.patch`、`patch_10_xxx.patch`、`patch_11_xxx.patch`），绝不让用户在云电脑同步时产生混淆。
+2. **严格纯增量计算**：
+   - 每一个 Patch 必须仅包含**相比上一次已合入云电脑状态的纯增量差量**。
+   - **严禁**将已经合入过的历史代码打包在新的 Patch 中，避免在云电脑产生文件冲突。
+3. **严格空格与缩进对齐**：
+   - 生成 Patch 前必须确保代码的 Tab/空格缩进与原始代码保持绝对一致，避免因缩进不一致导致 `patch failed`。
+   - 生成 Patch 后必须在本地执行 `git apply --check` 预检通过后方可交付。
+4. **必须在交付回复中提供三项核心内容（强制执行）**：
+   - **生成的 Patch 文件绝对路径与完整补丁内容/获取指引**；
+   - **对应的补丁应用命令**（默认 Patch 文件位于工程目录的上级目录，因此**必须严格使用相对上级路径格式**：`git apply --check ../<patch_name>.patch` 与 `git apply --ignore-whitespace -3 ../<patch_name>.patch`）；
+   - **受影响文件的单元测试执行命令**（明确到具体的 `npm run test` 测试路径命令）。
+5. **已交付补丁默认已应用假设（强制执行）**：
+   - 每次给用户交付的 Patch，**除非用户在对话中明确表示“不能应用”或“没应用”，否则一律默认视为用户已经在云电脑环境中成功应用**。
+   - 后续任何新任务、修改或优化，**必须严格以上一次交付补丁后的最新代码状态作为基线**，生成全新的独立递增纯增量补丁（绝不将已交付过的历史修改重复打包到新 Patch 中，避免文件冲突）。
+6. **云电脑代码不可逆与绝对增量铁律（强制执行）**：
+   - **云电脑代码一旦应用几乎不能回滚，只能增量应用 patch**。
+   - 严禁要求用户在云电脑执行 `git checkout`、`git reset` 或 `rm -rf` 等回滚、撤销或删除指令。
+   - 任何问题修复、样式调整或功能重构，必须将云电脑上一次成功应用的 patch 作为不可撤销的历史基线，在此基础上生成全新的递增补丁。
+   - **当前一期云电脑已确认最新基线**：已成功合入 patch_15592_14_cothinker_add_feedback_success_modal.patch（本地 Tag：pplied_patch_15592_14，commit 7f2067）。下一个补丁必须以 patch_15592_15_xxx.patch 递增命名，彻底与二期的 patch_01~patch_45 隔离。
+7. **Git Commit 提交信息规范（强制执行）**：
+   - 给用户输出的 `git commit` 命令中，**提交信息最前面必须严格包含当前 JIRA 需求编号 `JEJQ-15592`**。
+   - 标准格式：`git commit -m "JEJQ-15592 <type>(<scope>): <description>"`（例如：`git commit -m "JEJQ-15592 fix(feedback-dashboard): address reviewer comments"`）。
+   - 严禁遗漏开头的 `JEJQ-15592` 标识，以严格匹配工程的 Husky `commit-msg` 钩子校验与 J&J 审计规范。
+8. **云电脑传递通道工程自动同步（强制执行）**：
+   - **通道工程本地路径**：C:\Users\Zmf\Desktop\project\通道\demo（远程仓库：https://github.com/ZFF9/demo.git）。
+   - **业务场景定位**：用户使用该工程作为本地向云电脑传递补丁与核心文件的专用通道。
+   - **自动化流水线要求**：
+     1. 每次生成全新的 patch 补丁文件后，除了在当前工程输出外，**必须自动同步输出并复制到 C:\Users\Zmf\Desktop\project\通道\demo**；
+     2. 复制完成后，**必须立即自动在该通道工程中执行 git add -A、git commit 以及 git push 推送到远程仓库**；
+     3. 交付回复中需提示补丁已自动同步推送到通道仓库，方便用户在云电脑直接通过 git pull 取用。
+9. **云电脑基线对齐与补丁抗格式化冲突铁律（核心经验沉淀）**：
+   - **双端代码状态分裂防范**：
+     - 云电脑在遇到补丁报错时，可能会出现部分文件已改动但核心文件未合入的半更新状态（如测试文件已增加新用例，但业务组件尚未合入新逻辑）；
+     - 生成补丁时必须以云电脑实际生效的代码作为单一事实来源，严禁盲目假设所有补丁都完整合入；若用户提供最新代码包，必须全量 diff 审校真实上下文后再生成补丁。
+   - **Prettier 与编辑器折行免疫（强制执行）**：
+     - 云电脑环境（VS Code / Prettier / ESLint pre-commit）常对长 JSX 标签属性、长三元表达式、长字符串进行自动换行折行；
+     - `git apply` 默认对上下文行极其严格，一旦遭遇折行差异即报 `patch failed`；
+     - **云电脑统一交付命令铁律**：后续所有交付回复与使用指引中，应用补丁命令一律强制使用免疫格式化折行的组合参数：
+       ```bash
+       git apply --ignore-whitespace -3 ../<patch_name>.patch
+       ```
+       - `--ignore-whitespace`：完全忽略任何空白、缩进与单行/多行属性折行差异；
+       - `-3`（3-Way Merge）：当上下文行号漂移时，自动回溯基础提交执行三方智能合并；
+     - 此交付方案彻底杜绝因格式化微调导致的补丁失败，免除频繁从云电脑重新打包下载代码包的繁琐操作。
+   - **特殊 Unicode 字符健壮性规范**：
+     - 破折号（`—` / `\xe2\x80\x94`）、省略号（`…` / `\xe2\x80\xa6`）等多字节特殊字符在 Windows 控制台、不同终端与文件系统传递时极易被转码为乱码或产生不可见字节偏差；
+     - 补丁上下文中应尽量避免包含长篇多字节特殊字符行；单测查找断言时，一律强制使用宽松正则表达式（如 `/Thank you.*we got it!/`），严禁使用易碎硬编码字符串，彻底避免编码引起的单测死锁与补丁失败。
+
+---
+
+## 🚫 代码编写规范 (Strict Coding Rules)
+
+1. **零注释铁律（强制执行）**：
+   - ❌ **严禁在新增或修改的代码中编写任何注释**。
+   - 严禁添加任何单行注释（如 `// ...`）。
+   - 严禁添加任何多行注释（如 `/* ... */`）。
+   - 严禁添加 JSDoc、类型注释或 TODO 说明。
+   - 保持代码极致纯粹简洁，绝不添加多余解释。
+2. **接口对接与防御性设计准则（强制执行）**：
+   - **尽量减少防御性设计，要相信文档和后端同事的能力**。
+   - 严格按照接口文档契约实现数据流通与业务逻辑，不添加过度、冗余的异常劫持或猜测性的多层兜底代码，保持前端代码清晰简洁。
+3. **组件复用优先原则**：
+   - 除图表使用新安装的 `echarts` 之外，日期范围选择器（`GenericDateRange`）、下拉选择器（`GenericSelect`）、输入框（`GenericInput`）、拖拽上传（`Upload.Dragger`）、表格（`GenericTable`）、弹窗（`GenericModalV2`）等基础组件，必须优先复用系统已有公共组件，避免重复造轮子。
+4. **单元测试编写准则（拒绝脆弱测试）**：
+   - **严禁编写脆弱测试**（Brittle Tests），严禁对非必要的具体文本、DOM 内部节点层级或易变细节过度断言；
+   - 聚焦核心业务逻辑分支与数据状态流转，**只要满足项目代码覆盖率要求即可**，确保单测具备高度的抗噪性与健壮性，绝不给后续重构与正常迭代制造伪报错。
+
+---
+
+## 📐 页面与视觉交互规范 (Layout & Visual Specs)
+
+1. **Tab 导航布局**：
+   - Tab 页必须**左对齐**，紧随左侧品牌 Logo（`Co-Thinker Portal ADMIN`）之后（间距约 36px ~ 40px）。
+   - **禁止将 Tab 导航居中放置**。
+2. **右上角按钮控制**：
+   - 顶部 Header 右上角**不放置任何冗余按钮**（已彻底移除旧版 Demo tools 按钮与跳转按钮）。
+3. **响应式与独立性**：
+   - 页面采用全屏脱壳独立布局，挂载在 `GlobalContexts` 下，不包裹主站的旧版侧边栏。
+
+---
+
+## ⚙️ 依赖管理与终端命令规范 (Monorepo & Shell Rules)
+
+1. **严禁在子包目录执行 `npm install`**：
+   - ❌ 绝对禁止在 `packages/components` 或 `packages/web` 等子目录单独执行 `npm install`。
+   - 子目录安装依赖会生成局部 `package-lock.json` 并破坏根目录的依赖提升（Hoisting）树，引发 `Cannot read properties of undefined (reading 'extraneous')` 严重构建故障。
+   - **所有依赖安装必须在项目根目录统一执行**：
+     - 例如安装公共组件依赖：`npm install <package> -w packages/components --legacy-peer-deps`。
+2. **测试命令规范（强制执行）**：
+   - ❌ **严禁使用 `yarn test` 或其他包管理器运行测试**。
+   - ✅ **单元测试命令一律强制使用 `npm` 执行**（例如：`npm run test <filepath>` 或 `npm test <filepath>`）。
+3. **命令行执行规范**：
+   - 执行系统或工程命令时，优先通过 Git Bash（`bash.exe`）执行。
+   - 复杂数据处理、文件操作或自动化脚本，优先使用 Python 执行。
+
+---
+
+## 🌐 语言与沟通规范 (Language & Communication)
+
+1. 全程必须使用【简体中文】进行沟通、解释、方案输出与日志说明。
+2. ❌ 禁止输出任何英文内容（代码块内容与专有名词除外）。
+3. 结构化、步骤化清晰解答，避免空洞解释。
+
+---
+
+## 🛡️ Reviewer 代码审查与架构规范记忆 (Reviewer Guidelines & Architecture Rules)
+
+1. **ConfigService 配置服务类型定义规范**：
+   - **必填属性约束**：核心业务跳转链接与系统路由配置（如 `menuRedirectUrl` 中的模块跳转链接）必须声明为必填类型（**严禁滥用 `?` 可选修饰符**），确立其作为核心系统配置的权威性与单一事实来源。
+   - **三位一体强一致同步**：一旦修改 `ConfigService/types.ts`，必须同步更新：
+     1. `ConfigService/index.ts` 中的默认配置对象 `defaultConfig`；
+     2. `ConfigService/index.spec.ts` 内部断言与期望的 mock 数据对象；
+     3. `ConfigurationProvider/index.spec.tsx` 中的 mock 配置数据，确保单测全绿无类型隐患。
+
+2. **消费组件防冗余规范（Remove Fallback）**：
+   - 一旦配置项在 `ConfigService` 中被定义为必选字段，业务端消费组件（如 `MenuContent`）中**必须直接引用配置值**（例如 `menuRedirectUrl.coThinkerAdmin`），**严禁保留无用的兜底 fallback（如 `?? "/fallback"`）**，避免产生多重事实来源。
+
+3. **公共 Icon 资产架构与隔离规范（最高优先级）**：
+   - **严禁业务目录私建图标资产**：严禁在业务页面目录（如 `src/pages/coThinkerAdmin/`）下创建私有 `icons.tsx` 文件，所有 SVG 图标必须统一作为独立组件沉淀到公共基础库 `packages/components/src/Icons/` 目录下。
+   - **单图标独立工程化规范**：
+     1. 每个图标必须在 `packages/components/src/Icons/<IconName>/` 下建立独立目录；
+     2. 必须包含标准组件实现文件 `index.tsx`（采用 `@ant-design/icons` 的 `Icon component={...}` 封装）；
+     3. 必须包含配套的独立单元测试文件 `index.spec.tsx`（Jest + React Testing Library 渲染断言），确保通过 CI 代码覆盖率扫描；
+     4. 必须在 `packages/components/src/index.ts` 中集中使用 `export default` 引入并导出；
+     5. 业务页面一律通过 `@angen_frontend/components` 集中引入。
+   - **UI 精确性与重命名隔离原则（铁律）**：
+     - ❌ **严禁盲目复用公共库老图标**：公共组件库已有的同名图标往往具有不同的 viewBox、尺寸与视觉细节，强行复用会导致设计稿样式走样；
+     - ✅ **重名项加业务前缀隔离**：若新设计的图标与公共库已有图标重名，必须添加模块专属前缀进行隔离（例如改名为 `CoThinkerEditSvgIcon`、`CoThinkerSettingSvgIcon`、`CoThinkerDownloadSvgIcon`、`CoThinkerCircleCheckSvgIcon`、`CoThinkerCalendarSvgIcon`），确保当前 Figma 设计稿样式的 100% 像素级准确性。
+
+4. **重构与 Demo 像素级复刻防回退铁律（最高优先级）**：
+   - **Demo 100% 视觉与功能复刻标准**：
+     - 原始 Demo 源码位于工作区 `jnj_angen_bi_ai_platform-main` 下；任何功能开发或架构重构，必须确保页面视觉样式、文案、布局（如表头无竖线、LLM Cost 上下双行展示、分页器 `Total -> X/page -> 红色激活页码 -> Go to` 顺序、圆形刷新按钮、纯蓝字 `View` 按钮、单日历图标日期范围框）以及交互功能（如点击 `View` 或整行打开详情抽屉、弹窗开关、筛选与导出）与 Demo 100% 一致，严禁因重构破坏原有功能或样式。
+   - **公共组件替换前的源码契约与样式核查（强制执行）**：
+     - 替换为公共组件（如 `GenericButtonV2`、`GenericModalV2`、`GenericSideDrawer`、`GenericDataTable`）前，**必须先读取该组件的 `index.tsx` 和 `index.scss` 源码**：
+       1. **核对 Props 契约**：确认真实属性名（如 `GenericSideDrawer` 的 `open`/`visible`、`GenericModalV2` 的 `isOpen`、`GenericButtonV2` 的 `prefixIcon`），严禁凭猜测传参导致点击按钮后抽屉或弹窗无响应；
+       2. **隔离默认样式污染**：如 `GenericButtonV2` 默认带有 `.genericButtonV2` 灰底胶囊样式和 `16px` 左右内边距，替换文本链接按钮（`View`、`Clear All`）或小尺寸圆形图标按钮（`Refresh`）时，必须在业务 SCSS 中显式重置 CSS 变量与盒模型属性，防止按钮变形；
+       3. **Portal 样式选择器解耦**：Antd `Drawer` / `Modal` 通过 Portal 渲染于 `document.body` 下，严禁将抽屉或弹窗的内部样式嵌套在页面局部容器或旧版自定义遮罩类名下，必须确保 Portal 节点 100% 命中样式。
+   - **严禁新建未复用的独立 `types.ts` / `helper.ts` 文件**：
+     - 在 `packages/components`、`packages/services`、`packages/web` 下新建模块文件夹时，若类型或辅助函数未被多处外部模块独立复用，**必须直接内联写入各自的 `index.tsx` / `index.ts` 文件中**，严禁创建孤立的 `types.ts` 文件，保持与系统其他模块代码风格一致。
+   - **多语言国际化（`<Text />`）与 JSON 洁净度规范**：
+     - `<Text />` 组件必须使用 `entry={{ "key": {} }}` 格式，且所有新增 key 必须同步写入 `en.json`、`ja.json`、`zh-CN.json`、`ko.json` 四国语言文件；
+     - 写入语言包 JSON 时，**严禁将源码行末的逗号 `,`、首尾多余双引号 `"` 或三元表达式直接写入 JSON 值中**，写入后必须执行 JSON 值洁净度校验。
+
+
