@@ -1,0 +1,98 @@
+diff --git a/packages/web/src/components/InsightCard/index.spec.tsx b/packages/web/src/components/InsightCard/index.spec.tsx
+index d83115b..08877a4 100644
+--- a/packages/web/src/components/InsightCard/index.spec.tsx
++++ b/packages/web/src/components/InsightCard/index.spec.tsx
+@@ -1957,4 +1957,39 @@ describe("InsightCard", () => {
+ 
+ 		jest.useRealTimers();
+ 	});
++
++	it("sorts filter entries by LANGUAGE, YEAR MONTH, DATE RANGE, CURRENCY and puts others after", async () => {
++		(InsightService.generate as jest.Mock).mockResolvedValue({
++			summary: "Summary text",
++			filters: {
++				parameters: {
++					"DATE RANGE": "MTH",
++					"ORGANISATION LVL1": "Immunology",
++					CURRENCY: "Local",
++					"GEOGRAPHY LVL1": "Australia",
++					"YEAR MONTH": "2026-05-01",
++					LANGUAGE: "en",
++				},
++			},
++		});
++		const { container } = render(<TestInsightCard />);
++		fireEvent.click(
++			screen.getByRole("button", { name: "Generate Insight" })
++		);
++		await screen.findByText("Summary text");
++		fireEvent.click(screen.getByRole("button", { name: "Show All" }));
++
++		const filterLabels = Array.from(
++			container.querySelectorAll(".insightCard__filterValue span")
++		).map((el) => el.textContent);
++
++		expect(filterLabels).toEqual([
++			"LANGUAGE",
++			"YEAR MONTH",
++			"DATE RANGE",
++			"CURRENCY",
++			"ORGANISATION LVL1",
++			"GEOGRAPHY LVL1",
++		]);
++	});
+ });
+diff --git a/packages/web/src/components/InsightCard/index.tsx b/packages/web/src/components/InsightCard/index.tsx
+index 14c15eb..5be6353 100644
+--- a/packages/web/src/components/InsightCard/index.tsx
++++ b/packages/web/src/components/InsightCard/index.tsx
+@@ -741,6 +741,31 @@ const isInsightFilterGroup = (
+ 	return "kpiCardId" in value || "filters" in value;
+ };
+ 
++const ORDERED_FILTER_LABELS = [
++	"LANGUAGE",
++	"YEAR MONTH",
++	"DATE RANGE",
++	"CURRENCY",
++];
++
++const getFilterLabelPriority = (label: string): number => {
++	const index = ORDERED_FILTER_LABELS.indexOf(label.toUpperCase());
++	return index === -1 ? ORDERED_FILTER_LABELS.length : index;
++};
++
++const sortInsightFilterEntries = (
++	entries: IInsightFilterEntry[]
++): IInsightFilterEntry[] => {
++	return [...entries].sort((a, b) => {
++		const priorityA = getFilterLabelPriority(a.label);
++		const priorityB = getFilterLabelPriority(b.label);
++		if (priorityA !== priorityB) {
++			return priorityA - priorityB;
++		}
++		return 0;
++	});
++};
++
+ const groupInsightFilters = (
+ 	filters?: InsightFilters
+ ): IInsightFilterGroupResult => {
+@@ -754,13 +779,15 @@ const groupInsightFilters = (
+ 				...(typeof group.kpiCardId === "string" && {
+ 					kpiCardId: group.kpiCardId,
+ 				}),
+-				entries: flattenInsightFilters(group.filters),
++				entries: sortInsightFilterEntries(
++					flattenInsightFilters(group.filters)
++				),
+ 			})),
+ 			kpiCardCount: filters.length,
+ 		};
+ 	}
+ 
+-	const entries = flattenInsightFilters(filters);
++	const entries = sortInsightFilterEntries(flattenInsightFilters(filters));
+ 	return {
+ 		groups: entries.length ? [{ entries }] : [],
+ 		kpiCardCount: 0,
