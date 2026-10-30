@@ -1,0 +1,920 @@
+diff --git a/packages/components/src/Text/index.tsx b/packages/components/src/Text/index.tsx
+index ee26a81..10efa39 100644
+--- a/packages/components/src/Text/index.tsx
++++ b/packages/components/src/Text/index.tsx
+@@ -8,7 +8,14 @@ export type IProps = {
+ };
+ 
+ export const Text: FC<IProps> = (props) => {
+-	const [key, value] = Object.entries(props.entry)[0] as [
++	if (!props?.entry) {
++		return null;
++	}
++	const entries = Object.entries(props.entry);
++	if (!entries.length) {
++		return null;
++	}
++	const [key, value] = entries[0] as [
+ 		TranslationKey,
+ 		Record<string, string | number>
+ 	];
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+index 9ffe4a0..0455567 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+@@ -13,6 +13,11 @@ jest.mock("@angen_frontend/components", () => ({
+ 			{children}
+ 		</button>
+ 	),
++	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++		<button type="button" onClick={onClick} {...props}>
++			{children}
++		</button>
++	),
+ 	GenericSideDrawer: ({ visible, title, footer, children, onClose }: any) => {
+ 		if (!visible) return null;
+ 		return (
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+index c585bd0..9ddd83a 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+@@ -1,7 +1,7 @@
+ import { FC } from "react";
+ import {
+ 	GenericSideDrawer,
+-	GenericButton,
++	GenericButtonV2,
+ 	Text,
+ } from "@angen_frontend/components";
+ import {
+@@ -144,34 +144,34 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 									<Text entry={{ "cothinker.knowledgeDoc.detail.errorTitle": {} }} />
+ 								</strong>
+ 								<p>{doc.processingError}</p>
+-								<GenericButton
++								<GenericButtonV2
+ 									type="secondary"
+ 									className="el-btn-default retry-btn"
+ 									onClick={() => onRetry(doc)}
+ 								>
+ 									<Text entry={{ "cothinker.common.retry": {} }} />
+-								</GenericButton>
++								</GenericButtonV2>
+ 							</div>
+ 						)}
+ 					</section>
+ 				</div>
+ 
+ 				<div className="drawer-footer">
+-					<GenericButton
++					<GenericButtonV2
+ 						type="secondary"
+ 						className="el-btn-default"
+ 						onClick={onClose}
+ 					>
+ 						<Text entry={{ "cothinker.common.close": {} }} />
+-					</GenericButton>
+-					<GenericButton
++					</GenericButtonV2>
++					<GenericButtonV2
+ 						type="secondary"
+ 						className="el-btn-default"
+ 						onClick={() => onEdit(doc)}
+ 					>
+ 						<Text entry={{ "cothinker.common.edit": {} }} />
+-					</GenericButton>
+-					<GenericButton
++					</GenericButtonV2>
++					<GenericButtonV2
+ 						type="primary"
+ 						className={
+ 							doc.status === "ACTIVE"
+@@ -185,7 +185,7 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 						) : (
+ 							<Text entry={{ "cothinker.knowledgeDoc.action.activate": {} }} />
+ 						)}
+-					</GenericButton>
++					</GenericButtonV2>
+ 				</div>
+ 			</div>
+ 		</GenericSideDrawer>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+index 4430b9e..e5a9da6 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+@@ -14,6 +14,11 @@ jest.mock("@angen_frontend/components", () => ({
+ 			{children}
+ 		</button>
+ 	),
++	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++		<button type="button" onClick={onClick} {...props}>
++			{children}
++		</button>
++	),
+ 	GenericModalV2: ({ visible, title, footer, children, onClose }: any) => {
+ 		if (!visible) return null;
+ 		return (
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+index 6cb5366..d4eb47c 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+@@ -1,7 +1,7 @@
+ import { FC, useState, useEffect, ChangeEvent } from "react";
+ import {
+ 	GenericUploadDragger,
+-	GenericButton,
++	GenericButtonV2,
+ 	GenericModalV2,
+ 	Text,
+ } from "@angen_frontend/components";
+@@ -94,14 +94,14 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 			onClose={onClose}
+ 			footer={
+ 				<div className="modal-bottom">
+-					<GenericButton
++					<GenericButtonV2
+ 						type="secondary"
+ 						className="el-btn-default"
+ 						onClick={onClose}
+ 					>
+ 						<Text entry={{ "cothinker.common.cancel": {} }} />
+-					</GenericButton>
+-					<GenericButton
++					</GenericButtonV2>
++					<GenericButtonV2
+ 						type="primary"
+ 						className="el-btn-primary"
+ 						onClick={handleSave}
+@@ -111,7 +111,7 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 						) : (
+ 							<Text entry={{ "cothinker.knowledgeDoc.uploadDocument": {} }} />
+ 						)}
+-					</GenericButton>
++					</GenericButtonV2>
+ 				</div>
+ 			}
+ 		>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+index 2357e24..46df76f 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+@@ -14,6 +14,11 @@ jest.mock("@angen_frontend/components", () => ({
+ 			{children}
+ 		</button>
+ 	),
++	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++		<button type="button" onClick={onClick} {...props}>
++			{children}
++		</button>
++	),
+ 	GenericStatusTag: ({ label }: any) => <span>{label}</span>,
+ 	GenericDataTable: ({ columns, dataSource }: any) => (
+ 		<table>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+index 1fb5bd7..c0866c8 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+@@ -16,6 +16,11 @@ jest.mock("@angen_frontend/components", () => ({
+ 			{children}
+ 		</button>
+ 	),
++	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++		<button type="button" onClick={onClick} {...props}>
++			{children}
++		</button>
++	),
+ 	GenericStatusTag: ({ label }: any) => <span>{label}</span>,
+ 	GenericModalV2: ({ visible, title, footer, children, onClose }: any) => {
+ 		if (!visible) return null;
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+index fb7abba..49c0790 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+@@ -4,7 +4,7 @@ import {
+ 	SearchSvgIcon,
+ 	UploadSvgIcon,
+ 	RefreshSvgIcon,
+-	GenericButton,
++	GenericButtonV2,
+ 	GenericModalV2,
+ 	Text,
+ } from "@angen_frontend/components";
+@@ -472,14 +472,14 @@ export const KnowledgeDocTab: FC = () => {
+ 						<Text entry={{ "cothinker.knowledgeDoc.subtitle": {} }} />
+ 					</p>
+ 				</div>
+-				<GenericButton
++				<GenericButtonV2
+ 					type="primary"
+ 					className="el-btn-primary upload-btn"
+ 					icon={<UploadSvgIcon size={16} />}
+ 					onClick={handleOpenUpload}
+ 				>
+ 					<Text entry={{ "cothinker.knowledgeDoc.uploadDocument": {} }} />
+-				</GenericButton>
++				</GenericButtonV2>
+ 			</header>
+ 
+ 			<section
+@@ -540,21 +540,21 @@ export const KnowledgeDocTab: FC = () => {
+ 					</select>
+ 
+ 					<div className="filter-actions">
+-						<GenericButton
++						<GenericButtonV2
+ 							type="primary"
+ 							className="el-btn-primary"
+ 							icon={<SearchSvgIcon size={14} />}
+ 							htmlType="submit"
+ 						>
+ 							<Text entry={{ "cothinker.common.search": {} }} />
+-						</GenericButton>
+-						<GenericButton
++						</GenericButtonV2>
++						<GenericButtonV2
+ 							type="secondary"
+ 							className="el-btn-default"
+ 							onClick={handleResetFilters}
+ 						>
+ 							<Text entry={{ "cothinker.common.reset": {} }} />
+-						</GenericButton>
++						</GenericButtonV2>
+ 					</div>
+ 				</form>
+ 			</section>
+@@ -579,7 +579,7 @@ export const KnowledgeDocTab: FC = () => {
+ 								? "document"
+ 								: "documents"}
+ 						</span>
+-						<GenericButton
++						<GenericButtonV2
+ 							type="icon"
+ 							className="refresh-btn"
+ 							aria-label="Refresh documents"
+@@ -587,7 +587,7 @@ export const KnowledgeDocTab: FC = () => {
+ 							onClick={handleRefresh}
+ 						>
+ 							<RefreshSvgIcon size={14} />
+-						</GenericButton>
++						</GenericButtonV2>
+ 					</div>
+ 				</header>
+ 
+@@ -639,14 +639,14 @@ export const KnowledgeDocTab: FC = () => {
+ 					onClose={() => setConfirmModalVisible(false)}
+ 					footer={
+ 						<div className="modal-bottom">
+-							<GenericButton
++							<GenericButtonV2
+ 								type="secondary"
+ 								className="el-btn-default"
+ 								onClick={() => setConfirmModalVisible(false)}
+ 							>
+ 								Cancel
+-							</GenericButton>
+-							<GenericButton
++							</GenericButtonV2>
++							<GenericButtonV2
+ 								type="primary"
+ 								className={
+ 									confirmTarget.status === "ACTIVE"
+@@ -658,7 +658,7 @@ export const KnowledgeDocTab: FC = () => {
+ 								{confirmTarget.status === "ACTIVE"
+ 									? "Deactivate"
+ 									: "Activate"}
+-							</GenericButton>
++							</GenericButtonV2>
+ 						</div>
+ 					}
+ 				>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+index 4b2afed..cf8a0f4 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+@@ -16,6 +16,11 @@ jest.mock("@angen_frontend/components", () => ({
+ 			{children}
+ 		</button>
+ 	),
++	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++		<button type="button" onClick={onClick} {...props}>
++			{children}
++		</button>
++	),
+ 	GenericSideDrawer: ({
+ 		visible,
+ 		onClose,
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+index e3f3f7a..781869c 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+@@ -5,7 +5,7 @@ import {
+ 	CircleCloseSvgIcon,
+ 	CopySvgIcon,
+ 	GenericSideDrawer,
+-	GenericButton,
++	GenericButtonV2,
+ 	Text,
+ } from "@angen_frontend/components";
+ import {
+@@ -305,7 +305,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 												/ TableauDashboard
+ 											</p>
+ 										</div>
+-										<GenericButton
++										<GenericButtonV2
+ 											type="secondary"
+ 											className="copy-action-btn"
+ 											icon={<CopySvgIcon />}
+@@ -321,7 +321,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 											}
+ 										>
+ 											<Text entry={{ "cothinker.logAudit.copyPayload": {} }} />
+-										</GenericButton>
++										</GenericButtonV2>
+ 									</div>
+ 
+ 									<div className="overview-descriptions-grid border-sm mb-16">
+@@ -521,7 +521,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							{activeTab === "prompt" && (
+ 								<div className="tab-pane-content">
+ 									<div className="prompt-toolbar">
+-										<GenericButton
++										<GenericButtonV2
+ 											type="secondary"
+ 											className="copy-action-btn"
+ 											icon={<CopySvgIcon />}
+@@ -533,7 +533,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 											}
+ 										>
+ 											<Text entry={{ "cothinker.common.copy": {} }} />
+-										</GenericButton>
++										</GenericButtonV2>
+ 									</div>
+ 									<div className="prompt-viewer">
+ 										<pre>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+index 7f11efd..9fbd286 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+@@ -21,6 +21,11 @@ jest.mock("@angen_frontend/components", () => ({
+ 			{children}
+ 		</button>
+ 	),
++	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++		<button type="button" onClick={onClick} {...props}>
++			{children}
++		</button>
++	),
+ 	GenericStatusTag: ({ label }: any) => <span>{label}</span>,
+ 	GenericSideDrawer: ({
+ 		visible,
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+index a7cdc5c..472dd26 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+@@ -8,7 +8,7 @@ import {
+ 	CircleCloseSvgIcon,
+ 	CoThinkerCalendarSvgIcon,
+ 	SortSvgIcon,
+-	GenericButton,
++	GenericButtonV2,
+ 	GenericDataTable,
+ 	Text,
+ } from "@angen_frontend/components";
+@@ -538,7 +538,7 @@ export const LogAuditTab: FC = () => {
+ 				key: "actions",
+ 				align: "center" as const,
+ 				render: (_: any, record: IAuditGenerationItem) => (
+-					<GenericButton
++					<GenericButtonV2
+ 						type="link"
+ 						className="view-action-btn"
+ 						onClick={(e) => {
+@@ -547,7 +547,7 @@ export const LogAuditTab: FC = () => {
+ 						}}
+ 					>
+ 						<Text entry={{ "cothinker.common.view": {} }} />
+-					</GenericButton>
++					</GenericButtonV2>
+ 				),
+ 			},
+ 		],
+@@ -562,13 +562,13 @@ export const LogAuditTab: FC = () => {
+ 						<Text entry={{ "cothinker.logAudit.filter.title": {} }} />
+ 					</h3>
+ 					{hasActiveFilters && (
+-						<GenericButton
++						<GenericButtonV2
+ 							type="link"
+ 							className="clear-all-btn"
+ 							onClick={handleReset}
+ 						>
+ 							<Text entry={{ "cothinker.common.clearAll": {} }} />
+-						</GenericButton>
++						</GenericButtonV2>
+ 					)}
+ 				</div>
+ 
+@@ -677,7 +677,7 @@ export const LogAuditTab: FC = () => {
+ 				</div>
+ 
+ 				<div className="filters-actions">
+-					<GenericButton
++					<GenericButtonV2
+ 						type="primary"
+ 						className="btn-search"
+ 						icon={<SearchSvgIcon />}
+@@ -685,8 +685,8 @@ export const LogAuditTab: FC = () => {
+ 						disabled={loading}
+ 					>
+ 						<Text entry={{ "cothinker.common.search": {} }} />
+-					</GenericButton>
+-					<GenericButton
++					</GenericButtonV2>
++					<GenericButtonV2
+ 						type="secondary"
+ 						className="btn-export"
+ 						icon={
+@@ -712,7 +712,7 @@ export const LogAuditTab: FC = () => {
+ 								}}
+ 							/>
+ 						)}
+-					</GenericButton>
++					</GenericButtonV2>
+ 				</div>
+ 			</div>
+ 
+@@ -721,7 +721,7 @@ export const LogAuditTab: FC = () => {
+ 					<h3>
+ 						<Text entry={{ "cothinker.logAudit.table.title": {} }} />
+ 					</h3>
+-					<GenericButton
++					<GenericButtonV2
+ 						type="secondary"
+ 						className={`btn-refresh ${
+ 							refreshing ? "rotating" : ""
+@@ -732,7 +732,7 @@ export const LogAuditTab: FC = () => {
+ 						disabled={loading}
+ 					>
+ 						<ReloadSvgIcon />
+-					</GenericButton>
++					</GenericButtonV2>
+ 				</div>
+ 
+ 				<div className="data-table-wrapper">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+index 951c78e..15d81a0 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+@@ -15,6 +15,11 @@ jest.mock("@angen_frontend/components", () => ({
+ 			{children}
+ 		</button>
+ 	),
++	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++		<button type="button" onClick={onClick} {...props}>
++			{children}
++		</button>
++	),
+ 	DataAnalysisSvgIcon: () => <span />,
+ 	CoThinkerCircleCheckSvgIcon: () => <span />,
+ 	CircleCloseSvgIcon: () => <span />,
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx
+index 0495ea7..b2c02f4 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx
+@@ -4,7 +4,7 @@ import {
+ 	RoleFeedbackChart,
+ 	FeedbackTrendChart,
+ 	GenericSpin,
+-	GenericButton,
++	GenericButtonV2,
+ 	Text,
+ } from "@angen_frontend/components";
+ import { InsightService } from "@angen_frontend/services";
+@@ -252,10 +252,9 @@ export const OverviewTab: FC<IProps> = ({ initialMetrics }) => {
+ 						{error}
+ 					</p>
+ 					<div className="coThinkerRetryBtnWrapper">
+-						<GenericButton
+-							textEntry={{ "cothinker.common.refresh": {} }}
+-							onClick={fetchOverviewData}
+-						/>
++						<GenericButtonV2 onClick={fetchOverviewData}>
++							<Text entry={{ "cothinker.common.refresh": {} }} />
++						</GenericButtonV2>
+ 					</div>
+ 				</div>
+ 			</div>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
+index 214f771..ab767e1 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
+@@ -13,6 +13,11 @@ jest.mock("@angen_frontend/components", () => ({
+ 			{children}
+ 		</button>
+ 	),
++	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++		<button type="button" onClick={onClick} {...props}>
++			{children}
++		</button>
++	),
+ 	GenericDataTable: ({ columns, dataSource }: any) => (
+ 		<table>
+ 			<tbody>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+index 53139a5..f971596 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+@@ -15,6 +15,11 @@ jest.mock("@angen_frontend/components", () => ({
+ 			{children}
+ 		</button>
+ 	),
++	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++		<button type="button" onClick={onClick} {...props}>
++			{children}
++		</button>
++	),
+ 	GenericModalV2: ({ visible, title, footer, children, onClose }: any) => {
+ 		if (!visible) return null;
+ 		return (
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+index 1163d2f..b1af61c 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+@@ -3,7 +3,7 @@ import {
+ 	CoThinkerPlusSvgIcon,
+ 	SearchSvgIcon,
+ 	GenericDataTable,
+-	GenericButton,
++	GenericButtonV2,
+ 	GenericModalV2,
+ 	Text,
+ } from "@angen_frontend/components";
+@@ -192,14 +192,14 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 						<Text entry={{ "cothinker.prompt.metricsDesc": {} }} />
+ 					</p>
+ 				</div>
+-				<GenericButton
++				<GenericButtonV2
+ 					type="primary"
+ 					className="el-btn-primary"
+ 					icon={<CoThinkerPlusSvgIcon size={14} />}
+ 					onClick={handleOpenAdd}
+ 				>
+ 					<Text entry={{ "cothinker.prompt.addMetric": {} }} />
+-				</GenericButton>
++				</GenericButtonV2>
+ 			</div>
+ 
+ 			<div className="metrics-controls">
+@@ -245,20 +245,20 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 					onClose={() => setEditorVisible(false)}
+ 					footer={
+ 						<div className="modal-footer">
+-							<GenericButton
++							<GenericButtonV2
+ 								type="secondary"
+ 								className="el-btn-default"
+ 								onClick={() => setEditorVisible(false)}
+ 							>
+ 								Cancel
+-							</GenericButton>
+-							<GenericButton
++							</GenericButtonV2>
++							<GenericButtonV2
+ 								type="primary"
+ 								className="el-btn-primary"
+ 								onClick={handleSave}
+ 							>
+ 								Save
+-							</GenericButton>
++							</GenericButtonV2>
+ 						</div>
+ 					}
+ 				>
+@@ -320,14 +320,14 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 					onClose={() => setDeleteTarget(null)}
+ 					footer={
+ 						<div className="modal-footer">
+-							<GenericButton
++							<GenericButtonV2
+ 								type="secondary"
+ 								className="el-btn-default"
+ 								onClick={() => setDeleteTarget(null)}
+ 							>
+ 								Cancel
+-							</GenericButton>
+-							<GenericButton
++							</GenericButtonV2>
++							<GenericButtonV2
+ 								type="primary"
+ 								className="el-btn-danger"
+ 								onClick={() => {
+@@ -336,7 +336,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 								}}
+ 							>
+ 								Delete metric
+-							</GenericButton>
++							</GenericButtonV2>
+ 						</div>
+ 					}
+ 				>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
+index 2ac3457..287f39f 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
+@@ -13,6 +13,11 @@ jest.mock("@angen_frontend/components", () => ({
+ 			{children}
+ 		</button>
+ 	),
++	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++		<button type="button" onClick={onClick} {...props}>
++			{children}
++		</button>
++	),
+ 	GenericSideDrawer: ({ visible, children }: any) => {
+ 		if (!visible) return null;
+ 		return <div data-testid="generic-side-drawer">{children}</div>;
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+index ff8b79f..ba9e0b3 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+@@ -1,7 +1,7 @@
+ import { FC, useState, useMemo } from "react";
+ import {
+ 	GenericSideDrawer,
+-	GenericButton,
++	GenericButtonV2,
+ 	Text,
+ } from "@angen_frontend/components";
+ import {
+@@ -267,24 +267,24 @@ export const PromptEditorDrawer: FC<IProps> = ({
+ 				</div>
+ 
+ 				<div className="drawer-footer">
+-					<GenericButton
++					<GenericButtonV2
+ 						type="secondary"
+ 						className="el-btn-default"
+ 						onClick={onClose}
+ 					>
+ 						<Text entry={{ "cothinker.common.close": {} }} />
+-					</GenericButton>
++					</GenericButtonV2>
+ 					{editable ? (
+-						<GenericButton
++						<GenericButtonV2
+ 							type="primary"
+ 							className="el-btn-primary"
+ 							onClick={onSaveDraft}
+ 						>
+ 							<Text entry={{ "cothinker.prompt.saveDraft": {} }} />
+-						</GenericButton>
++						</GenericButtonV2>
+ 					) : (
+ 						!inspectedVersion && (
+-							<GenericButton
++							<GenericButtonV2
+ 								type="primary"
+ 								className="el-btn-primary"
+ 								onClick={() => {
+@@ -292,7 +292,7 @@ export const PromptEditorDrawer: FC<IProps> = ({
+ 								}}
+ 							>
+ 								<Text entry={{ "cothinker.prompt.createDraft": {} }} />
+-							</GenericButton>
++							</GenericButtonV2>
+ 						)
+ 					)}
+ 				</div>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+index f45b6df..a3bd806 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+@@ -14,6 +14,11 @@ jest.mock("@angen_frontend/components", () => ({
+ 			{children}
+ 		</button>
+ 	),
++	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++		<button type="button" onClick={onClick} {...props}>
++			{children}
++		</button>
++	),
+ 	GenericDataTable: ({ columns, dataSource }: any) => (
+ 		<table>
+ 			<tbody>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+index 6d3e1ac..3eedf34 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+@@ -2,7 +2,7 @@ import { FC, useState, useMemo } from "react";
+ import {
+ 	CoThinkerDownloadSvgIcon,
+ 	GenericDataTable,
+-	GenericButton,
++	GenericButtonV2,
+ 	Text,
+ } from "@angen_frontend/components";
+ import {
+@@ -172,7 +172,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 					<span className="version-count-tag">
+ 						{versions.length} versions
+ 					</span>
+-					<GenericButton
++					<GenericButtonV2
+ 						type="secondary"
+ 						className="el-btn-default"
+ 						disabled={exporting || versions.length === 0}
+@@ -192,7 +192,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 								}}
+ 							/>
+ 						)}
+-					</GenericButton>
++					</GenericButtonV2>
+ 				</div>
+ 			</div>
+ 
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+index 938f725..bcb5699 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+@@ -17,6 +17,11 @@ jest.mock("@angen_frontend/components", () => ({
+ 			{children}
+ 		</button>
+ 	),
++	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++		<button type="button" onClick={onClick} {...props}>
++			{children}
++		</button>
++	),
+ 	GenericModalV2: ({ visible, title, footer, children, onClose }: any) => {
+ 		if (!visible) return null;
+ 		return (
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+index 56bf1fa..3a10149 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+@@ -3,7 +3,7 @@ import { message } from "antd";
+ import {
+ 	EditPenSvgIcon,
+ 	CollectionSvgIcon,
+-	GenericButton,
++	GenericButtonV2,
+ 	GenericModalV2,
+ 	Text,
+ } from "@angen_frontend/components";
+@@ -793,24 +793,24 @@ export const PromptManagementTab: FC = () => {
+ 					</p>
+ 				</div>
+ 				{activeTab !== "metrics" && !draftVersion && (
+-					<GenericButton
++					<GenericButtonV2
+ 						type="primary"
+ 						className="el-btn-primary create-draft-btn"
+ 						icon={<EditPenSvgIcon size={14} />}
+ 						onClick={handleCreateDraft}
+ 					>
+ 						<Text entry={{ "cothinker.prompt.createDraft": {} }} />
+-					</GenericButton>
++					</GenericButtonV2>
+ 				)}
+ 				{activeTab !== "metrics" && draftVersion && (
+-					<GenericButton
++					<GenericButtonV2
+ 						type="secondary"
+ 						className="el-btn-default create-draft-btn"
+ 						icon={<EditPenSvgIcon size={14} />}
+ 						onClick={() => handleOpenEditor()}
+ 					>
+ 						<Text entry={{ "cothinker.prompt.continueEditing": {} }} />
+-					</GenericButton>
++					</GenericButtonV2>
+ 				)}
+ 			</header>
+ 
+@@ -885,28 +885,28 @@ export const PromptManagementTab: FC = () => {
+ 						maxLength={500}
+ 					/>
+ 					<div className="draft-actions">
+-						<GenericButton
++						<GenericButtonV2
+ 							type="secondary"
+ 							className="el-btn-default"
+ 							disabled={changedFields.length === 0}
+ 							onClick={() => setViewChangesVisible(true)}
+ 						>
+ 							<Text entry={{ "cothinker.prompt.viewChanges": {} }} />
+-						</GenericButton>
+-						<GenericButton
++						</GenericButtonV2>
++						<GenericButtonV2
+ 							type="secondary"
+ 							className="el-btn-default"
+ 							onClick={handleSaveDraft}
+ 						>
+ 							<Text entry={{ "cothinker.prompt.saveDraft": {} }} />
+-						</GenericButton>
+-						<GenericButton
++						</GenericButtonV2>
++						<GenericButtonV2
+ 							type="primary"
+ 							className="el-btn-primary"
+ 							onClick={() => setPublishDialogVisible(true)}
+ 						>
+ 							<Text entry={{ "cothinker.prompt.reviewPublish": {} }} />
+-						</GenericButton>
++						</GenericButtonV2>
+ 					</div>
+ 				</section>
+ 			)}
+@@ -992,13 +992,13 @@ export const PromptManagementTab: FC = () => {
+ 					onClose={() => setViewChangesVisible(false)}
+ 					footer={
+ 						<div className="modal-footer">
+-							<GenericButton
++							<GenericButtonV2
+ 								type="secondary"
+ 								className="el-btn-default"
+ 								onClick={() => setViewChangesVisible(false)}
+ 							>
+ 								Close
+-							</GenericButton>
++							</GenericButtonV2>
+ 						</div>
+ 					}
+ 				>
+@@ -1042,20 +1042,20 @@ export const PromptManagementTab: FC = () => {
+ 					onClose={() => setPublishDialogVisible(false)}
+ 					footer={
+ 						<div className="modal-footer">
+-							<GenericButton
++							<GenericButtonV2
+ 								type="secondary"
+ 								className="el-btn-default"
+ 								onClick={() => setPublishDialogVisible(false)}
+ 							>
+ 								Keep draft
+-							</GenericButton>
+-							<GenericButton
++							</GenericButtonV2>
++							<GenericButtonV2
+ 								type="primary"
+ 								className="el-btn-primary"
+ 								onClick={handlePublish}
+ 							>
+ 								Publish v{nextVersionNumber}
+-							</GenericButton>
++							</GenericButtonV2>
+ 						</div>
+ 					}
+ 				>
+@@ -1090,20 +1090,20 @@ export const PromptManagementTab: FC = () => {
+ 					onClose={() => setDiscardDialogVisible(false)}
+ 					footer={
+ 						<div className="modal-footer">
+-							<GenericButton
++							<GenericButtonV2
+ 								type="secondary"
+ 								className="el-btn-default"
+ 								onClick={() => setDiscardDialogVisible(false)}
+ 							>
+ 								Keep editing
+-							</GenericButton>
+-							<GenericButton
++							</GenericButtonV2>
++							<GenericButtonV2
+ 								type="primary"
+ 								className="el-btn-primary"
+ 								onClick={handleConfirmDiscard}
+ 							>
+ 								Discard draft
+-							</GenericButton>
++							</GenericButtonV2>
+ 						</div>
+ 					}
+ 				>
+@@ -1123,20 +1123,20 @@ export const PromptManagementTab: FC = () => {
+ 					onClose={() => setRollbackTarget(null)}
+ 					footer={
+ 						<div className="modal-footer">
+-							<GenericButton
++							<GenericButtonV2
+ 								type="secondary"
+ 								className="el-btn-default"
+ 								onClick={() => setRollbackTarget(null)}
+ 							>
+ 								Cancel
+-							</GenericButton>
+-							<GenericButton
++							</GenericButtonV2>
++							<GenericButtonV2
+ 								type="primary"
+ 								className="el-btn-primary"
+ 								onClick={handleConfirmRestore}
+ 							>
+ 								Restore as v{nextVersionNumber}
+-							</GenericButton>
++							</GenericButtonV2>
+ 						</div>
+ 					}
+ 				>
