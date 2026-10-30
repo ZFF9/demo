@@ -1,0 +1,566 @@
+diff --git a/packages/components/src/GenericMultiSelect/index.scss b/packages/components/src/GenericMultiSelect/index.scss
+new file mode 100644
+index 0000000..aac460e
+--- /dev/null
++++ b/packages/components/src/GenericMultiSelect/index.scss
+@@ -0,0 +1,128 @@
++.genericMultiSelectWrapper {
++	width: 100%;
++
++	&.disabled {
++		opacity: 0.7;
++		cursor: not-allowed;
++	}
++
++	.genericMultiSelect.ant-select {
++		width: 100%;
++
++		.ant-select-selector {
++			min-height: 38px;
++			padding: 3px 30px 3px 12px !important;
++			background: #ffffff !important;
++			border: 1px solid #dcdfe6 !important;
++			border-radius: 4px !important;
++			box-shadow: none !important;
++			transition: border-color 0.2s ease, box-shadow 0.2s ease;
++			display: flex;
++			align-items: center;
++		}
++
++		&:hover:not(.ant-select-disabled) .ant-select-selector {
++			border-color: #c0c4cc !important;
++		}
++
++		&.ant-select-focused:not(.ant-select-disabled) .ant-select-selector,
++		&.ant-select-open:not(.ant-select-disabled) .ant-select-selector {
++			border-color: #eb1700 !important;
++			box-shadow: 0 0 0 2px rgba(235, 23, 0, 0.08) !important;
++		}
++
++		.ant-select-selection-placeholder {
++			inset-inline-start: 12px;
++			inset-inline-end: 30px;
++			font-size: 13px;
++			color: #a8abb2;
++			line-height: 36px;
++		}
++
++		.ant-select-selection-overflow {
++			gap: 4px;
++		}
++
++		.ant-select-selection-item {
++			background: #f0f2f5;
++			border: 1px solid #e9e9eb;
++			border-radius: 4px;
++			color: #606266;
++			font-size: 12px;
++			font-weight: 500;
++			height: 24px;
++			line-height: 22px;
++			margin-top: 2px;
++			margin-bottom: 2px;
++			margin-inline-end: 4px;
++			padding-inline-start: 8px;
++			padding-inline-end: 6px;
++			display: inline-flex;
++			align-items: center;
++
++			.ant-select-selection-item-remove {
++				color: #909399;
++				font-size: 10px;
++				margin-inline-start: 4px;
++
++				&:hover {
++					color: #eb1700;
++				}
++			}
++		}
++
++		.ant-select-arrow {
++			inset-inline-end: 12px;
++			color: #909399;
++			font-size: 12px;
++			pointer-events: none;
++			transition: transform 0.2s ease;
++		}
++
++		&.ant-select-open .ant-select-arrow {
++			transform: rotate(180deg);
++		}
++
++		.ant-select-clear {
++			inset-inline-end: 12px;
++			background: #ffffff;
++			color: #909399;
++			font-size: 12px;
++
++			&:hover {
++				color: #606266;
++			}
++		}
++	}
++}
++
++.genericMultiSelectDropdown {
++	border: 1px solid #e4e7ed;
++	border-radius: 4px;
++	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
++	padding: 6px 0;
++
++	.ant-select-item {
++		min-height: 34px;
++		padding: 7px 14px;
++		font-size: 13px;
++		color: #606266;
++		display: flex;
++		align-items: center;
++		justify-content: space-between;
++
++		&.ant-select-item-option-active:not(.ant-select-item-option-disabled) {
++			background-color: #f5f7fa;
++		}
++
++		&.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
++			background-color: #fff5f5;
++			color: #eb1700;
++			font-weight: 600;
++
++			.ant-select-item-option-state {
++				color: #eb1700;
++			}
++		}
++	}
++}
+diff --git a/packages/components/src/GenericMultiSelect/index.spec.tsx b/packages/components/src/GenericMultiSelect/index.spec.tsx
+new file mode 100644
+index 0000000..d1423e7
+--- /dev/null
++++ b/packages/components/src/GenericMultiSelect/index.spec.tsx
+@@ -0,0 +1,71 @@
++import { render, screen, fireEvent } from "@testing-library/react";
++import "@testing-library/jest-dom";
++import { GenericMultiSelect } from "./index";
++
++describe("GenericMultiSelect Component", () => {
++	const mockOptions = [
++		{ label: "BU Marketing", value: "BU Marketing" },
++		{ label: "Sales Manager", value: "Sales Manager" },
++		{ label: "Sales Representative", value: "Sales Representative" },
++	];
++
++	it("renders placeholder when value is empty", () => {
++		render(
++			<GenericMultiSelect
++				value={[]}
++				options={mockOptions}
++				placeholder="Filter by Role"
++			/>
++		);
++
++		expect(screen.getByText("Filter by Role")).toBeInTheDocument();
++	});
++
++	it("renders selected option tags when values are provided", () => {
++		render(
++			<GenericMultiSelect
++				value={["BU Marketing", "Sales Manager"]}
++				options={mockOptions}
++			/>
++		);
++
++		expect(screen.getByText("BU Marketing")).toBeInTheDocument();
++		expect(screen.getByText("Sales Manager")).toBeInTheDocument();
++	});
++
++	it("opens dropdown and triggers onChange when an option is clicked", () => {
++		const handleChange = jest.fn();
++		const { container } = render(
++			<GenericMultiSelect
++				value={[]}
++				options={mockOptions}
++				onChange={handleChange}
++			/>
++		);
++
++		const selector = container.querySelector(".ant-select-selector");
++		if (selector) {
++			fireEvent.mouseDown(selector);
++		}
++
++		const option = screen.getByTitle("BU Marketing");
++		fireEvent.click(option);
++
++		expect(handleChange).toHaveBeenCalledWith(["BU Marketing"]);
++	});
++
++	it("applies disabled class when disabled is true", () => {
++		const { container } = render(
++			<GenericMultiSelect
++				value={[]}
++				options={mockOptions}
++				disabled={true}
++			/>
++		);
++
++		expect(container.firstChild).toHaveClass(
++			"genericMultiSelectWrapper",
++			"disabled"
++		);
++	});
++});
+diff --git a/packages/components/src/GenericMultiSelect/index.tsx b/packages/components/src/GenericMultiSelect/index.tsx
+new file mode 100644
+index 0000000..a8b7019
+--- /dev/null
++++ b/packages/components/src/GenericMultiSelect/index.tsx
+@@ -0,0 +1,61 @@
++import { FC, ReactNode } from "react";
++import { Select } from "antd";
++import classNames from "classnames";
++import "./index.scss";
++
++export interface IGenericMultiSelectOption {
++	label: string;
++	value: string;
++	disabled?: boolean;
++}
++
++export interface IGenericMultiSelectProps {
++	value?: string[];
++	options: IGenericMultiSelectOption[];
++	onChange?: (values: string[]) => void;
++	placeholder?: ReactNode;
++	allowClear?: boolean;
++	disabled?: boolean;
++	maxTagCount?: number | "responsive";
++	className?: string;
++	popupClassName?: string;
++}
++
++export const GenericMultiSelect: FC<IGenericMultiSelectProps> = ({
++	value = [],
++	options = [],
++	onChange,
++	placeholder = "Select options",
++	allowClear = true,
++	disabled = false,
++	maxTagCount = "responsive",
++	className,
++	popupClassName,
++}) => {
++	return (
++		<div
++			className={classNames(
++				"genericMultiSelectWrapper",
++				{ disabled },
++				className
++			)}
++		>
++			<Select
++				mode="multiple"
++				className="genericMultiSelect"
++				popupClassName={classNames(
++					"genericMultiSelectDropdown",
++					popupClassName
++				)}
++				value={value}
++				options={options}
++				onChange={(nextValues: string[]) => onChange?.(nextValues)}
++				placeholder={placeholder}
++				allowClear={allowClear}
++				disabled={disabled}
++				maxTagCount={maxTagCount}
++				showArrow={true}
++			/>
++		</div>
++	);
++};
+diff --git a/packages/components/src/index.ts b/packages/components/src/index.ts
+index 79e49f9..457028e 100644
+--- a/packages/components/src/index.ts
++++ b/packages/components/src/index.ts
+@@ -124,6 +124,7 @@ import { GenericCheckbox } from "./GenericCheckbox";
+ import { GenericCheckboxGroup } from "./GenericCheckboxGroup";
+ import { GenericDateRange } from "./GenericDateRange";
+ import { GenericDateRangePicker } from "./GenericDateRangePicker";
++import { GenericMultiSelect } from "./GenericMultiSelect";
+ import { GenericDatePicker } from "./GenericDatePicker";
+ import { GenericGrid, gridContainerWidths } from "./GenericGrid";
+ import { GenericDivider } from "./GenericDivider";
+@@ -555,4 +556,5 @@ export {
+ 	GenericSideDrawer,
+ 	GenericUploadDragger,
+ 	GenericStatusTag,
++	GenericMultiSelect,
+ };
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.scss b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.scss
+index fde4995..22808d1 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.scss
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.scss
+@@ -116,88 +116,6 @@
+ 					}
+ 				}
+ 
+-				.role-select-box {
+-					position: relative;
+-
+-					.role-select-trigger {
+-						width: 100%;
+-						height: 38px;
+-						box-sizing: border-box;
+-						background: #ffffff;
+-						border: 1px solid #dcdfe6;
+-						border-radius: 4px;
+-						padding: 0 12px;
+-						display: flex;
+-						align-items: center;
+-						justify-content: space-between;
+-						cursor: pointer;
+-						font-size: 13px;
+-						color: #303133;
+-						transition: border-color 0.2s ease;
+-
+-						&:hover {
+-							border-color: #c0c4cc;
+-						}
+-
+-						.placeholder {
+-							color: #909399;
+-						}
+-
+-						.selected-roles-wrapper {
+-							display: flex;
+-							flex-wrap: wrap;
+-							gap: 4px;
+-
+-							.role-pill {
+-								background: #f4f4f5;
+-								border: 1px solid #e9e9eb;
+-								border-radius: 4px;
+-								font-size: 11px;
+-								padding: 1px 6px;
+-								color: #606266;
+-							}
+-						}
+-
+-						.dropdown-arrow {
+-							color: #909399;
+-							font-size: 10px;
+-						}
+-					}
+-
+-					.role-dropdown-popover {
+-						position: absolute;
+-						top: calc(100% + 4px);
+-						left: 0;
+-						right: 0;
+-						z-index: 50;
+-						background: #ffffff;
+-						border: 1px solid #e4e7ed;
+-						border-radius: 4px;
+-						box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+-						padding: 6px 0;
+-
+-						.role-menu-item {
+-							display: flex;
+-							align-items: center;
+-							gap: 8px;
+-							padding: 8px 14px;
+-							cursor: pointer;
+-							font-size: 13px;
+-							color: #606266;
+-							transition: background 0.15s ease;
+-
+-							&:hover {
+-								background: #f5f7fa;
+-							}
+-
+-							input[type="checkbox"] {
+-								accent-color: #eb1700;
+-								cursor: pointer;
+-							}
+-						}
+-					}
+-				}
+-
+ 				.search-input-box {
+ 					display: flex;
+ 					align-items: center;
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+index 435639d..678d66a 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+@@ -46,6 +46,32 @@ jest.mock("@angen_frontend/components", () => ({
+ 			/>
+ 		</div>
+ 	),
++	GenericMultiSelect: ({
++		value = [],
++		options = [],
++		onChange,
++		placeholder,
++	}: any) => (
++		<div data-testid="mock-generic-multi-select">
++			<div>{placeholder}</div>
++			<div>
++				{options.map((opt: any) => (
++					<button
++						key={opt.value}
++						type="button"
++						onClick={() => {
++							const next = value.includes(opt.value)
++								? value.filter((v: string) => v !== opt.value)
++								: [...value, opt.value];
++							onChange?.(next);
++						}}
++					>
++						{opt.label}
++					</button>
++				))}
++			</div>
++		</div>
++	),
+ 	GenericButton: ({ children, onClick, ...props }: any) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+index 5e64cbc..b6fd1ef 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+@@ -10,6 +10,7 @@ import {
+ 	GenericButtonV2,
+ 	GenericDataTable,
+ 	GenericDateRangePicker,
++	GenericMultiSelect,
+ 	Text,
+ } from "@angen_frontend/components";
+ import { LogDetailDrawer } from "./LogDetailDrawer";
+@@ -290,7 +291,6 @@ export const LogAuditTab: FC = () => {
+ 	const [roleOptions, setRoleOptions] =
+ 		useState<Array<{ label: string; value: string }>>(DEFAULT_ROLE_OPTIONS);
+ 	const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+-	const [roleDropdownOpen, setRoleDropdownOpen] = useState<boolean>(false);
+ 	const [usernameSearch, setUsernameSearch] = useState<string>("");
+ 
+ 	const [loading, setLoading] = useState<boolean>(false);
+@@ -309,7 +309,6 @@ export const LogAuditTab: FC = () => {
+ 	const [drawerVisible, setDrawerVisible] = useState<boolean>(false);
+ 	const [drawerLoading, setDrawerLoading] = useState<boolean>(false);
+ 
+-	const dropdownRef = useRef<HTMLDivElement>(null);
+ 	const tableSectionRef = useRef<HTMLDivElement>(null);
+ 
+ 	const hasActiveFilters = useMemo(() => {
+@@ -383,21 +382,6 @@ export const LogAuditTab: FC = () => {
+ 		loadData(page, pageSize, sortOrder);
+ 	}, [page, pageSize, sortOrder, loadData]);
+ 
+-	useEffect(() => {
+-		const handleClickOutside = (e: MouseEvent) => {
+-			if (
+-				dropdownRef.current &&
+-				!dropdownRef.current.contains(e.target as Node)
+-			) {
+-				setRoleDropdownOpen(false);
+-			}
+-		};
+-		document.addEventListener("mousedown", handleClickOutside);
+-		return () => {
+-			document.removeEventListener("mousedown", handleClickOutside);
+-		};
+-	}, []);
+-
+ 	const handleSearch = () => {
+ 		setPage(1);
+ 		loadData(1, pageSize, sortOrder);
+@@ -439,14 +423,6 @@ export const LogAuditTab: FC = () => {
+ 		setRefreshing(false);
+ 	};
+ 
+-	const toggleRole = (roleValue: string) => {
+-		setSelectedRoles((prev) =>
+-			prev.includes(roleValue)
+-				? prev.filter((r) => r !== roleValue)
+-				: [...prev, roleValue]
+-		);
+-	};
+-
+ 	const toggleSort = useCallback(() => {
+ 		setSortOrder((prevSort) => {
+ 			const nextSort = prevSort === "asc" ? "desc" : "asc";
+@@ -660,60 +636,20 @@ export const LogAuditTab: FC = () => {
+ 						/>
+ 					</div>
+ 
+-					<div className="filter-field" ref={dropdownRef}>
+-						<div className="role-select-box">
+-							<div
+-								className="role-select-trigger"
+-								onClick={() =>
+-									setRoleDropdownOpen(!roleDropdownOpen)
+-								}
+-							>
+-								{selectedRoles.length === 0 ? (
+-									<span className="placeholder">
+-										<Text
+-											entry={{
+-												"cothinker.logAudit.filter.rolePlaceholder":
+-													{},
+-											}}
+-										/>
+-									</span>
+-								) : (
+-									<div className="selected-roles-wrapper">
+-										{selectedRoles.map((role) => (
+-											<span
+-												key={role}
+-												className="role-pill"
+-											>
+-												{role}
+-											</span>
+-										))}
+-									</div>
+-								)}
+-								<span className="dropdown-arrow">▾</span>
+-							</div>
+-
+-							{roleDropdownOpen && (
+-								<div className="role-dropdown-popover">
+-									{roleOptions.map((opt) => (
+-										<label
+-											key={opt.value}
+-											className="role-menu-item"
+-										>
+-											<input
+-												type="checkbox"
+-												checked={selectedRoles.includes(
+-													opt.value
+-												)}
+-												onChange={() =>
+-													toggleRole(opt.value)
+-												}
+-											/>
+-											<span>{opt.label}</span>
+-										</label>
+-									))}
+-								</div>
+-							)}
+-						</div>
++					<div className="filter-field">
++						<GenericMultiSelect
++							value={selectedRoles}
++							options={roleOptions}
++							onChange={setSelectedRoles}
++							placeholder={
++								<Text
++									entry={{
++										"cothinker.logAudit.filter.rolePlaceholder":
++											{},
++									}}
++								/>
++							}
++						/>
+ 					</div>
+ 
+ 					<div className="filter-field">
