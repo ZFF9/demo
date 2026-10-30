@@ -1,0 +1,14 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+index c9c3a0b..896174b 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+@@ -355,7 +355,8 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 								>
+ 									<Text
+ 										entry={{
+-											"cothinker.logAudit.tab.chunks": {},
++											"cothinker.logAudit.detail.docChunks":
++												{},
+ 										}}
+ 									/>
+ 								</button>
