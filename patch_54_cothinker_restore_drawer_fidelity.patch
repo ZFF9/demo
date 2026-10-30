@@ -1,0 +1,1042 @@
+diff --git a/packages/components/src/GenericSideDrawer/index.scss b/packages/components/src/GenericSideDrawer/index.scss
+index b63eb8f..6bdcbc4 100644
+--- a/packages/components/src/GenericSideDrawer/index.scss
++++ b/packages/components/src/GenericSideDrawer/index.scss
+@@ -1,14 +1,37 @@
+ .genericSideDrawerRoot {
+ 	.ant-drawer-header {
+-		padding: 18px 24px;
+-		border-bottom: 1px solid #e2e8f0;
++		padding: 20px 24px 0;
++		border-bottom: none;
+ 		background: #ffffff;
+ 	}
+ 
++	.ant-drawer-header-title {
++		display: flex;
++		flex-direction: row-reverse;
++		align-items: center;
++		justify-content: space-between;
++		width: 100%;
++	}
++
++	.ant-drawer-close {
++		margin-inline-end: 0;
++		padding: 4px;
++		color: #909399;
++		font-size: 16px;
++		line-height: 1;
++		border-radius: 4px;
++
++		&:hover {
++			color: #1e293b;
++			background: transparent;
++		}
++	}
++
+ 	.ant-drawer-title {
+-		font-size: 18px;
+-		font-weight: 600;
+-		color: #0f172a;
++		font-size: 16px;
++		font-weight: 400;
++		color: #72767b;
++		line-height: 24px;
+ 	}
+ 
+ 	.ant-drawer-body {
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+index 8e7038c..efecbda 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+@@ -109,6 +109,12 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 							<Text entry={{ "cothinker.knowledgeDoc.detail.systemInfo": {} }} />
+ 						</h3>
+ 						<dl className="metadata-grid">
++							<dt>Document ID</dt>
++							<dd className="document-id">{doc.documentId}</dd>
++							<dt>Format</dt>
++							<dd>{documentFormat(doc.fileName)}</dd>
++							<dt>Size</dt>
++							<dd>{formatDocumentSize(doc.fileSizeBytes)}</dd>
+ 							<dt>
+ 								<Text entry={{ "cothinker.knowledgeDoc.detail.uploadedBy": {} }} />
+ 							</dt>
+@@ -139,6 +145,19 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 							</dd>
+ 						</dl>
+ 
++						{doc.processingStatus === "READY" && (
++							<p className="processing-help">
++								Text extraction and indexing completed. Document
++								chunks are ready when status is Active.
++							</p>
++						)}
++						{doc.processingStatus === "PROCESSING" && (
++							<p className="processing-help">
++								Document is being parsed and indexed. You can
++								activate it after processing reaches Ready.
++							</p>
++						)}
++
+ 						{doc.processingError && (
+ 							<div className="processing-error-banner">
+ 								<strong>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+index 7d47c0d..c9c3a0b 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+@@ -202,7 +202,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 									{record.feedbackDetail.type === "up" && (
+ 										<span className="feedback-status up">
+ 											<CoThinkerCircleCheckSvgIcon className="feedback-icon" />
+-											<span className="status-text">
++											<span className="status-text sr-only">
+ 												<Text
+ 													entry={{
+ 														"cothinker.common.thumbsUp":
+@@ -215,7 +215,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 									{record.feedbackDetail.type === "down" && (
+ 										<span className="feedback-status down">
+ 											<CircleCloseSvgIcon className="feedback-icon" />
+-											<span className="status-text">
++											<span className="status-text sr-only">
+ 												<Text
+ 													entry={{
+ 														"cothinker.common.thumbsDown":
+@@ -260,7 +260,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 								)}
+ 							</strong>
+ 							<span className="metric-sub">
+-								{record.overview.modelId || "gpt-4o-mini"}
++								{record.overview.modelId || "gpt-4.1-mini"}
+ 							</span>
+ 						</div>
+ 						<div className="metric-card">
+@@ -273,14 +273,15 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 								/>
+ 							</span>
+ 							<strong className="metric-value">
+-								{formatTokens(record.overview.totalTokens)}
++								{formatTokens(record.overview.totalTokens)}{" "}
++								tokens
+ 							</strong>
+ 							<span className="metric-sub">
+-								{record.overview.inputTokens?.toLocaleString() ??
+-									0}{" "}
++								{formatTokens(record.overview.inputTokens ?? 0)}{" "}
+ 								in /{" "}
+-								{record.overview.outputTokens?.toLocaleString() ??
+-									0}{" "}
++								{formatTokens(
++									record.overview.outputTokens ?? 0
++								)}{" "}
+ 								out
+ 							</span>
+ 						</div>
+@@ -297,8 +298,10 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 								{record.overview.docChunkCount}
+ 							</strong>
+ 							<span className="metric-sub">
+-								{formatTokens(record.overview.docChunkTokens)}{" "}
+-								retrieved
++								{formatTokens(
++									record.overview.docChunkTokens ?? 0
++								)}{" "}
++								retrieved tokens
+ 							</span>
+ 						</div>
+ 					</div>
+@@ -327,58 +330,65 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							/>
+ 						</h3>
+ 
+-						<div className="evidence-tab-bar">
+-							<button
+-								type="button"
+-								className={`tab-bar-item ${
+-									activeTab === "payload" ? "active" : ""
+-								}`}
+-								onClick={() => setActiveTab("payload")}
+-							>
+-								<Text
+-									entry={{
+-										"cothinker.logAudit.tab.payload": {},
+-									}}
+-								/>
+-							</button>
+-							<button
+-								type="button"
+-								className={`tab-bar-item ${
+-									activeTab === "chunks" ? "active" : ""
+-								}`}
+-								onClick={() => setActiveTab("chunks")}
+-							>
+-								Doc Chunks ({record.docChunks.length})
+-							</button>
+-							<button
+-								type="button"
+-								className={`tab-bar-item ${
+-									activeTab === "feedback" ? "active" : ""
+-								}`}
+-								onClick={() => setActiveTab("feedback")}
+-							>
+-								<Text
+-									entry={{
+-										"cothinker.logAudit.tab.feedback": {},
+-									}}
+-								/>
+-							</button>
+-							<button
+-								type="button"
+-								className={`tab-bar-item ${
+-									activeTab === "prompt" ? "active" : ""
+-								}`}
+-								onClick={() => setActiveTab("prompt")}
+-							>
+-								<Text
+-									entry={{
+-										"cothinker.logAudit.tab.prompt": {},
+-									}}
+-								/>
+-							</button>
+-						</div>
++						<div className="evidence-tabs">
++							<div className="evidence-tab-bar">
++								<button
++									type="button"
++									className={`tab-bar-item ${
++										activeTab === "payload" ? "active" : ""
++									}`}
++									onClick={() => setActiveTab("payload")}
++								>
++									<Text
++										entry={{
++											"cothinker.logAudit.tab.payload":
++												{},
++										}}
++									/>
++								</button>
++								<button
++									type="button"
++									className={`tab-bar-item ${
++										activeTab === "chunks" ? "active" : ""
++									}`}
++									onClick={() => setActiveTab("chunks")}
++								>
++									<Text
++										entry={{
++											"cothinker.logAudit.tab.chunks": {},
++										}}
++									/>
++								</button>
++								<button
++									type="button"
++									className={`tab-bar-item ${
++										activeTab === "feedback" ? "active" : ""
++									}`}
++									onClick={() => setActiveTab("feedback")}
++								>
++									<Text
++										entry={{
++											"cothinker.logAudit.tab.feedback":
++												{},
++										}}
++									/>
++								</button>
++								<button
++									type="button"
++									className={`tab-bar-item ${
++										activeTab === "prompt" ? "active" : ""
++									}`}
++									onClick={() => setActiveTab("prompt")}
++								>
++									<Text
++										entry={{
++											"cothinker.logAudit.tab.prompt": {},
++										}}
++									/>
++								</button>
++							</div>
+ 
+-						<div className="evidence-tab-content">
++							<div className="evidence-tab-content">
+ 							{activeTab === "payload" && (
+ 								<div className="tab-pane-content">
+ 									<div className="tab-toolbar">
+@@ -576,7 +586,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							{activeTab === "feedback" && (
+ 								<div className="tab-pane-content">
+ 									{record.feedbackDetail.type !== "none" ? (
+-										<div className="overview-descriptions-grid border-sm">
++										<div className="overview-descriptions-grid border-sm single-col">
+ 											<div className="desc-cell col-span-2">
+ 												<span className="desc-label">
+ 													<Text
+@@ -685,7 +695,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 									<div className="prompt-toolbar">
+ 										<GenericButtonV2
+ 											type="default"
+-											className="copy-action-btn"
++											className="copy-action-btn text-btn"
+ 											prefixIcon={<CopySvgIcon />}
+ 											onClick={() =>
+ 												copyToClipboard(
+@@ -712,6 +722,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 						</div>
+ 					</div>
+ 				</div>
++			</div>
+ 			)}
+ 		</GenericSideDrawer>
+ 	);
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.scss b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.scss
+index 44e168a..fde4995 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.scss
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.scss
+@@ -800,11 +800,15 @@
+ 	background: #ffffff;
+ 
+ 	.detail-section {
+-		margin-bottom: 28px;
++		margin-bottom: 24px;
++
++		&:last-child {
++			margin-bottom: 0;
++		}
+ 
+ 		.section-title {
+-			margin: 0 0 16px 0;
+-			font-size: 16px;
++			margin: 0 0 12px 0;
++			font-size: 15px;
+ 			font-weight: 600;
+ 			color: #1e293b;
+ 			display: flex;
+@@ -815,13 +819,19 @@
+ 
+ 	.overview-descriptions-grid {
+ 		display: grid;
+-		grid-template-columns: repeat(2, 1fr);
++		grid-template-columns: repeat(2, minmax(0, 1fr));
+ 		border: 1px solid #e2e8f0;
+-		border-radius: 8px;
++		border-bottom: none;
++		border-radius: 4px;
+ 		overflow: hidden;
++		background: #ffffff;
+ 
+ 		&.border-sm {
+-			border-radius: 6px;
++			border-radius: 4px;
++		}
++
++		&.single-col {
++			grid-template-columns: 1fr;
+ 		}
+ 
+ 		&.mb-16 {
+@@ -829,11 +839,10 @@
+ 		}
+ 
+ 		.desc-cell {
+-			display: flex;
+-			flex-direction: column;
+-			padding: 12px 16px;
+-			border-bottom: 1px solid #f1f5f9;
+-			border-right: 1px solid #f1f5f9;
++			display: grid;
++			grid-template-columns: 160px minmax(0, 1fr);
++			border-bottom: 1px solid #e2e8f0;
++			border-right: 1px solid #e2e8f0;
+ 			background: #ffffff;
+ 
+ 			&:nth-child(2n) {
+@@ -842,21 +851,34 @@
+ 
+ 			&.col-span-2 {
+ 				grid-column: span 2;
++				grid-template-columns: 160px minmax(0, 1fr);
+ 				border-right: none;
+ 			}
+ 
+ 			.desc-label {
+-				font-size: 12px;
+-				color: #64748b;
+-				margin-bottom: 4px;
++				background: #f5f7fa;
++				padding: 11px 15px;
++				font-size: 13px;
++				font-weight: 600;
++				color: #1e293b;
++				border-right: 1px solid #e2e8f0;
++				display: flex;
++				align-items: center;
++				line-height: 1.4;
+ 			}
+ 
+ 			.desc-value {
++				padding: 11px 15px;
+ 				font-size: 13px;
+ 				color: #1e293b;
++				background: #ffffff;
++				display: flex;
++				align-items: center;
++				line-height: 1.4;
++				word-break: break-word;
+ 
+ 				&.font-medium {
+-					font-weight: 500;
++					font-weight: 400;
+ 				}
+ 
+ 				.version-badge {
+@@ -894,16 +916,27 @@
+ 				}
+ 
+ 				.feedback-icon {
+-					font-size: 16px;
++					font-size: 18px;
++				}
++
++				.sr-only {
++					position: absolute;
++					width: 1px;
++					height: 1px;
++					padding: 0;
++					margin: -1px;
++					overflow: hidden;
++					clip: rect(0, 0, 0, 0);
++					white-space: nowrap;
++					border: 0;
+ 				}
+ 			}
+ 
+ 			.feedback-comment-quote {
+ 				color: #475569;
+-				font-size: 12px;
+-				font-style: italic;
++				font-size: 13px;
+ 				padding-left: 8px;
+-				border-left: 2px solid #cbd5e1;
++				border-left: 1px solid #e2e8f0;
+ 			}
+ 		}
+ 	}
+@@ -916,7 +949,7 @@
+ 
+ 		.metric-card {
+ 			min-height: 92px;
+-			background: #ffffff;
++			background: #f8fafc;
+ 			border: 1px solid #e2e8f0;
+ 			border-radius: 8px;
+ 			padding: 14px;
+@@ -925,9 +958,11 @@
+ 			justify-content: space-between;
+ 
+ 			.metric-label {
+-				color: #64748b;
+-				font-size: 12px;
+-				font-weight: 500;
++				color: #1e293b !important;
++				font-size: 11px !important;
++				font-weight: 600;
++				letter-spacing: 0.04em;
++				text-transform: uppercase;
+ 			}
+ 
+ 			.metric-value {
+@@ -947,15 +982,17 @@
+ 		padding: 20px 24px;
+ 		background: #fef2f2;
+ 		border: 1px solid #e2e8f0;
+-		border-left: 4px solid #eb1500;
++		border-left: 4px solid #cc0000;
+ 		border-radius: 8px;
+-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
++		box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+ 
+ 		.section-title {
+-			margin: 0 0 8px 0;
+-			font-size: 14px;
+-			font-weight: 600;
+-			color: #991b1b;
++			margin: 0 0 12px 0;
++			font-size: 13px;
++			font-weight: 700;
++			color: #cc0000;
++			text-transform: uppercase;
++			letter-spacing: 0.05em;
+ 		}
+ 
+ 		.section-content {
+@@ -967,38 +1004,46 @@
+ 	}
+ 
+ 	.evidence-section {
++		.evidence-tabs {
++			border: 1px solid #e2e8f0;
++			border-radius: 8px;
++			padding: 0 16px 16px;
++			background: #ffffff;
++		}
++
+ 		.evidence-tab-bar {
+ 			display: flex;
+-			border-bottom: 1px solid #e2e8f0;
++			border-bottom: 2px solid #e4e7ed;
+ 			margin-bottom: 16px;
+-			gap: 20px;
++			gap: 32px;
+ 
+ 			.tab-bar-item {
+ 				background: transparent;
+ 				border: none;
+-				padding: 8px 0;
++				padding: 12px 0;
+ 				font-size: 14px;
+-				color: #64748b;
++				font-weight: 500;
++				color: #303133;
+ 				cursor: pointer;
+ 				position: relative;
+ 				transition: color 0.15s ease;
+ 
+ 				&:hover {
+-					color: #1e293b;
++					color: #cc0000;
+ 				}
+ 
+ 				&.active {
+-					color: #2563eb;
++					color: #cc0000;
+ 					font-weight: 600;
+ 
+ 					&::after {
+ 						content: "";
+ 						position: absolute;
+-						bottom: -1px;
++						bottom: -2px;
+ 						left: 0;
+ 						right: 0;
+-						height: 2px;
+-						background: #2563eb;
++						height: 3px;
++						background: #cc0000;
+ 					}
+ 				}
+ 			}
+@@ -1008,17 +1053,18 @@
+ 			display: flex;
+ 			justify-content: space-between;
+ 			align-items: flex-start;
+-			margin-bottom: 12px;
++			gap: 16px;
++			margin-bottom: 14px;
+ 
+ 			h4 {
+-				margin: 0 0 4px 0;
++				margin: 0;
+ 				font-size: 14px;
+ 				font-weight: 600;
+ 				color: #1e293b;
+ 			}
+ 
+ 			.tab-toolbar-sub {
+-				margin: 0;
++				margin: 4px 0 0;
+ 				font-size: 12px;
+ 				color: #64748b;
+ 			}
+@@ -1033,54 +1079,68 @@
+ 		.copy-action-btn {
+ 			--btn-default-bg: #ffffff;
+ 			--btn-hover-bg: #f8fafc;
+-			--btn-default-color: #334155;
++			--btn-default-color: #606266;
+ 			--btn-hover-color: #1e293b;
+-			--btn-border: 1px solid #cbd5e1;
+-			--btn-border-radius: 6px;
+-			--btn-padding-inline: 12px;
+-			--btn-padding-block: 6px;
++			--btn-border: 1px solid #dcdfe6;
++			--btn-border-radius: 4px;
++			--btn-padding-inline: 11px;
++			--btn-padding-block: 5px;
+ 			--btn-font-size: 12px;
+-			--btn-icon-spacing: 6px;
++			--btn-icon-spacing: 5px;
+ 			display: inline-flex;
+ 			align-items: center;
+-			gap: 6px;
++			gap: 5px;
+ 			background: #ffffff !important;
+-			border: 1px solid #cbd5e1 !important;
+-			border-radius: 6px;
+-			padding: 6px 12px !important;
++			border: 1px solid #dcdfe6 !important;
++			border-radius: 4px;
++			padding: 5px 11px !important;
+ 			font-size: 12px;
+-			color: #334155 !important;
++			color: #606266 !important;
+ 			cursor: pointer;
+ 			transition: all 0.15s ease;
+ 
+ 			&:hover {
+ 				background: #f8fafc !important;
+-				border-color: #94a3b8 !important;
++				border-color: #c0c4cc !important;
++				color: #1e293b !important;
++			}
++
++			&.text-btn {
++				background: transparent !important;
++				border: none !important;
++				box-shadow: none !important;
++				color: #606266 !important;
++
++				&:hover {
++					color: #cc0000 !important;
++					background: transparent !important;
++				}
+ 			}
+ 		}
+ 
+ 		.code-snippet {
+-			font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
++			font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo,
+ 				monospace;
+ 			font-size: 12px;
+-			color: #0f172a;
+-			background: #f1f5f9;
+-			padding: 2px 6px;
+-			border-radius: 4px;
++			color: #1e293b;
++			background: transparent;
++			padding: 0;
+ 		}
+ 
+ 		.prompt-viewer {
+ 			background: #1e1e1e;
+ 			border-radius: 8px;
+ 			padding: 16px;
++			margin-top: 16px;
+ 			overflow-x: auto;
+-			max-height: 400px;
++			max-height: 480px;
+ 			overflow-y: auto;
+ 
+ 			pre {
+ 				margin: 0;
+ 				color: #d4d4d4;
+-				font-family: Menlo, Monaco, "Courier New", monospace;
++				font-family: "SFMono-Regular", Consolas, "Liberation Mono",
++					Menlo, monospace;
+ 				font-size: 12px;
+ 				line-height: 1.6;
+ 				white-space: pre-wrap;
+@@ -1088,9 +1148,9 @@
+ 			}
+ 
+ 			&.request-viewer {
+-				background: #0f172a;
++				background: #1e1e1e;
+ 				pre {
+-					color: #cbd5e1;
++					color: #d4d4d4;
+ 				}
+ 			}
+ 		}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+index 9612a81..5e64cbc 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+@@ -240,7 +240,7 @@ const buildFallbackDetail = (
+ 			inputTokens: inTok,
+ 			outputTokens: outTok,
+ 			totalTokens: totalTok,
+-			modelId: "gpt-4o-mini",
++			modelId: "gpt-4.1-mini",
+ 			docChunkCount: 0,
+ 			docChunkTokens: 0,
+ 			commentary: {
+@@ -284,23 +284,9 @@ const DEFAULT_ROLE_OPTIONS = [
+ 	{ label: "Sales Representative", value: "Sales Representative" },
+ ];
+ 
+-const getDefaultDates = () => {
+-	const end = new Date();
+-	const start = new Date(end);
+-	start.setDate(start.getDate() - 7);
+-	const pad = (n: number) => String(n).padStart(2, "0");
+-	const format = (d: Date) =>
+-		`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+-	return {
+-		startDate: format(start),
+-		endDate: format(end),
+-	};
+-};
+-
+ export const LogAuditTab: FC = () => {
+-	const initialDates = useMemo(() => getDefaultDates(), []);
+-	const [startDate, setStartDate] = useState<string>(initialDates.startDate);
+-	const [endDate, setEndDate] = useState<string>(initialDates.endDate);
++	const [startDate, setStartDate] = useState<string>("");
++	const [endDate, setEndDate] = useState<string>("");
+ 	const [roleOptions, setRoleOptions] =
+ 		useState<Array<{ label: string; value: string }>>(DEFAULT_ROLE_OPTIONS);
+ 	const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+@@ -327,10 +313,9 @@ export const LogAuditTab: FC = () => {
+ 	const tableSectionRef = useRef<HTMLDivElement>(null);
+ 
+ 	const hasActiveFilters = useMemo(() => {
+-		const def = getDefaultDates();
+ 		return Boolean(
+-			startDate !== def.startDate ||
+-				endDate !== def.endDate ||
++			startDate ||
++				endDate ||
+ 				selectedRoles.length > 0 ||
+ 				usernameSearch.trim()
+ 		);
+@@ -419,16 +404,13 @@ export const LogAuditTab: FC = () => {
+ 	};
+ 
+ 	const handleReset = () => {
+-		const def = getDefaultDates();
+-		setStartDate(def.startDate);
+-		setEndDate(def.endDate);
++		setStartDate("");
++		setEndDate("");
+ 		setSelectedRoles([]);
+ 		setUsernameSearch("");
+ 		setPage(1);
+ 		setLoading(true);
+ 		InsightService.getAuditGenerations({
+-			startDate: def.startDate,
+-			endDate: def.endDate,
+ 			page: 1,
+ 			pageSize,
+ 		})
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+index 99e1024..0411623 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+@@ -108,166 +108,171 @@ export const PromptEditorDrawer: FC<IProps> = ({
+ 						))}
+ 					</div>
+ 
+-					{activeScope === "SHARED" ? (
+-						<div className="editor-form">
+-							<div className="form-item">
+-								<div className="form-item-header">
++					<div className="editor-grid">
++						<div className="edit-fields">
++							{activeScope === "SHARED" ? (
++								<>
++									<p className="impact-note">
++										Changes here apply to BU Marketing,
++										Sales Manager, and Sales Representative
++										commentary generation.
++									</p>
+ 									<label htmlFor="shared-instructions">
+ 										Shared instructions
+ 									</label>
+-									<span className="field-hint">
+-										Foundation prompt injected into every
+-										generation run
+-									</span>
+-								</div>
+-								<textarea
+-									id="shared-instructions"
+-									rows={8}
+-									className="textarea-box"
+-									readOnly={!editable}
+-									value={config.sharedInstructions}
+-									onChange={(e) =>
+-										onUpdateShared(e.target.value)
+-									}
+-									placeholder="Provide shared instructions across all audiences..."
+-								/>
+-							</div>
++									<textarea
++										id="shared-instructions"
++										rows={16}
++										className="textarea-box"
++										readOnly={!editable}
++										value={config.sharedInstructions}
++										onChange={(e) =>
++											onUpdateShared(e.target.value)
++										}
++										placeholder="Provide shared instructions across all audiences..."
++									/>
++									<div className="field-hint">
++										Supported placeholders:{" "}
++										{KNOWN_PLACEHOLDERS.map((ph, idx) => (
++											<span key={ph}>
++												<code>{`{${ph}}`}</code>
++												{idx <
++												KNOWN_PLACEHOLDERS.length - 1
++													? ", "
++													: ""}
++											</span>
++										))}
++									</div>
++								</>
++							) : (
++								<>
++									<p className="impact-note">
++										Changes here apply only to{" "}
++										{SCOPE_NAMES[activeScope]} commentary
++										generation.
++									</p>
++									<div className="profile-field">
++										<label htmlFor="audience-lens">
++											Audience lens
++										</label>
++										<textarea
++											id="audience-lens"
++											rows={5}
++											className="textarea-box"
++											readOnly={!editable}
++											value={
++												config.roles[activeScope]
++													.audienceLens
++											}
++											onChange={(e) =>
++												onUpdateRoleField(
++													activeScope,
++													"audienceLens",
++													e.target.value
++												)
++											}
++											placeholder="Describe the audience lens..."
++										/>
++									</div>
+ 
+-							<div className="placeholders-card">
+-								<strong>Dynamic placeholders available</strong>
+-								<div className="tags-wrapper">
+-									{KNOWN_PLACEHOLDERS.map((ph) => (
+-										<span key={ph} className="tag-pill">
+-											{`{${ph}}`}
+-										</span>
+-									))}
+-								</div>
+-							</div>
++									<div className="profile-field">
++										<label htmlFor="priorities">
++											Priorities
++										</label>
++										<textarea
++											id="priorities"
++											rows={7}
++											className="textarea-box"
++											readOnly={!editable}
++											value={
++												config.roles[activeScope]
++													.priorities
++											}
++											onChange={(e) =>
++												onUpdateRoleField(
++													activeScope,
++													"priorities",
++													e.target.value
++												)
++											}
++											placeholder="List 2-4 numbered priorities..."
++										/>
++									</div>
++
++									<div className="profile-field">
++										<label htmlFor="commentary-focus">
++											Key Takeaway focus
++										</label>
++										<textarea
++											id="commentary-focus"
++											rows={5}
++											className="textarea-box"
++											readOnly={!editable}
++											value={
++												config.roles[activeScope]
++													.commentaryFocus
++											}
++											onChange={(e) =>
++												onUpdateRoleField(
++													activeScope,
++													"commentaryFocus",
++													e.target.value
++												)
++											}
++											placeholder="Specify takeaway emphasis..."
++										/>
++									</div>
++								</>
++							)}
+ 						</div>
+-					) : (
+-						<div className="editor-form">
+-							<div className="form-item">
+-								<div className="form-item-header">
+-									<label htmlFor="audience-lens">
+-										Audience lens
+-									</label>
+-									<span className="field-hint">
+-										Who the reader is and what context they
+-										need
+-									</span>
+-								</div>
+-								<textarea
+-									id="audience-lens"
+-									rows={3}
+-									className="textarea-box"
+-									readOnly={!editable}
+-									value={
+-										config.roles[activeScope].audienceLens
+-									}
+-									onChange={(e) =>
+-										onUpdateRoleField(
+-											activeScope,
+-											"audienceLens",
+-											e.target.value
+-										)
+-									}
+-									placeholder="Describe the audience lens..."
+-								/>
+-							</div>
+ 
+-							<div className="form-item">
+-								<div className="form-item-header">
+-									<label htmlFor="priorities">
+-										Priorities
+-									</label>
+-									<span className="field-hint">
+-										Key focus areas for this role
+-									</span>
+-								</div>
+-								<textarea
+-									id="priorities"
+-									rows={4}
+-									className="textarea-box"
+-									readOnly={!editable}
+-									value={config.roles[activeScope].priorities}
+-									onChange={(e) =>
+-										onUpdateRoleField(
+-											activeScope,
+-											"priorities",
+-											e.target.value
+-										)
+-									}
+-									placeholder="List 2-4 numbered priorities..."
+-								/>
++						<div className="preview-panel">
++							<div className="preview-heading">
++								<h3>Combined preview</h3>
++								<span className="read-only-badge">
++									Read only
++								</span>
+ 							</div>
+-
+-							<div className="form-item">
+-								<div className="form-item-header">
+-									<label htmlFor="commentary-focus">
+-										Key Takeaway focus
+-									</label>
+-									<span className="field-hint">
+-										Guidance for executive highlight
+-										synthesis
+-									</span>
+-								</div>
+-								<textarea
+-									id="commentary-focus"
+-									rows={3}
+-									className="textarea-box"
+-									readOnly={!editable}
+-									value={
+-										config.roles[activeScope]
+-											.commentaryFocus
+-									}
++							{activeScope === "SHARED" && (
++								<select
++									className="role-select"
++									aria-label="Preview role"
++									value={previewRole}
+ 									onChange={(e) =>
+-										onUpdateRoleField(
+-											activeScope,
+-											"commentaryFocus",
+-											e.target.value
++										setPreviewRole(
++											e.target.value as
++												| "BU_HEAD"
++												| "SALES_MANAGER"
++												| "SALES_REP"
+ 										)
+ 									}
+-									placeholder="Specify takeaway emphasis..."
+-								/>
+-							</div>
+-						</div>
+-					)}
+-
+-					<div className="prompt-preview-section">
+-						<div className="preview-header">
+-							<strong>Live prompt preview</strong>
+-							{activeScope === "SHARED" && (
+-								<div className="role-switch">
+-									<span>Simulate role:</span>
+-									<select
+-										value={previewRole}
+-										onChange={(e) =>
+-											setPreviewRole(
+-												e.target.value as
+-													| "BU_HEAD"
+-													| "SALES_MANAGER"
+-													| "SALES_REP"
+-											)
+-										}
+-									>
+-										<option value="BU_HEAD">
+-											BU Marketing
+-										</option>
+-										<option value="SALES_MANAGER">
+-											Sales Manager
+-										</option>
+-										<option value="SALES_REP">
+-											Sales Representative
+-										</option>
+-									</select>
+-								</div>
++								>
++									<option value="BU_HEAD">
++										BU Marketing
++									</option>
++									<option value="SALES_MANAGER">
++										Sales Manager
++									</option>
++									<option value="SALES_REP">
++										Sales Representative
++									</option>
++								</select>
+ 							)}
++							<p>
++								Shows how Shared Instructions and the role
++								profile combine at runtime.
++							</p>
++							<pre>{previewText}</pre>
+ 						</div>
+-						<pre className="preview-block">{previewText}</pre>
+ 					</div>
+ 				</div>
+ 
+ 				<div className="drawer-footer">
++					<span>
++						{editable
++							? "Save draft keeps changes in this workspace until you publish."
++							: "Start or open a draft to edit prompt content."}
++					</span>
+ 					<GenericButtonV2
+ 						type="secondary"
+ 						className="el-btn-default"
