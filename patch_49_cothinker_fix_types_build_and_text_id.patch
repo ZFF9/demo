@@ -1,0 +1,2566 @@
+diff --git a/packages/types/src/translations/en.json b/packages/types/src/translations/en.json
+index 915fc3f..0163179 100644
+--- a/packages/types/src/translations/en.json
++++ b/packages/types/src/translations/en.json
+@@ -2075,7 +2075,12 @@
+       "inactive": "Inactive",
+       "actions": "Actions",
+       "status": "Status",
+-      "demoTools": "Demo tools"
++      "demoTools": "Demo tools",
++      "retry": "\"Retry processing\",",
++      "clearAll": "\"Clear All\",",
++      "thumbsUp": "\"Thumbs Up\",",
++      "thumbsDown": "\"Thumbs Down\",",
++      "exporting": "Exporting..."
+     },
+     "nav": {
+       "overview": "Overview",
+@@ -2104,7 +2109,10 @@
+       "rateBandOptimal": "Optimal (80%-100%)",
+       "rateBandMedium": "Attention (60%-79%)",
+       "rateBandLow": "Needs Work (<60%)",
+-      "noData": "No generation or feedback data available."
++      "noData": "No generation or feedback data available.",
++      "kpi": {
++        "llmCost": "\"LLM Cost\","
++      }
+     },
+     "logAudit": {
+       "startDate": "Start date",
+@@ -2139,7 +2147,48 @@
+       "copyPrompt": "Copy Prompt",
+       "notGenerated": "Not generated",
+       "viewDocument": "View document",
+-      "noDocChunksUsed": "No knowledge documents were cited for this generation."
++      "noDocChunksUsed": "No knowledge documents were cited for this generation.",
++      "filter": {
++        "title": "\"Filters\",",
++        "dateTo": "\"To\",",
++        "rolePlaceholder": "\"Filter by Role\","
++      },
++      "exportExcel": "exporting\n\t\t\t\t\t\t\t\t\t? \"Exporting…\"\n\t\t\t\t\t\t\t\t\t: \"Export to Excel\",",
++      "table": {
++        "title": "\"Activity Logs\","
++      },
++      "detail": {
++        "keyTakeaway": "\"Key Takeaway\",",
++        "overview": "\"Generation Overview\",",
++        "requestTime": "\"Request Time\",",
++        "generationTime": "\"Generation Date\",",
++        "user": "\"User\",",
++        "role": "\"Role\",",
++        "duration": "\"Duration\",",
++        "promptVersion": "\"Prompt Version\",",
++        "feedback": "\"User Feedback\",",
++        "noFeedback": "\"No feedback\",",
++        "tokenVolume": "\"Token Volume\",",
++        "docChunks": "\"Doc Chunks\",",
++        "generatedCommentary": "\"Generated Commentary\",",
++        "evidenceReplay": "\"Evidence & Replay\",",
++        "requestId": "\"Request ID\",",
++        "executedAt": "\"Executed At\",",
++        "correlationId": "\"Correlation ID\",",
++        "chunkNote": "\"Evidence captured for this generation. Later document changes do not alter these excerpts.\",",
++        "viewDoc": "\"View document\",",
++        "emptyChunks": "\"No document chunks were retrieved for this generation\",",
++        "feedbackType": "\"Feedback Type\",",
++        "feedbackTime": "\"Feedback Time\",",
++        "comment": "\"Comment\",",
++        "noComment": "\"No written comment was provided.\",",
++        "emptyFeedback": "\"No user feedback recorded for this generation\","
++      },
++      "tab": {
++        "payload": "\"Request Payload\",",
++        "feedback": "\"Feedback\",",
++        "prompt": "\"Full Prompt\","
++      }
+     },
+     "prompt": {
+       "activeVersionLabel": "Active Version",
+@@ -2172,7 +2221,23 @@
+       "audienceLens": "Audience lens",
+       "priorities": "Priorities",
+       "keyTakeawayFocus": "Key Takeaway focus",
+-      "combinedPreview": "Combined preview"
++      "combinedPreview": "Combined preview",
++      "title": "\"Prompt Management\",",
++      "subtitle": "\"Configure prompts and maintain metric definitions for AI Commentary.\",",
++      "currentActiveVersion": "\"Current active version\",",
++      "metricsTitle": "\"Metric definitions\",",
++      "config": "\"Configuration\",",
++      "scope": "\"Scope\",",
++      "configTitle": "\"Prompt configuration\",",
++      "configDesc": "\"Shared instructions and three role profiles are published as one version.\",",
++      "lastUpdated": "\"Last updated\",",
++      "metricsDesc": "\"Define domain metrics and their strategic interpretation for the AI engine.\",",
++      "noMetricsYet": "\"No metric definitions yet.\",",
++      "noMetricsMatch": "\"No metrics match your search.\",",
++      "version": "\"Version\",",
++      "status": "\"Status\",",
++      "historyTitle": "\"Version history\",",
++      "historyDesc": "\"Each version contains the shared instructions and all three role profiles.\","
+     },
+     "knowledgeDoc": {
+       "uploadDoc": "Upload Document",
+@@ -2202,7 +2267,41 @@
+       "documentDetails": "Document Details",
+       "retrievalAvailability": "Retrieval Availability",
+       "eligible": "Eligible for retrieval",
+-      "notEligible": "Not eligible for retrieval"
++      "notEligible": "Not eligible for retrieval",
++      "title": "\"Knowledge Doc Container\",",
++      "subtitle": "\"Manage brand documents and their availability to AI Commentary.\",",
++      "uploadDocument": "\"Upload Document\",",
++      "filter": {
++        "title": "\"Filters\","
++      },
++      "table": {
++        "title": "\"Documents\",",
++        "availabilityDesc": "\"Only Active documents that are ready and within their effective dates are available for retrieval.\","
++      },
++      "detail": {
++        "title": "\"Document details\",",
++        "availabilityDesc": "\"Only Active documents with completed processing and valid effective dates can be retrieved by the Commentary Agent.\",",
++        "metadata": "\"Document metadata\",",
++        "brand": "\"Brand\",",
++        "effectiveDate": "\"Effective Date\",",
++        "expiryDate": "\"Expiry Date\",",
++        "description": "\"Description\",",
++        "systemInfo": "\"System information\",",
++        "uploadedBy": "\"Uploaded By\",",
++        "uploadedAt": "\"Uploaded At\",",
++        "lastUpdated": "\"Last Updated\",",
++        "processingStatus": "\"Processing Status\",",
++        "errorTitle": "\"Processing Failure\","
++      },
++      "status": {
++        "active": "\"Active\",",
++        "inactive": "\"Inactive\","
++      },
++      "action": {
++        "deactivate": "\"Deactivate\",",
++        "activate": "\"Activate\","
++      },
++      "fileLabel": "\"File\","
+     }
+   }
+-}
+\ No newline at end of file
++}
+diff --git a/packages/types/src/translations/ja.json b/packages/types/src/translations/ja.json
+index 4ce783a..8b31370 100644
+--- a/packages/types/src/translations/ja.json
++++ b/packages/types/src/translations/ja.json
+@@ -2052,5 +2052,257 @@
+   "noAccess": {
+     "title": "Sorry you do not have access to:",
+     "noModuleTitle": "Sorry you do not have access to this."
++  },
++  "cothinker": {
++    "common": {
++      "search": "Search",
++      "reset": "Reset",
++      "export": "Export",
++      "exportExcel": "Export to Excel",
++      "refresh": "Refresh",
++      "view": "View",
++      "edit": "Edit",
++      "delete": "Delete",
++      "cancel": "Cancel",
++      "save": "Save",
++      "saveChanges": "Save changes",
++      "confirm": "Confirm",
++      "copy": "Copy",
++      "copied": "Copied to clipboard",
++      "close": "Close",
++      "total": "Total {total}",
++      "goTo": "Go to",
++      "active": "Active",
++      "inactive": "Inactive",
++      "actions": "Actions",
++      "status": "Status",
++      "demoTools": "Demo tools",
++      "retry": "\"Retry processing\",",
++      "clearAll": "\"Clear All\",",
++      "thumbsUp": "\"Thumbs Up\",",
++      "thumbsDown": "\"Thumbs Down\",",
++      "exporting": "Exporting..."
++    },
++    "nav": {
++      "overview": "Overview",
++      "overviewTitle": "Overview & Analytics",
++      "overviewDesc": "Monitor user feedback, token consumption, and model engagement metrics.",
++      "logAudit": "Log Audit",
++      "logAuditTitle": "Audit & Chat Logs",
++      "logAuditDesc": "Inspect detailed user interaction sessions, queries, and system responses.",
++      "promptManagement": "Prompt Management",
++      "promptManagementTitle": "Prompt Templates & Configuration",
++      "promptManagementDesc": "Manage system prompt templates, versioning, and parameter configurations.",
++      "knowledgeDoc": "Knowledge Doc Container",
++      "knowledgeDocTitle": "Knowledge Base Documents",
++      "knowledgeDocDesc": "Upload, inspect, and organize business domain documents and vector embeddings."
++    },
++    "overview": {
++      "totalGenerations": "Total Generations",
++      "thumbsUp": "Thumbs Up",
++      "thumbsDown": "Thumbs Down",
++      "llmCost": "LLM Cost",
++      "avgCostPerGen": "Average cost per generation",
++      "totalTokens": "Total Token volume",
++      "feedbackByRole": "Positive Feedback Rate by Role (Last 30 Days)",
++      "feedbackTrend": "Daily Positive Feedback Rate (Last 30 Days)",
++      "positiveFeedbackRate": "Positive Feedback Rate (%)",
++      "rateBandOptimal": "Optimal (80%-100%)",
++      "rateBandMedium": "Attention (60%-79%)",
++      "rateBandLow": "Needs Work (<60%)",
++      "noData": "No generation or feedback data available.",
++      "kpi": {
++        "llmCost": "\"LLM Cost\","
++      }
++    },
++    "logAudit": {
++      "startDate": "Start date",
++      "endDate": "End date",
++      "username": "Username",
++      "role": "Role",
++      "searchUserPlaceholder": "Search by user name",
++      "selectRolePlaceholder": "Filter by role",
++      "timestamp": "Timestamp",
++      "user": "User",
++      "promptVersion": "Prompt Version",
++      "duration": "Duration",
++      "feedback": "Feedback",
++      "drawerTitle": "Log Details",
++      "generationOverview": "Generation Overview",
++      "requestTime": "Request Time",
++      "generationDate": "Generation Date",
++      "failureReason": "Failure reason",
++      "userFeedback": "User Feedback",
++      "noWrittenComment": "No written comment was provided.",
++      "noFeedback": "No user feedback recorded for this generation.",
++      "tokenVolume": "Token Volume",
++      "docChunks": "Doc Chunks",
++      "generatedCommentary": "Generated Commentary",
++      "keyTakeaway": "Key Takeaway",
++      "evidenceReplay": "Evidence & Replay",
++      "tabPayload": "Request Payload",
++      "tabDocChunks": "Doc Chunks",
++      "tabFeedback": "Feedback",
++      "tabFullPrompt": "Full Prompt",
++      "copyPayload": "Copy Request Payload",
++      "copyPrompt": "Copy Prompt",
++      "notGenerated": "Not generated",
++      "viewDocument": "View document",
++      "noDocChunksUsed": "No knowledge documents were cited for this generation.",
++      "filter": {
++        "title": "\"Filters\",",
++        "dateTo": "\"To\",",
++        "rolePlaceholder": "\"Filter by Role\","
++      },
++      "exportExcel": "exporting\n\t\t\t\t\t\t\t\t\t? \"Exporting…\"\n\t\t\t\t\t\t\t\t\t: \"Export to Excel\",",
++      "table": {
++        "title": "\"Activity Logs\","
++      },
++      "detail": {
++        "keyTakeaway": "\"Key Takeaway\",",
++        "overview": "\"Generation Overview\",",
++        "requestTime": "\"Request Time\",",
++        "generationTime": "\"Generation Date\",",
++        "user": "\"User\",",
++        "role": "\"Role\",",
++        "duration": "\"Duration\",",
++        "promptVersion": "\"Prompt Version\",",
++        "feedback": "\"User Feedback\",",
++        "noFeedback": "\"No feedback\",",
++        "tokenVolume": "\"Token Volume\",",
++        "docChunks": "\"Doc Chunks\",",
++        "generatedCommentary": "\"Generated Commentary\",",
++        "evidenceReplay": "\"Evidence & Replay\",",
++        "requestId": "\"Request ID\",",
++        "executedAt": "\"Executed At\",",
++        "correlationId": "\"Correlation ID\",",
++        "chunkNote": "\"Evidence captured for this generation. Later document changes do not alter these excerpts.\",",
++        "viewDoc": "\"View document\",",
++        "emptyChunks": "\"No document chunks were retrieved for this generation\",",
++        "feedbackType": "\"Feedback Type\",",
++        "feedbackTime": "\"Feedback Time\",",
++        "comment": "\"Comment\",",
++        "noComment": "\"No written comment was provided.\",",
++        "emptyFeedback": "\"No user feedback recorded for this generation\","
++      },
++      "tab": {
++        "payload": "\"Request Payload\",",
++        "feedback": "\"Feedback\",",
++        "prompt": "\"Full Prompt\","
++      }
++    },
++    "prompt": {
++      "activeVersionLabel": "Active Version",
++      "changeNote": "Change note",
++      "createDraft": "Create draft",
++      "continueEditing": "Continue editing draft",
++      "saveDraft": "Save draft",
++      "discardDraft": "Discard draft",
++      "viewChanges": "View changes",
++      "reviewPublish": "Review & publish",
++      "configuration": "Configuration",
++      "versionHistory": "Version History",
++      "metricDefinitions": "Metric Definitions",
++      "addMetric": "Add metric",
++      "metricName": "Metric",
++      "whatItMeasures": "What it measures",
++      "whyItMatters": "Why it matters",
++      "publishedBy": "Published by",
++      "publishedAt": "Published at",
++      "changeType": "Change type",
++      "restore": "Restore",
++      "restoreVersionTitle": "Restore configuration version",
++      "restoreReasonPlaceholder": "Enter reason for restoring this version",
++      "discardConfirmTitle": "Discard shared draft?",
++      "discardConfirmContent": "All unsaved changes in this draft will be permanently lost.",
++      "publishConfirmTitle": "Publish draft configuration",
++      "publishReasonPlaceholder": "Enter change note for this version",
++      "editorDrawerTitle": "Prompt Template Editor",
++      "sharedInstructions": "Shared Instructions",
++      "audienceLens": "Audience lens",
++      "priorities": "Priorities",
++      "keyTakeawayFocus": "Key Takeaway focus",
++      "combinedPreview": "Combined preview",
++      "title": "\"Prompt Management\",",
++      "subtitle": "\"Configure prompts and maintain metric definitions for AI Commentary.\",",
++      "currentActiveVersion": "\"Current active version\",",
++      "metricsTitle": "\"Metric definitions\",",
++      "config": "\"Configuration\",",
++      "scope": "\"Scope\",",
++      "configTitle": "\"Prompt configuration\",",
++      "configDesc": "\"Shared instructions and three role profiles are published as one version.\",",
++      "lastUpdated": "\"Last updated\",",
++      "metricsDesc": "\"Define domain metrics and their strategic interpretation for the AI engine.\",",
++      "noMetricsYet": "\"No metric definitions yet.\",",
++      "noMetricsMatch": "\"No metrics match your search.\",",
++      "version": "\"Version\",",
++      "status": "\"Status\",",
++      "historyTitle": "\"Version history\",",
++      "historyDesc": "\"Each version contains the shared instructions and all three role profiles.\","
++    },
++    "knowledgeDoc": {
++      "uploadDoc": "Upload Document",
++      "searchPlaceholder": "Search by document name or description",
++      "filterBrand": "Filter by brand",
++      "filterStatus": "Filter by status",
++      "document": "Document",
++      "brand": "Brand",
++      "effectiveDate": "Effective Date",
++      "expiryDate": "Expiry Date",
++      "noExpiry": "No expiry",
++      "uploadedBy": "Uploaded By",
++      "uploadedAt": "Uploaded At",
++      "processingStatus": "Processing Status",
++      "ready": "Ready",
++      "processing": "Processing",
++      "failed": "Failed",
++      "retryProcessing": "Retry processing",
++      "activate": "Activate",
++      "deactivate": "Deactivate",
++      "dropTitle": "Drop one brand document here or click to browse",
++      "dropHint": "Supported formats: PDF, Markdown, PPT/PPTX, XLS/XLSX, CSV, TXT (up to 50 MB)",
++      "description": "Description",
++      "descriptionPlaceholder": "Describe the document content and business context (up to 4,000 characters)",
++      "confirmActivateTitle": "Activate document for retrieval?",
++      "confirmDeactivateTitle": "Deactivate document?",
++      "documentDetails": "Document Details",
++      "retrievalAvailability": "Retrieval Availability",
++      "eligible": "Eligible for retrieval",
++      "notEligible": "Not eligible for retrieval",
++      "title": "\"Knowledge Doc Container\",",
++      "subtitle": "\"Manage brand documents and their availability to AI Commentary.\",",
++      "uploadDocument": "\"Upload Document\",",
++      "filter": {
++        "title": "\"Filters\","
++      },
++      "table": {
++        "title": "\"Documents\",",
++        "availabilityDesc": "\"Only Active documents that are ready and within their effective dates are available for retrieval.\","
++      },
++      "detail": {
++        "title": "\"Document details\",",
++        "availabilityDesc": "\"Only Active documents with completed processing and valid effective dates can be retrieved by the Commentary Agent.\",",
++        "metadata": "\"Document metadata\",",
++        "brand": "\"Brand\",",
++        "effectiveDate": "\"Effective Date\",",
++        "expiryDate": "\"Expiry Date\",",
++        "description": "\"Description\",",
++        "systemInfo": "\"System information\",",
++        "uploadedBy": "\"Uploaded By\",",
++        "uploadedAt": "\"Uploaded At\",",
++        "lastUpdated": "\"Last Updated\",",
++        "processingStatus": "\"Processing Status\",",
++        "errorTitle": "\"Processing Failure\","
++      },
++      "status": {
++        "active": "\"Active\",",
++        "inactive": "\"Inactive\","
++      },
++      "action": {
++        "deactivate": "\"Deactivate\",",
++        "activate": "\"Activate\","
++      },
++      "fileLabel": "\"File\","
++    }
+   }
+ }
+diff --git a/packages/types/src/translations/ko.json b/packages/types/src/translations/ko.json
+index 4dcfe80..aceab69 100644
+--- a/packages/types/src/translations/ko.json
++++ b/packages/types/src/translations/ko.json
+@@ -2051,5 +2051,257 @@
+   "noAccess": {
+     "title": "Sorry you do not have access to:",
+     "noModuleTitle": "Sorry you do not have access to this."
++  },
++  "cothinker": {
++    "common": {
++      "search": "Search",
++      "reset": "Reset",
++      "export": "Export",
++      "exportExcel": "Export to Excel",
++      "refresh": "Refresh",
++      "view": "View",
++      "edit": "Edit",
++      "delete": "Delete",
++      "cancel": "Cancel",
++      "save": "Save",
++      "saveChanges": "Save changes",
++      "confirm": "Confirm",
++      "copy": "Copy",
++      "copied": "Copied to clipboard",
++      "close": "Close",
++      "total": "Total {total}",
++      "goTo": "Go to",
++      "active": "Active",
++      "inactive": "Inactive",
++      "actions": "Actions",
++      "status": "Status",
++      "demoTools": "Demo tools",
++      "retry": "\"Retry processing\",",
++      "clearAll": "\"Clear All\",",
++      "thumbsUp": "\"Thumbs Up\",",
++      "thumbsDown": "\"Thumbs Down\",",
++      "exporting": "Exporting..."
++    },
++    "nav": {
++      "overview": "Overview",
++      "overviewTitle": "Overview & Analytics",
++      "overviewDesc": "Monitor user feedback, token consumption, and model engagement metrics.",
++      "logAudit": "Log Audit",
++      "logAuditTitle": "Audit & Chat Logs",
++      "logAuditDesc": "Inspect detailed user interaction sessions, queries, and system responses.",
++      "promptManagement": "Prompt Management",
++      "promptManagementTitle": "Prompt Templates & Configuration",
++      "promptManagementDesc": "Manage system prompt templates, versioning, and parameter configurations.",
++      "knowledgeDoc": "Knowledge Doc Container",
++      "knowledgeDocTitle": "Knowledge Base Documents",
++      "knowledgeDocDesc": "Upload, inspect, and organize business domain documents and vector embeddings."
++    },
++    "overview": {
++      "totalGenerations": "Total Generations",
++      "thumbsUp": "Thumbs Up",
++      "thumbsDown": "Thumbs Down",
++      "llmCost": "LLM Cost",
++      "avgCostPerGen": "Average cost per generation",
++      "totalTokens": "Total Token volume",
++      "feedbackByRole": "Positive Feedback Rate by Role (Last 30 Days)",
++      "feedbackTrend": "Daily Positive Feedback Rate (Last 30 Days)",
++      "positiveFeedbackRate": "Positive Feedback Rate (%)",
++      "rateBandOptimal": "Optimal (80%-100%)",
++      "rateBandMedium": "Attention (60%-79%)",
++      "rateBandLow": "Needs Work (<60%)",
++      "noData": "No generation or feedback data available.",
++      "kpi": {
++        "llmCost": "\"LLM Cost\","
++      }
++    },
++    "logAudit": {
++      "startDate": "Start date",
++      "endDate": "End date",
++      "username": "Username",
++      "role": "Role",
++      "searchUserPlaceholder": "Search by user name",
++      "selectRolePlaceholder": "Filter by role",
++      "timestamp": "Timestamp",
++      "user": "User",
++      "promptVersion": "Prompt Version",
++      "duration": "Duration",
++      "feedback": "Feedback",
++      "drawerTitle": "Log Details",
++      "generationOverview": "Generation Overview",
++      "requestTime": "Request Time",
++      "generationDate": "Generation Date",
++      "failureReason": "Failure reason",
++      "userFeedback": "User Feedback",
++      "noWrittenComment": "No written comment was provided.",
++      "noFeedback": "No user feedback recorded for this generation.",
++      "tokenVolume": "Token Volume",
++      "docChunks": "Doc Chunks",
++      "generatedCommentary": "Generated Commentary",
++      "keyTakeaway": "Key Takeaway",
++      "evidenceReplay": "Evidence & Replay",
++      "tabPayload": "Request Payload",
++      "tabDocChunks": "Doc Chunks",
++      "tabFeedback": "Feedback",
++      "tabFullPrompt": "Full Prompt",
++      "copyPayload": "Copy Request Payload",
++      "copyPrompt": "Copy Prompt",
++      "notGenerated": "Not generated",
++      "viewDocument": "View document",
++      "noDocChunksUsed": "No knowledge documents were cited for this generation.",
++      "filter": {
++        "title": "\"Filters\",",
++        "dateTo": "\"To\",",
++        "rolePlaceholder": "\"Filter by Role\","
++      },
++      "exportExcel": "exporting\n\t\t\t\t\t\t\t\t\t? \"Exporting…\"\n\t\t\t\t\t\t\t\t\t: \"Export to Excel\",",
++      "table": {
++        "title": "\"Activity Logs\","
++      },
++      "detail": {
++        "keyTakeaway": "\"Key Takeaway\",",
++        "overview": "\"Generation Overview\",",
++        "requestTime": "\"Request Time\",",
++        "generationTime": "\"Generation Date\",",
++        "user": "\"User\",",
++        "role": "\"Role\",",
++        "duration": "\"Duration\",",
++        "promptVersion": "\"Prompt Version\",",
++        "feedback": "\"User Feedback\",",
++        "noFeedback": "\"No feedback\",",
++        "tokenVolume": "\"Token Volume\",",
++        "docChunks": "\"Doc Chunks\",",
++        "generatedCommentary": "\"Generated Commentary\",",
++        "evidenceReplay": "\"Evidence & Replay\",",
++        "requestId": "\"Request ID\",",
++        "executedAt": "\"Executed At\",",
++        "correlationId": "\"Correlation ID\",",
++        "chunkNote": "\"Evidence captured for this generation. Later document changes do not alter these excerpts.\",",
++        "viewDoc": "\"View document\",",
++        "emptyChunks": "\"No document chunks were retrieved for this generation\",",
++        "feedbackType": "\"Feedback Type\",",
++        "feedbackTime": "\"Feedback Time\",",
++        "comment": "\"Comment\",",
++        "noComment": "\"No written comment was provided.\",",
++        "emptyFeedback": "\"No user feedback recorded for this generation\","
++      },
++      "tab": {
++        "payload": "\"Request Payload\",",
++        "feedback": "\"Feedback\",",
++        "prompt": "\"Full Prompt\","
++      }
++    },
++    "prompt": {
++      "activeVersionLabel": "Active Version",
++      "changeNote": "Change note",
++      "createDraft": "Create draft",
++      "continueEditing": "Continue editing draft",
++      "saveDraft": "Save draft",
++      "discardDraft": "Discard draft",
++      "viewChanges": "View changes",
++      "reviewPublish": "Review & publish",
++      "configuration": "Configuration",
++      "versionHistory": "Version History",
++      "metricDefinitions": "Metric Definitions",
++      "addMetric": "Add metric",
++      "metricName": "Metric",
++      "whatItMeasures": "What it measures",
++      "whyItMatters": "Why it matters",
++      "publishedBy": "Published by",
++      "publishedAt": "Published at",
++      "changeType": "Change type",
++      "restore": "Restore",
++      "restoreVersionTitle": "Restore configuration version",
++      "restoreReasonPlaceholder": "Enter reason for restoring this version",
++      "discardConfirmTitle": "Discard shared draft?",
++      "discardConfirmContent": "All unsaved changes in this draft will be permanently lost.",
++      "publishConfirmTitle": "Publish draft configuration",
++      "publishReasonPlaceholder": "Enter change note for this version",
++      "editorDrawerTitle": "Prompt Template Editor",
++      "sharedInstructions": "Shared Instructions",
++      "audienceLens": "Audience lens",
++      "priorities": "Priorities",
++      "keyTakeawayFocus": "Key Takeaway focus",
++      "combinedPreview": "Combined preview",
++      "title": "\"Prompt Management\",",
++      "subtitle": "\"Configure prompts and maintain metric definitions for AI Commentary.\",",
++      "currentActiveVersion": "\"Current active version\",",
++      "metricsTitle": "\"Metric definitions\",",
++      "config": "\"Configuration\",",
++      "scope": "\"Scope\",",
++      "configTitle": "\"Prompt configuration\",",
++      "configDesc": "\"Shared instructions and three role profiles are published as one version.\",",
++      "lastUpdated": "\"Last updated\",",
++      "metricsDesc": "\"Define domain metrics and their strategic interpretation for the AI engine.\",",
++      "noMetricsYet": "\"No metric definitions yet.\",",
++      "noMetricsMatch": "\"No metrics match your search.\",",
++      "version": "\"Version\",",
++      "status": "\"Status\",",
++      "historyTitle": "\"Version history\",",
++      "historyDesc": "\"Each version contains the shared instructions and all three role profiles.\","
++    },
++    "knowledgeDoc": {
++      "uploadDoc": "Upload Document",
++      "searchPlaceholder": "Search by document name or description",
++      "filterBrand": "Filter by brand",
++      "filterStatus": "Filter by status",
++      "document": "Document",
++      "brand": "Brand",
++      "effectiveDate": "Effective Date",
++      "expiryDate": "Expiry Date",
++      "noExpiry": "No expiry",
++      "uploadedBy": "Uploaded By",
++      "uploadedAt": "Uploaded At",
++      "processingStatus": "Processing Status",
++      "ready": "Ready",
++      "processing": "Processing",
++      "failed": "Failed",
++      "retryProcessing": "Retry processing",
++      "activate": "Activate",
++      "deactivate": "Deactivate",
++      "dropTitle": "Drop one brand document here or click to browse",
++      "dropHint": "Supported formats: PDF, Markdown, PPT/PPTX, XLS/XLSX, CSV, TXT (up to 50 MB)",
++      "description": "Description",
++      "descriptionPlaceholder": "Describe the document content and business context (up to 4,000 characters)",
++      "confirmActivateTitle": "Activate document for retrieval?",
++      "confirmDeactivateTitle": "Deactivate document?",
++      "documentDetails": "Document Details",
++      "retrievalAvailability": "Retrieval Availability",
++      "eligible": "Eligible for retrieval",
++      "notEligible": "Not eligible for retrieval",
++      "title": "\"Knowledge Doc Container\",",
++      "subtitle": "\"Manage brand documents and their availability to AI Commentary.\",",
++      "uploadDocument": "\"Upload Document\",",
++      "filter": {
++        "title": "\"Filters\","
++      },
++      "table": {
++        "title": "\"Documents\",",
++        "availabilityDesc": "\"Only Active documents that are ready and within their effective dates are available for retrieval.\","
++      },
++      "detail": {
++        "title": "\"Document details\",",
++        "availabilityDesc": "\"Only Active documents with completed processing and valid effective dates can be retrieved by the Commentary Agent.\",",
++        "metadata": "\"Document metadata\",",
++        "brand": "\"Brand\",",
++        "effectiveDate": "\"Effective Date\",",
++        "expiryDate": "\"Expiry Date\",",
++        "description": "\"Description\",",
++        "systemInfo": "\"System information\",",
++        "uploadedBy": "\"Uploaded By\",",
++        "uploadedAt": "\"Uploaded At\",",
++        "lastUpdated": "\"Last Updated\",",
++        "processingStatus": "\"Processing Status\",",
++        "errorTitle": "\"Processing Failure\","
++      },
++      "status": {
++        "active": "\"Active\",",
++        "inactive": "\"Inactive\","
++      },
++      "action": {
++        "deactivate": "\"Deactivate\",",
++        "activate": "\"Activate\","
++      },
++      "fileLabel": "\"File\","
++    }
+   }
+ }
+diff --git a/packages/types/src/translations/zh-CN.json b/packages/types/src/translations/zh-CN.json
+index c1e6d67..41c04c9 100644
+--- a/packages/types/src/translations/zh-CN.json
++++ b/packages/types/src/translations/zh-CN.json
+@@ -1860,7 +1860,6 @@
+           "name": "Luke Beeby",
+           "department": "Australia | Sales Team"
+         },
+-
+         "7": {
+           "paragraph": {
+             "0": "<p>It’s been great to capture more information from the one tool allowing me to <b>personalise stories</b> that paints a better picture with what’s happening across the different territories. It’s nice to be able to see what’s happening in other TAs and tap into what they are doing to deliver results.</p>"
+@@ -2047,7 +2046,9 @@
+           "delete": "删除"
+         }
+       },
+-      "user": { "closeTooltip": "Dismiss for now" }
++      "user": {
++        "closeTooltip": "Dismiss for now"
++      }
+     }
+   },
+   "textEditor": {
+@@ -2059,5 +2060,257 @@
+   "noAccess": {
+     "title": "Sorry you do not have access to:",
+     "noModuleTitle": "Sorry you do not have access to this."
++  },
++  "cothinker": {
++    "common": {
++      "search": "Search",
++      "reset": "Reset",
++      "export": "Export",
++      "exportExcel": "Export to Excel",
++      "refresh": "Refresh",
++      "view": "View",
++      "edit": "Edit",
++      "delete": "Delete",
++      "cancel": "Cancel",
++      "save": "Save",
++      "saveChanges": "Save changes",
++      "confirm": "Confirm",
++      "copy": "Copy",
++      "copied": "Copied to clipboard",
++      "close": "Close",
++      "total": "Total {total}",
++      "goTo": "Go to",
++      "active": "Active",
++      "inactive": "Inactive",
++      "actions": "Actions",
++      "status": "Status",
++      "demoTools": "Demo tools",
++      "retry": "\"Retry processing\",",
++      "clearAll": "\"Clear All\",",
++      "thumbsUp": "\"Thumbs Up\",",
++      "thumbsDown": "\"Thumbs Down\",",
++      "exporting": "Exporting..."
++    },
++    "nav": {
++      "overview": "Overview",
++      "overviewTitle": "Overview & Analytics",
++      "overviewDesc": "Monitor user feedback, token consumption, and model engagement metrics.",
++      "logAudit": "Log Audit",
++      "logAuditTitle": "Audit & Chat Logs",
++      "logAuditDesc": "Inspect detailed user interaction sessions, queries, and system responses.",
++      "promptManagement": "Prompt Management",
++      "promptManagementTitle": "Prompt Templates & Configuration",
++      "promptManagementDesc": "Manage system prompt templates, versioning, and parameter configurations.",
++      "knowledgeDoc": "Knowledge Doc Container",
++      "knowledgeDocTitle": "Knowledge Base Documents",
++      "knowledgeDocDesc": "Upload, inspect, and organize business domain documents and vector embeddings."
++    },
++    "overview": {
++      "totalGenerations": "Total Generations",
++      "thumbsUp": "Thumbs Up",
++      "thumbsDown": "Thumbs Down",
++      "llmCost": "LLM Cost",
++      "avgCostPerGen": "Average cost per generation",
++      "totalTokens": "Total Token volume",
++      "feedbackByRole": "Positive Feedback Rate by Role (Last 30 Days)",
++      "feedbackTrend": "Daily Positive Feedback Rate (Last 30 Days)",
++      "positiveFeedbackRate": "Positive Feedback Rate (%)",
++      "rateBandOptimal": "Optimal (80%-100%)",
++      "rateBandMedium": "Attention (60%-79%)",
++      "rateBandLow": "Needs Work (<60%)",
++      "noData": "No generation or feedback data available.",
++      "kpi": {
++        "llmCost": "\"LLM Cost\","
++      }
++    },
++    "logAudit": {
++      "startDate": "Start date",
++      "endDate": "End date",
++      "username": "Username",
++      "role": "Role",
++      "searchUserPlaceholder": "Search by user name",
++      "selectRolePlaceholder": "Filter by role",
++      "timestamp": "Timestamp",
++      "user": "User",
++      "promptVersion": "Prompt Version",
++      "duration": "Duration",
++      "feedback": "Feedback",
++      "drawerTitle": "Log Details",
++      "generationOverview": "Generation Overview",
++      "requestTime": "Request Time",
++      "generationDate": "Generation Date",
++      "failureReason": "Failure reason",
++      "userFeedback": "User Feedback",
++      "noWrittenComment": "No written comment was provided.",
++      "noFeedback": "No user feedback recorded for this generation.",
++      "tokenVolume": "Token Volume",
++      "docChunks": "Doc Chunks",
++      "generatedCommentary": "Generated Commentary",
++      "keyTakeaway": "Key Takeaway",
++      "evidenceReplay": "Evidence & Replay",
++      "tabPayload": "Request Payload",
++      "tabDocChunks": "Doc Chunks",
++      "tabFeedback": "Feedback",
++      "tabFullPrompt": "Full Prompt",
++      "copyPayload": "Copy Request Payload",
++      "copyPrompt": "Copy Prompt",
++      "notGenerated": "Not generated",
++      "viewDocument": "View document",
++      "noDocChunksUsed": "No knowledge documents were cited for this generation.",
++      "filter": {
++        "title": "\"Filters\",",
++        "dateTo": "\"To\",",
++        "rolePlaceholder": "\"Filter by Role\","
++      },
++      "exportExcel": "exporting\n\t\t\t\t\t\t\t\t\t? \"Exporting…\"\n\t\t\t\t\t\t\t\t\t: \"Export to Excel\",",
++      "table": {
++        "title": "\"Activity Logs\","
++      },
++      "detail": {
++        "keyTakeaway": "\"Key Takeaway\",",
++        "overview": "\"Generation Overview\",",
++        "requestTime": "\"Request Time\",",
++        "generationTime": "\"Generation Date\",",
++        "user": "\"User\",",
++        "role": "\"Role\",",
++        "duration": "\"Duration\",",
++        "promptVersion": "\"Prompt Version\",",
++        "feedback": "\"User Feedback\",",
++        "noFeedback": "\"No feedback\",",
++        "tokenVolume": "\"Token Volume\",",
++        "docChunks": "\"Doc Chunks\",",
++        "generatedCommentary": "\"Generated Commentary\",",
++        "evidenceReplay": "\"Evidence & Replay\",",
++        "requestId": "\"Request ID\",",
++        "executedAt": "\"Executed At\",",
++        "correlationId": "\"Correlation ID\",",
++        "chunkNote": "\"Evidence captured for this generation. Later document changes do not alter these excerpts.\",",
++        "viewDoc": "\"View document\",",
++        "emptyChunks": "\"No document chunks were retrieved for this generation\",",
++        "feedbackType": "\"Feedback Type\",",
++        "feedbackTime": "\"Feedback Time\",",
++        "comment": "\"Comment\",",
++        "noComment": "\"No written comment was provided.\",",
++        "emptyFeedback": "\"No user feedback recorded for this generation\","
++      },
++      "tab": {
++        "payload": "\"Request Payload\",",
++        "feedback": "\"Feedback\",",
++        "prompt": "\"Full Prompt\","
++      }
++    },
++    "prompt": {
++      "activeVersionLabel": "Active Version",
++      "changeNote": "Change note",
++      "createDraft": "Create draft",
++      "continueEditing": "Continue editing draft",
++      "saveDraft": "Save draft",
++      "discardDraft": "Discard draft",
++      "viewChanges": "View changes",
++      "reviewPublish": "Review & publish",
++      "configuration": "Configuration",
++      "versionHistory": "Version History",
++      "metricDefinitions": "Metric Definitions",
++      "addMetric": "Add metric",
++      "metricName": "Metric",
++      "whatItMeasures": "What it measures",
++      "whyItMatters": "Why it matters",
++      "publishedBy": "Published by",
++      "publishedAt": "Published at",
++      "changeType": "Change type",
++      "restore": "Restore",
++      "restoreVersionTitle": "Restore configuration version",
++      "restoreReasonPlaceholder": "Enter reason for restoring this version",
++      "discardConfirmTitle": "Discard shared draft?",
++      "discardConfirmContent": "All unsaved changes in this draft will be permanently lost.",
++      "publishConfirmTitle": "Publish draft configuration",
++      "publishReasonPlaceholder": "Enter change note for this version",
++      "editorDrawerTitle": "Prompt Template Editor",
++      "sharedInstructions": "Shared Instructions",
++      "audienceLens": "Audience lens",
++      "priorities": "Priorities",
++      "keyTakeawayFocus": "Key Takeaway focus",
++      "combinedPreview": "Combined preview",
++      "title": "\"Prompt Management\",",
++      "subtitle": "\"Configure prompts and maintain metric definitions for AI Commentary.\",",
++      "currentActiveVersion": "\"Current active version\",",
++      "metricsTitle": "\"Metric definitions\",",
++      "config": "\"Configuration\",",
++      "scope": "\"Scope\",",
++      "configTitle": "\"Prompt configuration\",",
++      "configDesc": "\"Shared instructions and three role profiles are published as one version.\",",
++      "lastUpdated": "\"Last updated\",",
++      "metricsDesc": "\"Define domain metrics and their strategic interpretation for the AI engine.\",",
++      "noMetricsYet": "\"No metric definitions yet.\",",
++      "noMetricsMatch": "\"No metrics match your search.\",",
++      "version": "\"Version\",",
++      "status": "\"Status\",",
++      "historyTitle": "\"Version history\",",
++      "historyDesc": "\"Each version contains the shared instructions and all three role profiles.\","
++    },
++    "knowledgeDoc": {
++      "uploadDoc": "Upload Document",
++      "searchPlaceholder": "Search by document name or description",
++      "filterBrand": "Filter by brand",
++      "filterStatus": "Filter by status",
++      "document": "Document",
++      "brand": "Brand",
++      "effectiveDate": "Effective Date",
++      "expiryDate": "Expiry Date",
++      "noExpiry": "No expiry",
++      "uploadedBy": "Uploaded By",
++      "uploadedAt": "Uploaded At",
++      "processingStatus": "Processing Status",
++      "ready": "Ready",
++      "processing": "Processing",
++      "failed": "Failed",
++      "retryProcessing": "Retry processing",
++      "activate": "Activate",
++      "deactivate": "Deactivate",
++      "dropTitle": "Drop one brand document here or click to browse",
++      "dropHint": "Supported formats: PDF, Markdown, PPT/PPTX, XLS/XLSX, CSV, TXT (up to 50 MB)",
++      "description": "Description",
++      "descriptionPlaceholder": "Describe the document content and business context (up to 4,000 characters)",
++      "confirmActivateTitle": "Activate document for retrieval?",
++      "confirmDeactivateTitle": "Deactivate document?",
++      "documentDetails": "Document Details",
++      "retrievalAvailability": "Retrieval Availability",
++      "eligible": "Eligible for retrieval",
++      "notEligible": "Not eligible for retrieval",
++      "title": "\"Knowledge Doc Container\",",
++      "subtitle": "\"Manage brand documents and their availability to AI Commentary.\",",
++      "uploadDocument": "\"Upload Document\",",
++      "filter": {
++        "title": "\"Filters\","
++      },
++      "table": {
++        "title": "\"Documents\",",
++        "availabilityDesc": "\"Only Active documents that are ready and within their effective dates are available for retrieval.\","
++      },
++      "detail": {
++        "title": "\"Document details\",",
++        "availabilityDesc": "\"Only Active documents with completed processing and valid effective dates can be retrieved by the Commentary Agent.\",",
++        "metadata": "\"Document metadata\",",
++        "brand": "\"Brand\",",
++        "effectiveDate": "\"Effective Date\",",
++        "expiryDate": "\"Expiry Date\",",
++        "description": "\"Description\",",
++        "systemInfo": "\"System information\",",
++        "uploadedBy": "\"Uploaded By\",",
++        "uploadedAt": "\"Uploaded At\",",
++        "lastUpdated": "\"Last Updated\",",
++        "processingStatus": "\"Processing Status\",",
++        "errorTitle": "\"Processing Failure\","
++      },
++      "status": {
++        "active": "\"Active\",",
++        "inactive": "\"Inactive\","
++      },
++      "action": {
++        "deactivate": "\"Deactivate\",",
++        "activate": "\"Activate\","
++      },
++      "fileLabel": "\"File\","
++    }
+   }
+ }
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+index bccfbb2..c585bd0 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+@@ -40,12 +40,7 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 			visible={visible}
+ 			onClose={onClose}
+ 			title={
+-				<Text
+-					entry={{
+-						id: "cothinker.knowledgeDoc.detail.title",
+-						defaultMessage: "Document details",
+-					}}
+-				/>
++				<Text entry={{ "cothinker.knowledgeDoc.detail.title": {} }} />
+ 			}
+ 			width={640}
+ 		>
+@@ -68,19 +63,9 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 								className={`document-status-tag ${doc.status.toLowerCase()}`}
+ 							>
+ 								{doc.status === "ACTIVE" ? (
+-									<Text
+-										entry={{
+-											id: "cothinker.knowledgeDoc.status.active",
+-											defaultMessage: "Active",
+-										}}
+-									/>
++									<Text entry={{ "cothinker.knowledgeDoc.status.active": {} }} />
+ 								) : (
+-									<Text
+-										entry={{
+-											id: "cothinker.knowledgeDoc.status.inactive",
+-											defaultMessage: "Inactive",
+-										}}
+-									/>
++									<Text entry={{ "cothinker.knowledgeDoc.status.inactive": {} }} />
+ 								)}
+ 							</span>
+ 							<strong
+@@ -90,102 +75,51 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 							</strong>
+ 						</div>
+ 						<p>
+-							<Text
+-								entry={{
+-									id: "cothinker.knowledgeDoc.detail.availabilityDesc",
+-									defaultMessage:
+-										"Only Active documents with completed processing and valid effective dates can be retrieved by the Commentary Agent.",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.knowledgeDoc.detail.availabilityDesc": {} }} />
+ 						</p>
+ 					</section>
+ 
+ 					<section className="detail-section">
+ 						<h3>
+-							<Text
+-								entry={{
+-									id: "cothinker.knowledgeDoc.detail.metadata",
+-									defaultMessage: "Document metadata",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.knowledgeDoc.detail.metadata": {} }} />
+ 						</h3>
+ 						<dl className="metadata-grid">
+ 							<dt>
+-								<Text
+-									entry={{
+-										id: "cothinker.knowledgeDoc.detail.brand",
+-										defaultMessage: "Brand",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.knowledgeDoc.detail.brand": {} }} />
+ 							</dt>
+ 							<dd>{doc.brand}</dd>
+ 							<dt>
+-								<Text
+-									entry={{
+-										id: "cothinker.knowledgeDoc.detail.effectiveDate",
+-										defaultMessage: "Effective Date",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.knowledgeDoc.detail.effectiveDate": {} }} />
+ 							</dt>
+ 							<dd>{doc.effectiveFrom}</dd>
+ 							<dt>
+-								<Text
+-									entry={{
+-										id: "cothinker.knowledgeDoc.detail.expiryDate",
+-										defaultMessage: "Expiry Date",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.knowledgeDoc.detail.expiryDate": {} }} />
+ 							</dt>
+ 							<dd>{doc.effectiveTo || "No expiry"}</dd>
+ 						</dl>
+ 						<h4>
+-							<Text
+-								entry={{
+-									id: "cothinker.knowledgeDoc.detail.description",
+-									defaultMessage: "Description",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.knowledgeDoc.detail.description": {} }} />
+ 						</h4>
+ 						<p className="description">{doc.description}</p>
+ 					</section>
+ 
+ 					<section className="detail-section">
+ 						<h3>
+-							<Text
+-								entry={{
+-									id: "cothinker.knowledgeDoc.detail.systemInfo",
+-									defaultMessage: "System information",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.knowledgeDoc.detail.systemInfo": {} }} />
+ 						</h3>
+ 						<dl className="metadata-grid">
+ 							<dt>
+-								<Text
+-									entry={{
+-										id: "cothinker.knowledgeDoc.detail.uploadedBy",
+-										defaultMessage: "Uploaded By",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.knowledgeDoc.detail.uploadedBy": {} }} />
+ 							</dt>
+ 							<dd>{doc.uploadedBy}</dd>
+ 							<dt>
+-								<Text
+-									entry={{
+-										id: "cothinker.knowledgeDoc.detail.uploadedAt",
+-										defaultMessage: "Uploaded At",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.knowledgeDoc.detail.uploadedAt": {} }} />
+ 							</dt>
+ 							<dd>{formatDocumentTimestamp(doc.uploadedAt)}</dd>
+ 							{doc.updatedAt && (
+ 								<>
+ 									<dt>
+-										<Text
+-											entry={{
+-												id: "cothinker.knowledgeDoc.detail.lastUpdated",
+-												defaultMessage: "Last Updated",
+-											}}
+-										/>
++										<Text entry={{ "cothinker.knowledgeDoc.detail.lastUpdated": {} }} />
+ 									</dt>
+ 									<dd>
+ 										{formatDocumentTimestamp(doc.updatedAt)}
+@@ -193,12 +127,7 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 								</>
+ 							)}
+ 							<dt>
+-								<Text
+-									entry={{
+-										id: "cothinker.knowledgeDoc.detail.processingStatus",
+-										defaultMessage: "Processing Status",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.knowledgeDoc.detail.processingStatus": {} }} />
+ 							</dt>
+ 							<dd>
+ 								<span
+@@ -212,13 +141,7 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 						{doc.processingError && (
+ 							<div className="processing-error-banner">
+ 								<strong>
+-									<Text
+-										entry={{
+-											id: "cothinker.knowledgeDoc.detail.errorTitle",
+-											defaultMessage:
+-												"Processing Failure",
+-										}}
+-									/>
++									<Text entry={{ "cothinker.knowledgeDoc.detail.errorTitle": {} }} />
+ 								</strong>
+ 								<p>{doc.processingError}</p>
+ 								<GenericButton
+@@ -226,12 +149,7 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 									className="el-btn-default retry-btn"
+ 									onClick={() => onRetry(doc)}
+ 								>
+-									<Text
+-										entry={{
+-											id: "cothinker.common.retry",
+-											defaultMessage: "Retry processing",
+-										}}
+-									/>
++									<Text entry={{ "cothinker.common.retry": {} }} />
+ 								</GenericButton>
+ 							</div>
+ 						)}
+@@ -244,24 +162,14 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 						className="el-btn-default"
+ 						onClick={onClose}
+ 					>
+-						<Text
+-							entry={{
+-								id: "cothinker.common.close",
+-								defaultMessage: "Close",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.common.close": {} }} />
+ 					</GenericButton>
+ 					<GenericButton
+ 						type="secondary"
+ 						className="el-btn-default"
+ 						onClick={() => onEdit(doc)}
+ 					>
+-						<Text
+-							entry={{
+-								id: "cothinker.common.edit",
+-								defaultMessage: "Edit metadata",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.common.edit": {} }} />
+ 					</GenericButton>
+ 					<GenericButton
+ 						type="primary"
+@@ -273,19 +181,9 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 						onClick={() => onChangeStatus(doc)}
+ 					>
+ 						{doc.status === "ACTIVE" ? (
+-							<Text
+-								entry={{
+-									id: "cothinker.knowledgeDoc.action.deactivate",
+-									defaultMessage: "Deactivate",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.knowledgeDoc.action.deactivate": {} }} />
+ 						) : (
+-							<Text
+-								entry={{
+-									id: "cothinker.knowledgeDoc.action.activate",
+-									defaultMessage: "Activate",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.knowledgeDoc.action.activate": {} }} />
+ 						)}
+ 					</GenericButton>
+ 				</div>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+index c9023bf..dcbfd51 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+@@ -103,12 +103,7 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 						className="el-btn-default"
+ 						onClick={onClose}
+ 					>
+-						<Text
+-							entry={{
+-								id: "cothinker.common.cancel",
+-								defaultMessage: "Cancel",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.common.cancel": {} }} />
+ 					</GenericButton>
+ 					<GenericButton
+ 						type="primary"
+@@ -116,19 +111,9 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 						onClick={handleSave}
+ 					>
+ 						{initialDoc ? (
+-							<Text
+-								entry={{
+-									id: "cothinker.common.save",
+-									defaultMessage: "Save",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.common.save": {} }} />
+ 						) : (
+-							<Text
+-								entry={{
+-									id: "cothinker.knowledgeDoc.uploadDocument",
+-									defaultMessage: "Upload Document",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.knowledgeDoc.uploadDocument": {} }} />
+ 						)}
+ 					</GenericButton>
+ 				</div>
+@@ -147,12 +132,7 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 					{!initialDoc ? (
+ 						<div className="form-group">
+ 							<label className="form-label required">
+-								<Text
+-									entry={{
+-										id: "cothinker.knowledgeDoc.fileLabel",
+-										defaultMessage: "File",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.knowledgeDoc.fileLabel": {} }} />
+ 							</label>
+ 							<GenericUploadDragger
+ 								file={selectedFile}
+@@ -180,12 +160,7 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 
+ 					<div className="form-group">
+ 						<label htmlFor="doc-brand" className="form-label required">
+-							<Text
+-								entry={{
+-									id: "cothinker.knowledgeDoc.detail.brand",
+-									defaultMessage: "Brand",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.knowledgeDoc.detail.brand": {} }} />
+ 						</label>
+ 						<select
+ 							id="doc-brand"
+@@ -204,12 +179,7 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 					<div className="form-row">
+ 						<div className="form-group flex-1">
+ 							<label htmlFor="doc-effective-from" className="form-label required">
+-								<Text
+-									entry={{
+-										id: "cothinker.knowledgeDoc.detail.effectiveDate",
+-										defaultMessage: "Effective Date",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.knowledgeDoc.detail.effectiveDate": {} }} />
+ 							</label>
+ 							<input
+ 								type="date"
+@@ -222,12 +192,7 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 
+ 						<div className="form-group flex-1">
+ 							<label htmlFor="doc-effective-to" className="form-label">
+-								<Text
+-									entry={{
+-										id: "cothinker.knowledgeDoc.detail.expiryDate",
+-										defaultMessage: "Expiry Date",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.knowledgeDoc.detail.expiryDate": {} }} />
+ 							</label>
+ 							<input
+ 								type="date"
+@@ -241,12 +206,7 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 
+ 					<div className="form-group">
+ 						<label htmlFor="doc-description" className="form-label required">
+-							<Text
+-								entry={{
+-									id: "cothinker.knowledgeDoc.detail.description",
+-									defaultMessage: "Description",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.knowledgeDoc.detail.description": {} }} />
+ 						</label>
+ 						<textarea
+ 							id="doc-description"
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+index 93abd02..fb7abba 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+@@ -466,21 +466,10 @@ export const KnowledgeDocTab: FC = () => {
+ 			<header className="page-heading">
+ 				<div>
+ 					<h1>
+-						<Text
+-							entry={{
+-								id: "cothinker.knowledgeDoc.title",
+-								defaultMessage: "Knowledge Doc Container",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.knowledgeDoc.title": {} }} />
+ 					</h1>
+ 					<p>
+-						<Text
+-							entry={{
+-								id: "cothinker.knowledgeDoc.subtitle",
+-								defaultMessage:
+-									"Manage brand documents and their availability to AI Commentary.",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.knowledgeDoc.subtitle": {} }} />
+ 					</p>
+ 				</div>
+ 				<GenericButton
+@@ -489,12 +478,7 @@ export const KnowledgeDocTab: FC = () => {
+ 					icon={<UploadSvgIcon size={16} />}
+ 					onClick={handleOpenUpload}
+ 				>
+-					<Text
+-						entry={{
+-							id: "cothinker.knowledgeDoc.uploadDocument",
+-							defaultMessage: "Upload Document",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.knowledgeDoc.uploadDocument": {} }} />
+ 				</GenericButton>
+ 			</header>
+ 
+@@ -503,12 +487,7 @@ export const KnowledgeDocTab: FC = () => {
+ 				aria-labelledby="document-filters-heading"
+ 			>
+ 				<h2 id="document-filters-heading">
+-					<Text
+-						entry={{
+-							id: "cothinker.knowledgeDoc.filter.title",
+-							defaultMessage: "Filters",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.knowledgeDoc.filter.title": {} }} />
+ 				</h2>
+ 				<form className="filters-grid" onSubmit={handleSearchSubmit}>
+ 					<div className="search-input-wrapper">
+@@ -567,24 +546,14 @@ export const KnowledgeDocTab: FC = () => {
+ 							icon={<SearchSvgIcon size={14} />}
+ 							htmlType="submit"
+ 						>
+-							<Text
+-								entry={{
+-									id: "cothinker.common.search",
+-									defaultMessage: "Search",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.common.search": {} }} />
+ 						</GenericButton>
+ 						<GenericButton
+ 							type="secondary"
+ 							className="el-btn-default"
+ 							onClick={handleResetFilters}
+ 						>
+-							<Text
+-								entry={{
+-									id: "cothinker.common.reset",
+-									defaultMessage: "Reset",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.common.reset": {} }} />
+ 						</GenericButton>
+ 					</div>
+ 				</form>
+@@ -597,21 +566,10 @@ export const KnowledgeDocTab: FC = () => {
+ 				<header className="list-heading">
+ 					<div>
+ 						<h2 id="documents-heading">
+-							<Text
+-								entry={{
+-									id: "cothinker.knowledgeDoc.table.title",
+-									defaultMessage: "Documents",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.knowledgeDoc.table.title": {} }} />
+ 						</h2>
+ 						<p>
+-							<Text
+-								entry={{
+-									id: "cothinker.knowledgeDoc.table.availabilityDesc",
+-									defaultMessage:
+-										"Only Active documents that are ready and within their effective dates are available for retrieval.",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.knowledgeDoc.table.availabilityDesc": {} }} />
+ 						</p>
+ 					</div>
+ 					<div className="list-actions">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.tsx
+index 9e860f8..232919e 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.tsx
+@@ -11,12 +11,7 @@ export const KeyTakeawayCard: FC<IProps> = ({ keyTakeaway }) => {
+ 	return (
+ 		<div className="key-takeaway-card">
+ 			<h4 className="section-title">
+-				<Text
+-					entry={{
+-						id: "cothinker.logAudit.detail.keyTakeaway",
+-						defaultMessage: "Key Takeaway",
+-					}}
+-				/>
++				<Text entry={{ "cothinker.logAudit.detail.keyTakeaway": {} }} />
+ 			</h4>
+ 			<p className="section-content">{keyTakeaway}</p>
+ 		</div>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+index 81d88c0..4b67661 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+@@ -80,12 +80,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 			onClose={onClose}
+ 			loading={loading}
+ 			title={
+-				<Text
+-					entry={{
+-						id: "cothinker.logAudit.drawerTitle",
+-						defaultMessage: "Log Details",
+-					}}
+-				/>
++				<Text entry={{ "cothinker.logAudit.drawerTitle": {} }} />
+ 			}
+ 			width={640}
+ 		>
+@@ -97,22 +92,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 
+ 					<div className="detail-section">
+ 						<h3 className="section-title">
+-							<Text
+-								entry={{
+-									id: "cothinker.logAudit.detail.overview",
+-									defaultMessage: "Generation Overview",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.logAudit.detail.overview": {} }} />
+ 						</h3>
+ 						<div className="overview-descriptions-grid">
+ 							<div className="desc-cell">
+ 								<span className="desc-label">
+-									<Text
+-										entry={{
+-											id: "cothinker.logAudit.detail.requestTime",
+-											defaultMessage: "Request Time",
+-										}}
+-									/>
++									<Text entry={{ "cothinker.logAudit.detail.requestTime": {} }} />
+ 								</span>
+ 								<span className="desc-value">
+ 									{formatTimestamp(record.overview.requestTime)}
+@@ -120,12 +105,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							</div>
+ 							<div className="desc-cell">
+ 								<span className="desc-label">
+-									<Text
+-										entry={{
+-											id: "cothinker.logAudit.detail.generationTime",
+-											defaultMessage: "Generation Date",
+-										}}
+-									/>
++									<Text entry={{ "cothinker.logAudit.detail.generationTime": {} }} />
+ 								</span>
+ 								<span className="desc-value">
+ 									{formatTimestamp(record.overview.generationTime)}
+@@ -133,12 +113,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							</div>
+ 							<div className="desc-cell">
+ 								<span className="desc-label">
+-									<Text
+-										entry={{
+-											id: "cothinker.logAudit.detail.user",
+-											defaultMessage: "User",
+-										}}
+-									/>
++									<Text entry={{ "cothinker.logAudit.detail.user": {} }} />
+ 								</span>
+ 								<span className="desc-value font-medium">
+ 									{record.overview.username}
+@@ -146,12 +121,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							</div>
+ 							<div className="desc-cell">
+ 								<span className="desc-label">
+-									<Text
+-										entry={{
+-											id: "cothinker.logAudit.detail.role",
+-											defaultMessage: "Role",
+-										}}
+-									/>
++									<Text entry={{ "cothinker.logAudit.detail.role": {} }} />
+ 								</span>
+ 								<span className="desc-value">
+ 									<span
+@@ -165,12 +135,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							</div>
+ 							<div className="desc-cell">
+ 								<span className="desc-label">
+-									<Text
+-										entry={{
+-											id: "cothinker.logAudit.detail.duration",
+-											defaultMessage: "Duration",
+-										}}
+-									/>
++									<Text entry={{ "cothinker.logAudit.detail.duration": {} }} />
+ 								</span>
+ 								<span className="desc-value">
+ 									{formatDuration(record.overview.durationMs)}
+@@ -178,12 +143,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							</div>
+ 							<div className="desc-cell">
+ 								<span className="desc-label">
+-									<Text
+-										entry={{
+-											id: "cothinker.logAudit.detail.promptVersion",
+-											defaultMessage: "Prompt Version",
+-										}}
+-									/>
++									<Text entry={{ "cothinker.logAudit.detail.promptVersion": {} }} />
+ 								</span>
+ 								<span className="desc-value">
+ 									<span className="version-badge">
+@@ -193,24 +153,14 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							</div>
+ 							<div className="desc-cell col-span-2">
+ 								<span className="desc-label">
+-									<Text
+-										entry={{
+-											id: "cothinker.logAudit.detail.feedback",
+-											defaultMessage: "User Feedback",
+-										}}
+-									/>
++									<Text entry={{ "cothinker.logAudit.detail.feedback": {} }} />
+ 								</span>
+ 								<div className="desc-value feedback-inline-wrapper">
+ 									{record.feedbackDetail.type === "up" && (
+ 										<span className="feedback-status up">
+ 											<CoThinkerCircleCheckSvgIcon className="feedback-icon" />
+ 											<span className="status-text">
+-												<Text
+-													entry={{
+-														id: "cothinker.common.thumbsUp",
+-														defaultMessage: "Thumbs Up",
+-													}}
+-												/>
++												<Text entry={{ "cothinker.common.thumbsUp": {} }} />
+ 											</span>
+ 										</span>
+ 									)}
+@@ -218,23 +168,13 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 										<span className="feedback-status down">
+ 											<CircleCloseSvgIcon className="feedback-icon" />
+ 											<span className="status-text">
+-												<Text
+-													entry={{
+-														id: "cothinker.common.thumbsDown",
+-														defaultMessage: "Thumbs Down",
+-													}}
+-												/>
++												<Text entry={{ "cothinker.common.thumbsDown": {} }} />
+ 											</span>
+ 										</span>
+ 									)}
+ 									{record.feedbackDetail.type === "none" && (
+ 										<span className="text-medium-grey">
+-											<Text
+-												entry={{
+-													id: "cothinker.logAudit.detail.noFeedback",
+-													defaultMessage: "No feedback",
+-												}}
+-											/>
++											<Text entry={{ "cothinker.logAudit.detail.noFeedback": {} }} />
+ 										</span>
+ 									)}
+ 									{record.feedbackDetail.comment && (
+@@ -250,12 +190,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 					<div className="metric-grid">
+ 						<div className="metric-card">
+ 							<span className="metric-label">
+-								<Text
+-									entry={{
+-										id: "cothinker.overview.kpi.llmCost",
+-										defaultMessage: "LLM Cost",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.overview.kpi.llmCost": {} }} />
+ 							</span>
+ 							<strong className="metric-value">
+ 								{formatUsd(record.overview.estimatedCost)}
+@@ -266,12 +201,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 						</div>
+ 						<div className="metric-card">
+ 							<span className="metric-label">
+-								<Text
+-									entry={{
+-										id: "cothinker.logAudit.detail.tokenVolume",
+-										defaultMessage: "Token Volume",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.logAudit.detail.tokenVolume": {} }} />
+ 							</span>
+ 							<strong className="metric-value">
+ 								{formatTokens(record.overview.totalTokens)}
+@@ -283,12 +213,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 						</div>
+ 						<div className="metric-card">
+ 							<span className="metric-label">
+-								<Text
+-									entry={{
+-										id: "cothinker.logAudit.detail.docChunks",
+-										defaultMessage: "Doc Chunks",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.logAudit.detail.docChunks": {} }} />
+ 							</span>
+ 							<strong className="metric-value">
+ 								{record.overview.docChunkCount}
+@@ -301,12 +226,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 
+ 					<div className="detail-section">
+ 						<h3 className="section-title">
+-							<Text
+-								entry={{
+-									id: "cothinker.logAudit.detail.generatedCommentary",
+-									defaultMessage: "Generated Commentary",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.logAudit.detail.generatedCommentary": {} }} />
+ 						</h3>
+ 						<KeyTakeawayCard
+ 							keyTakeaway={record.overview.commentary.keyTakeaway}
+@@ -315,12 +235,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 
+ 					<div className="detail-section evidence-section">
+ 						<h3 className="section-title">
+-							<Text
+-								entry={{
+-									id: "cothinker.logAudit.detail.evidenceReplay",
+-									defaultMessage: "Evidence & Replay",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.logAudit.detail.evidenceReplay": {} }} />
+ 						</h3>
+ 
+ 						<div className="evidence-tab-bar">
+@@ -331,12 +246,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 								}`}
+ 								onClick={() => setActiveTab("payload")}
+ 							>
+-								<Text
+-									entry={{
+-										id: "cothinker.logAudit.tab.payload",
+-										defaultMessage: "Request Payload",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.logAudit.tab.payload": {} }} />
+ 							</button>
+ 							<button
+ 								type="button"
+@@ -354,12 +264,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 								}`}
+ 								onClick={() => setActiveTab("feedback")}
+ 							>
+-								<Text
+-									entry={{
+-										id: "cothinker.logAudit.tab.feedback",
+-										defaultMessage: "Feedback",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.logAudit.tab.feedback": {} }} />
+ 							</button>
+ 							<button
+ 								type="button"
+@@ -368,12 +273,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 								}`}
+ 								onClick={() => setActiveTab("prompt")}
+ 							>
+-								<Text
+-									entry={{
+-										id: "cothinker.logAudit.tab.prompt",
+-										defaultMessage: "Full Prompt",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.logAudit.tab.prompt": {} }} />
+ 							</button>
+ 						</div>
+ 
+@@ -407,24 +307,14 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 												)
+ 											}
+ 										>
+-											<Text
+-												entry={{
+-													id: "cothinker.logAudit.copyPayload",
+-													defaultMessage: "Copy Request Payload",
+-												}}
+-											/>
++											<Text entry={{ "cothinker.logAudit.copyPayload": {} }} />
+ 										</GenericButton>
+ 									</div>
+ 
+ 									<div className="overview-descriptions-grid border-sm mb-16">
+ 										<div className="desc-cell">
+ 											<span className="desc-label">
+-												<Text
+-													entry={{
+-														id: "cothinker.logAudit.detail.requestId",
+-														defaultMessage: "Request ID",
+-													}}
+-												/>
++												<Text entry={{ "cothinker.logAudit.detail.requestId": {} }} />
+ 											</span>
+ 											<span className="desc-value code-snippet">
+ 												{record.requestPayload?.requestId ||
+@@ -433,12 +323,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 										</div>
+ 										<div className="desc-cell">
+ 											<span className="desc-label">
+-												<Text
+-													entry={{
+-														id: "cothinker.logAudit.detail.executedAt",
+-														defaultMessage: "Executed At",
+-													}}
+-												/>
++												<Text entry={{ "cothinker.logAudit.detail.executedAt": {} }} />
+ 											</span>
+ 											<span className="desc-value">
+ 												{formatTimestamp(
+@@ -448,12 +333,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 										</div>
+ 										<div className="desc-cell col-span-2">
+ 											<span className="desc-label">
+-												<Text
+-													entry={{
+-														id: "cothinker.logAudit.detail.correlationId",
+-														defaultMessage: "Correlation ID",
+-													}}
+-												/>
++												<Text entry={{ "cothinker.logAudit.detail.correlationId": {} }} />
+ 											</span>
+ 											<span className="desc-value code-snippet">
+ 												{record.requestPayload?.correlationId || "-"}
+@@ -476,13 +356,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							{activeTab === "chunks" && (
+ 								<div className="tab-pane-content">
+ 									<p className="chunk-context-note">
+-										<Text
+-											entry={{
+-												id: "cothinker.logAudit.detail.chunkNote",
+-												defaultMessage:
+-													"Evidence captured for this generation. Later document changes do not alter these excerpts.",
+-											}}
+-										/>
++										<Text entry={{ "cothinker.logAudit.detail.chunkNote": {} }} />
+ 									</p>
+ 
+ 									{record.docChunks.length > 0 ? (
+@@ -534,12 +408,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 																)
+ 															}
+ 														>
+-															<Text
+-																entry={{
+-																	id: "cothinker.logAudit.detail.viewDoc",
+-																	defaultMessage: "View document",
+-																}}
+-															/>
++															<Text entry={{ "cothinker.logAudit.detail.viewDoc": {} }} />
+ 														</button>
+ 													</div>
+ 												</div>
+@@ -547,13 +416,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 										</div>
+ 									) : (
+ 										<div className="empty-chunk-notice">
+-											<Text
+-												entry={{
+-													id: "cothinker.logAudit.detail.emptyChunks",
+-													defaultMessage:
+-														"No document chunks were retrieved for this generation",
+-												}}
+-											/>
++											<Text entry={{ "cothinker.logAudit.detail.emptyChunks": {} }} />
+ 										</div>
+ 									)}
+ 								</div>
+@@ -565,12 +428,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 										<div className="overview-descriptions-grid border-sm">
+ 											<div className="desc-cell col-span-2">
+ 												<span className="desc-label">
+-													<Text
+-														entry={{
+-															id: "cothinker.logAudit.detail.feedbackType",
+-															defaultMessage: "Feedback Type",
+-														}}
+-													/>
++													<Text entry={{ "cothinker.logAudit.detail.feedbackType": {} }} />
+ 												</span>
+ 												<span className="desc-value">
+ 													<span
+@@ -581,31 +439,16 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 														}`}
+ 													>
+ 														{record.feedbackDetail.type === "up" ? (
+-															<Text
+-																entry={{
+-																	id: "cothinker.common.thumbsUp",
+-																	defaultMessage: "Thumbs Up",
+-																}}
+-															/>
++															<Text entry={{ "cothinker.common.thumbsUp": {} }} />
+ 														) : (
+-															<Text
+-																entry={{
+-																	id: "cothinker.common.thumbsDown",
+-																	defaultMessage: "Thumbs Down",
+-																}}
+-															/>
++															<Text entry={{ "cothinker.common.thumbsDown": {} }} />
+ 														)}
+ 													</span>
+ 												</span>
+ 											</div>
+ 											<div className="desc-cell col-span-2">
+ 												<span className="desc-label">
+-													<Text
+-														entry={{
+-															id: "cothinker.logAudit.detail.feedbackTime",
+-															defaultMessage: "Feedback Time",
+-														}}
+-													/>
++													<Text entry={{ "cothinker.logAudit.detail.feedbackTime": {} }} />
+ 												</span>
+ 												<span className="desc-value">
+ 													{record.feedbackDetail.feedbackTime
+@@ -618,12 +461,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 											</div>
+ 											<div className="desc-cell col-span-2">
+ 												<span className="desc-label">
+-													<Text
+-														entry={{
+-															id: "cothinker.logAudit.detail.comment",
+-															defaultMessage: "Comment",
+-														}}
+-													/>
++													<Text entry={{ "cothinker.logAudit.detail.comment": {} }} />
+ 												</span>
+ 												<span className="desc-value">
+ 													{record.feedbackDetail.comment ? (
+@@ -632,13 +470,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 														</span>
+ 													) : (
+ 														<span className="text-medium-grey italic">
+-															<Text
+-																entry={{
+-																	id: "cothinker.logAudit.detail.noComment",
+-																	defaultMessage:
+-																		"No written comment was provided.",
+-																}}
+-															/>
++															<Text entry={{ "cothinker.logAudit.detail.noComment": {} }} />
+ 														</span>
+ 													)}
+ 												</span>
+@@ -646,13 +478,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 										</div>
+ 									) : (
+ 										<div className="empty-chunk-notice">
+-											<Text
+-												entry={{
+-													id: "cothinker.logAudit.detail.emptyFeedback",
+-													defaultMessage:
+-														"No user feedback recorded for this generation",
+-												}}
+-											/>
++											<Text entry={{ "cothinker.logAudit.detail.emptyFeedback": {} }} />
+ 										</div>
+ 									)}
+ 								</div>
+@@ -672,12 +498,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 												)
+ 											}
+ 										>
+-											<Text
+-												entry={{
+-													id: "cothinker.common.copy",
+-													defaultMessage: "Copy",
+-												}}
+-											/>
++											<Text entry={{ "cothinker.common.copy": {} }} />
+ 										</GenericButton>
+ 									</div>
+ 									<div className="prompt-viewer">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+index 8a6c829..a7cdc5c 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+@@ -546,12 +546,7 @@ export const LogAuditTab: FC = () => {
+ 							handleRowClick(record);
+ 						}}
+ 					>
+-						<Text
+-							entry={{
+-								id: "cothinker.common.view",
+-								defaultMessage: "View",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.common.view": {} }} />
+ 					</GenericButton>
+ 				),
+ 			},
+@@ -564,12 +559,7 @@ export const LogAuditTab: FC = () => {
+ 			<div className="filters-section">
+ 				<div className="filters-header">
+ 					<h3>
+-						<Text
+-							entry={{
+-								id: "cothinker.logAudit.filter.title",
+-								defaultMessage: "Filters",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.logAudit.filter.title": {} }} />
+ 					</h3>
+ 					{hasActiveFilters && (
+ 						<GenericButton
+@@ -577,12 +567,7 @@ export const LogAuditTab: FC = () => {
+ 							className="clear-all-btn"
+ 							onClick={handleReset}
+ 						>
+-							<Text
+-								entry={{
+-									id: "cothinker.common.clearAll",
+-									defaultMessage: "Clear All",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.common.clearAll": {} }} />
+ 						</GenericButton>
+ 					)}
+ 				</div>
+@@ -599,12 +584,7 @@ export const LogAuditTab: FC = () => {
+ 								aria-label="Start date"
+ 							/>
+ 							<span className="range-separator">
+-								<Text
+-									entry={{
+-										id: "cothinker.logAudit.filter.dateTo",
+-										defaultMessage: "To",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.logAudit.filter.dateTo": {} }} />
+ 							</span>
+ 							<input
+ 								type="date"
+@@ -626,12 +606,7 @@ export const LogAuditTab: FC = () => {
+ 							>
+ 								{selectedRoles.length === 0 ? (
+ 									<span className="placeholder">
+-										<Text
+-											entry={{
+-												id: "cothinker.logAudit.filter.rolePlaceholder",
+-												defaultMessage: "Filter by Role",
+-											}}
+-										/>
++										<Text entry={{ "cothinker.logAudit.filter.rolePlaceholder": {} }} />
+ 									</span>
+ 								) : (
+ 									<div className="selected-roles-wrapper">
+@@ -709,12 +684,7 @@ export const LogAuditTab: FC = () => {
+ 						onClick={handleSearch}
+ 						disabled={loading}
+ 					>
+-						<Text
+-							entry={{
+-								id: "cothinker.common.search",
+-								defaultMessage: "Search",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.common.search": {} }} />
+ 					</GenericButton>
+ 					<GenericButton
+ 						type="secondary"
+@@ -729,14 +699,19 @@ export const LogAuditTab: FC = () => {
+ 						onClick={handleExport}
+ 						disabled={exporting}
+ 					>
+-						<Text
+-							entry={{
+-								id: "cothinker.logAudit.exportExcel",
+-								defaultMessage: exporting
+-									? "Exporting..."
+-									: "Export to Excel",
+-							}}
+-						/>
++						{exporting ? (
++							<Text
++								entry={{
++									"cothinker.common.exporting": {},
++								}}
++							/>
++						) : (
++							<Text
++								entry={{
++									"cothinker.logAudit.exportExcel": {},
++								}}
++							/>
++						)}
+ 					</GenericButton>
+ 				</div>
+ 			</div>
+@@ -744,12 +719,7 @@ export const LogAuditTab: FC = () => {
+ 			<div className="table-section" ref={tableSectionRef}>
+ 				<div className="table-header">
+ 					<h3>
+-						<Text
+-							entry={{
+-								id: "cothinker.logAudit.table.title",
+-								defaultMessage: "Activity Logs",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.logAudit.table.title": {} }} />
+ 					</h3>
+ 					<GenericButton
+ 						type="secondary"
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
+index ab36a41..a0750e9 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
+@@ -61,12 +61,7 @@ export const ConfigurationPanel: FC<IProps> = ({
+ 		() => [
+ 			{
+ 				title: (
+-					<Text
+-						entry={{
+-							id: "cothinker.prompt.config",
+-							defaultMessage: "Configuration",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.prompt.config": {} }} />
+ 				),
+ 				key: "configuration",
+ 				render: (_: any, row: IConfigEntry) => (
+@@ -84,12 +79,7 @@ export const ConfigurationPanel: FC<IProps> = ({
+ 			},
+ 			{
+ 				title: (
+-					<Text
+-						entry={{
+-							id: "cothinker.prompt.scope",
+-							defaultMessage: "Scope",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.prompt.scope": {} }} />
+ 				),
+ 				key: "scope",
+ 				width: 130,
+@@ -99,12 +89,7 @@ export const ConfigurationPanel: FC<IProps> = ({
+ 			},
+ 			{
+ 				title: (
+-					<Text
+-						entry={{
+-							id: "cothinker.common.actions",
+-							defaultMessage: "Actions",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.common.actions": {} }} />
+ 				),
+ 				key: "actions",
+ 				width: 100,
+@@ -127,21 +112,10 @@ export const ConfigurationPanel: FC<IProps> = ({
+ 			<div className="panel-intro">
+ 				<div>
+ 					<h2>
+-						<Text
+-							entry={{
+-								id: "cothinker.prompt.configTitle",
+-								defaultMessage: "Prompt configuration",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.prompt.configTitle": {} }} />
+ 					</h2>
+ 					<p>
+-						<Text
+-							entry={{
+-								id: "cothinker.prompt.configDesc",
+-								defaultMessage:
+-									"Shared instructions and three role profiles are published as one version.",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.prompt.configDesc": {} }} />
+ 					</p>
+ 				</div>
+ 				<span className="count-badge">4 configuration items</span>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+index a1123fc..b7cb140 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+@@ -104,12 +104,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 		() => [
+ 			{
+ 				title: (
+-					<Text
+-						entry={{
+-							id: "cothinker.prompt.metricName",
+-							defaultMessage: "Metric name",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.prompt.metricName": {} }} />
+ 				),
+ 				key: "name",
+ 				width: 220,
+@@ -119,12 +114,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 			},
+ 			{
+ 				title: (
+-					<Text
+-						entry={{
+-							id: "cothinker.prompt.whatItMeasures",
+-							defaultMessage: "What it measures",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.prompt.whatItMeasures": {} }} />
+ 				),
+ 				key: "measures",
+ 				render: (_: any, m: IMetricDefinition) => (
+@@ -133,12 +123,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 			},
+ 			{
+ 				title: (
+-					<Text
+-						entry={{
+-							id: "cothinker.prompt.whyItMatters",
+-							defaultMessage: "Why it matters",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.prompt.whyItMatters": {} }} />
+ 				),
+ 				key: "matters",
+ 				render: (_: any, m: IMetricDefinition) => (
+@@ -147,12 +132,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 			},
+ 			{
+ 				title: (
+-					<Text
+-						entry={{
+-							id: "cothinker.prompt.lastUpdated",
+-							defaultMessage: "Last updated",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.prompt.lastUpdated": {} }} />
+ 				),
+ 				key: "updated",
+ 				width: 170,
+@@ -171,12 +151,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 			},
+ 			{
+ 				title: (
+-					<Text
+-						entry={{
+-							id: "cothinker.common.actions",
+-							defaultMessage: "Actions",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.common.actions": {} }} />
+ 				),
+ 				key: "actions",
+ 				width: 130,
+@@ -211,21 +186,10 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 			<div className="metrics-panel-header">
+ 				<div>
+ 					<h2 id="metrics-panel-heading">
+-						<Text
+-							entry={{
+-								id: "cothinker.prompt.metricsTitle",
+-								defaultMessage: "Metric definitions",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.prompt.metricsTitle": {} }} />
+ 					</h2>
+ 					<p>
+-						<Text
+-							entry={{
+-								id: "cothinker.prompt.metricsDesc",
+-								defaultMessage:
+-									"Define domain metrics and their strategic interpretation for the AI engine.",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.prompt.metricsDesc": {} }} />
+ 					</p>
+ 				</div>
+ 				<GenericButton
+@@ -234,12 +198,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 					icon={<CoThinkerPlusSvgIcon size={14} />}
+ 					onClick={handleOpenAdd}
+ 				>
+-					<Text
+-						entry={{
+-							id: "cothinker.prompt.addMetric",
+-							defaultMessage: "Add metric",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.prompt.addMetric": {} }} />
+ 				</GenericButton>
+ 			</div>
+ 
+@@ -261,21 +220,11 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 
+ 			{metrics.length === 0 ? (
+ 				<div className="empty-metrics-notice">
+-					<Text
+-						entry={{
+-							id: "cothinker.prompt.noMetricsYet",
+-							defaultMessage: "No metric definitions yet.",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.prompt.noMetricsYet": {} }} />
+ 				</div>
+ 			) : filteredMetrics.length === 0 ? (
+ 				<div className="empty-metrics-notice">
+-					<Text
+-						entry={{
+-							id: "cothinker.prompt.noMetricsMatch",
+-							defaultMessage: "No metrics match your search.",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.prompt.noMetricsMatch": {} }} />
+ 				</div>
+ 			) : (
+ 				<GenericDataTable<IMetricDefinition>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+index d2ff392..e6d543f 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+@@ -266,12 +266,7 @@ export const PromptEditorDrawer: FC<IProps> = ({
+ 						className="el-btn-default"
+ 						onClick={onClose}
+ 					>
+-						<Text
+-							entry={{
+-								id: "cothinker.common.close",
+-								defaultMessage: "Close",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.common.close": {} }} />
+ 					</GenericButton>
+ 					{editable ? (
+ 						<GenericButton
+@@ -279,12 +274,7 @@ export const PromptEditorDrawer: FC<IProps> = ({
+ 							className="el-btn-primary"
+ 							onClick={onSaveDraft}
+ 						>
+-							<Text
+-								entry={{
+-									id: "cothinker.prompt.saveDraft",
+-									defaultMessage: "Save draft",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.prompt.saveDraft": {} }} />
+ 						</GenericButton>
+ 					) : (
+ 						!inspectedVersion && (
+@@ -295,12 +285,7 @@ export const PromptEditorDrawer: FC<IProps> = ({
+ 									onCreateDraft();
+ 								}}
+ 							>
+-								<Text
+-									entry={{
+-										id: "cothinker.prompt.createDraft",
+-										defaultMessage: "Create draft to edit",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.prompt.createDraft": {} }} />
+ 							</GenericButton>
+ 						)
+ 					)}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+index 5b41a19..6d3e1ac 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+@@ -59,12 +59,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 		return [
+ 			{
+ 				title: (
+-					<Text
+-						entry={{
+-							id: "cothinker.prompt.version",
+-							defaultMessage: "Version",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.prompt.version": {} }} />
+ 				),
+ 				key: "version",
+ 				width: 90,
+@@ -74,12 +69,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 			},
+ 			{
+ 				title: (
+-					<Text
+-						entry={{
+-							id: "cothinker.prompt.status",
+-							defaultMessage: "Status",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.prompt.status": {} }} />
+ 				),
+ 				key: "status",
+ 				width: 112,
+@@ -97,12 +87,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 			},
+ 			{
+ 				title: (
+-					<Text
+-						entry={{
+-							id: "cothinker.prompt.changeNote",
+-							defaultMessage: "Change note",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.prompt.changeNote": {} }} />
+ 				),
+ 				key: "changeNote",
+ 				render: (_: any, v: IPromptVersion) => (
+@@ -113,12 +98,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 			},
+ 			{
+ 				title: (
+-					<Text
+-						entry={{
+-							id: "cothinker.prompt.publishedBy",
+-							defaultMessage: "Published by",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.prompt.publishedBy": {} }} />
+ 				),
+ 				key: "publishedBy",
+ 				width: 170,
+@@ -128,12 +108,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 			},
+ 			{
+ 				title: (
+-					<Text
+-						entry={{
+-							id: "cothinker.prompt.publishedAt",
+-							defaultMessage: "Published at",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.prompt.publishedAt": {} }} />
+ 				),
+ 				key: "publishedAt",
+ 				width: 160,
+@@ -143,12 +118,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 			},
+ 			{
+ 				title: (
+-					<Text
+-						entry={{
+-							id: "cothinker.common.actions",
+-							defaultMessage: "Actions",
+-						}}
+-					/>
++					<Text entry={{ "cothinker.common.actions": {} }} />
+ 				),
+ 				key: "actions",
+ 				width: 160,
+@@ -192,21 +162,10 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 			<div className="history-heading">
+ 				<div>
+ 					<h2 id="prompt-history-heading">
+-						<Text
+-							entry={{
+-								id: "cothinker.prompt.historyTitle",
+-								defaultMessage: "Version history",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.prompt.historyTitle": {} }} />
+ 					</h2>
+ 					<p>
+-						<Text
+-							entry={{
+-								id: "cothinker.prompt.historyDesc",
+-								defaultMessage:
+-									"Each version contains the shared instructions and all three role profiles.",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.prompt.historyDesc": {} }} />
+ 					</p>
+ 				</div>
+ 				<div className="history-tools">
+@@ -220,14 +179,19 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 						icon={<CoThinkerDownloadSvgIcon size={14} />}
+ 						onClick={handleExport}
+ 					>
+-						<Text
+-							entry={{
+-								id: "cothinker.logAudit.exportExcel",
+-								defaultMessage: exporting
+-									? "Exporting…"
+-									: "Export to Excel",
+-							}}
+-						/>
++						{exporting ? (
++							<Text
++								entry={{
++									"cothinker.common.exporting": {},
++								}}
++							/>
++						) : (
++							<Text
++								entry={{
++									"cothinker.logAudit.exportExcel": {},
++								}}
++							/>
++						)}
+ 					</GenericButton>
+ 				</div>
+ 			</div>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+index c95332d..56bf1fa 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+@@ -785,22 +785,11 @@ export const PromptManagementTab: FC = () => {
+ 				<div>
+ 					<div className="title-line">
+ 						<h1>
+-							<Text
+-								entry={{
+-									id: "cothinker.prompt.title",
+-									defaultMessage: "Prompt Management",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.prompt.title": {} }} />
+ 						</h1>
+ 					</div>
+ 					<p>
+-						<Text
+-							entry={{
+-								id: "cothinker.prompt.subtitle",
+-								defaultMessage:
+-									"Configure prompts and maintain metric definitions for AI Commentary.",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.prompt.subtitle": {} }} />
+ 					</p>
+ 				</div>
+ 				{activeTab !== "metrics" && !draftVersion && (
+@@ -810,12 +799,7 @@ export const PromptManagementTab: FC = () => {
+ 						icon={<EditPenSvgIcon size={14} />}
+ 						onClick={handleCreateDraft}
+ 					>
+-						<Text
+-							entry={{
+-								id: "cothinker.prompt.createDraft",
+-								defaultMessage: "Create draft",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.prompt.createDraft": {} }} />
+ 					</GenericButton>
+ 				)}
+ 				{activeTab !== "metrics" && draftVersion && (
+@@ -825,12 +809,7 @@ export const PromptManagementTab: FC = () => {
+ 						icon={<EditPenSvgIcon size={14} />}
+ 						onClick={() => handleOpenEditor()}
+ 					>
+-						<Text
+-							entry={{
+-								id: "cothinker.prompt.continueEditing",
+-								defaultMessage: "Continue editing",
+-							}}
+-						/>
++						<Text entry={{ "cothinker.prompt.continueEditing": {} }} />
+ 					</GenericButton>
+ 				)}
+ 			</header>
+@@ -844,12 +823,7 @@ export const PromptManagementTab: FC = () => {
+ 					<div className="version-info">
+ 						<div className="info-header">
+ 							<strong>
+-								<Text
+-									entry={{
+-										id: "cothinker.prompt.currentActiveVersion",
+-										defaultMessage: "Current active version",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.prompt.currentActiveVersion": {} }} />
+ 							</strong>
+ 							<span className="active-tag">Active</span>
+ 						</div>
+@@ -871,12 +845,7 @@ export const PromptManagementTab: FC = () => {
+ 					<div className="version-info">
+ 						<div className="info-header">
+ 							<strong>
+-								<Text
+-									entry={{
+-										id: "cothinker.prompt.metricsTitle",
+-										defaultMessage: "Metric definitions",
+-									}}
+-								/>
++								<Text entry={{ "cothinker.prompt.metricsTitle": {} }} />
+ 							</strong>
+ 						</div>
+ 						<p>
+@@ -922,36 +891,21 @@ export const PromptManagementTab: FC = () => {
+ 							disabled={changedFields.length === 0}
+ 							onClick={() => setViewChangesVisible(true)}
+ 						>
+-							<Text
+-								entry={{
+-									id: "cothinker.prompt.viewChanges",
+-									defaultMessage: "View changes",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.prompt.viewChanges": {} }} />
+ 						</GenericButton>
+ 						<GenericButton
+ 							type="secondary"
+ 							className="el-btn-default"
+ 							onClick={handleSaveDraft}
+ 						>
+-							<Text
+-								entry={{
+-									id: "cothinker.prompt.saveDraft",
+-									defaultMessage: "Save draft",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.prompt.saveDraft": {} }} />
+ 						</GenericButton>
+ 						<GenericButton
+ 							type="primary"
+ 							className="el-btn-primary"
+ 							onClick={() => setPublishDialogVisible(true)}
+ 						>
+-							<Text
+-								entry={{
+-									id: "cothinker.prompt.reviewPublish",
+-									defaultMessage: "Review & publish",
+-								}}
+-							/>
++							<Text entry={{ "cothinker.prompt.reviewPublish": {} }} />
+ 						</GenericButton>
+ 					</div>
+ 				</section>
