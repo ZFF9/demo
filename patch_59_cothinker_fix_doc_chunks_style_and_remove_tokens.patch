@@ -1,0 +1,130 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+index e4432e2..a3d5fcb 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+@@ -537,17 +537,10 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 																		%
+ 																		relevance
+ 																	</span>
+-																	<span className="tokens-text">
+-																		{
+-																			chunk.tokenCount
+-																		}{" "}
+-																		tokens
+-																	</span>
+ 																</div>
+ 															</div>
+ 															<p className="chunk-excerpt">
+-																"{chunk.excerpt}
+-																"
++																{chunk.excerpt}
+ 															</p>
+ 															<div className="chunk-footer">
+ 																<span className="code-snippet">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.scss b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.scss
+index 22808d1..a17382f 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.scss
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.scss
+@@ -1074,8 +1074,9 @@
+ 		}
+ 
+ 		.chunk-context-note {
+-			font-size: 12px;
++			font-size: 13px;
+ 			color: #64748b;
++			line-height: 1.6;
+ 			margin: 0 0 16px 0;
+ 		}
+ 
+@@ -1089,16 +1090,16 @@
+ 				border-radius: 8px;
+ 				padding: 16px;
+ 				background: #ffffff;
+-				box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+ 
+ 				.chunk-header {
+ 					display: flex;
+ 					justify-content: space-between;
+ 					align-items: flex-start;
+-					margin-bottom: 8px;
++					gap: 16px;
++					margin-bottom: 12px;
+ 
+ 					h4 {
+-						margin: 0;
++						margin: 0 0 4px 0;
+ 						font-size: 14px;
+ 						font-weight: 600;
+ 						color: #1e293b;
+@@ -1107,36 +1108,40 @@
+ 					.chunk-meta {
+ 						display: flex;
+ 						align-items: center;
++						justify-content: flex-end;
++						flex-wrap: wrap;
+ 						gap: 8px;
+ 						font-size: 12px;
++						color: #64748b;
+ 
+ 						.brand-tag {
+-							background: #f1f5f9;
++							display: inline-flex;
++							align-items: center;
++							height: 20px;
++							line-height: 18px;
++							background: #ffffff;
+ 							border: 1px solid #e2e8f0;
+ 							border-radius: 4px;
+-							padding: 1px 6px;
+-							color: #475569;
+-						}
+-
+-						.relevance-text {
+-							color: #059669;
++							padding: 0 7px;
++							font-size: 12px;
+ 							font-weight: 500;
++							color: #64748b;
+ 						}
+ 
+-						.tokens-text {
++						.relevance-text {
+ 							color: #64748b;
++							font-weight: 400;
+ 						}
+ 					}
+ 				}
+ 
+ 				.chunk-excerpt {
+ 					margin: 0 0 12px 0;
+-					font-size: 13px;
+-					line-height: 1.5;
+-					color: #334155;
+-					background: #f8fafc;
+-					padding: 10px 12px;
+-					border-radius: 6px;
++					font-size: 14px;
++					line-height: 1.6;
++					color: #1e293b;
++					background: transparent;
++					padding: 0;
+ 				}
+ 
+ 				.chunk-footer {
+@@ -1149,11 +1154,12 @@
+ 					.view-doc-link {
+ 						background: transparent;
+ 						border: none;
+-						color: #2563eb;
+-						font-size: 12px;
+-						font-weight: 500;
++						color: #409eff;
++						font-size: 13px;
++						font-weight: 400;
+ 						cursor: pointer;
+-						padding: 2px 4px;
++						padding: 0;
++						white-space: nowrap;
+ 
+ 						&:hover {
+ 							text-decoration: underline;
