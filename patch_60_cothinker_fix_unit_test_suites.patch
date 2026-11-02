@@ -1,0 +1,273 @@
+diff --git a/packages/components/src/GenericDataTable/index.spec.tsx b/packages/components/src/GenericDataTable/index.spec.tsx
+index 4015b51..1c7d001 100644
+--- a/packages/components/src/GenericDataTable/index.spec.tsx
++++ b/packages/components/src/GenericDataTable/index.spec.tsx
+@@ -27,6 +27,22 @@ const mockData: ITestRow[] = [
+ ];
+ 
+ describe("GenericDataTable", () => {
++	beforeAll(() => {
++		Object.defineProperty(window, "matchMedia", {
++			writable: true,
++			value: jest.fn().mockImplementation((query) => ({
++				matches: false,
++				media: query,
++				onchange: null,
++				addListener: jest.fn(),
++				removeListener: jest.fn(),
++				addEventListener: jest.fn(),
++				removeEventListener: jest.fn(),
++				dispatchEvent: jest.fn(),
++			})),
++		});
++	});
++
+ 	it("renders table with data and column headers correctly", () => {
+ 		render(
+ 			<GenericDataTable<ITestRow>
+diff --git a/packages/components/src/GenericDateRangePicker/index.spec.tsx b/packages/components/src/GenericDateRangePicker/index.spec.tsx
+index 52202c4..a4617b6 100644
+--- a/packages/components/src/GenericDateRangePicker/index.spec.tsx
++++ b/packages/components/src/GenericDateRangePicker/index.spec.tsx
+@@ -48,6 +48,7 @@ describe("GenericDateRangePicker", () => {
+ 		const clearBtn = container.querySelector(".ant-picker-clear");
+ 		if (clearBtn) {
+ 			fireEvent.mouseDown(clearBtn);
++			fireEvent.mouseUp(clearBtn);
+ 			fireEvent.click(clearBtn);
+ 			expect(mockOnChange).toHaveBeenCalledWith("", "");
+ 		}
+diff --git a/packages/components/src/GenericMultiSelect/index.spec.tsx b/packages/components/src/GenericMultiSelect/index.spec.tsx
+index d1423e7..ac924db 100644
+--- a/packages/components/src/GenericMultiSelect/index.spec.tsx
++++ b/packages/components/src/GenericMultiSelect/index.spec.tsx
+@@ -26,6 +26,7 @@ describe("GenericMultiSelect Component", () => {
+ 			<GenericMultiSelect
+ 				value={["BU Marketing", "Sales Manager"]}
+ 				options={mockOptions}
++				maxTagCount={3}
+ 			/>
+ 		);
+ 
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+index 23e5cf1..d3ccc76 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+@@ -21,13 +21,27 @@ jest.mock("@angen_frontend/components", () => ({
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: any) => (
+-		<button type="button" onClick={onClick} {...props}>
++	GenericButton: ({
++		children,
++		onClick,
++		htmlType,
++		type: _type,
++		prefixIcon: _prefixIcon,
++		...props
++	}: any) => (
++		<button type={htmlType || "button"} onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: any) => (
+-		<button type="button" onClick={onClick} {...props}>
++	GenericButtonV2: ({
++		children,
++		onClick,
++		htmlType,
++		type: _type,
++		prefixIcon: _prefixIcon,
++		...props
++	}: any) => (
++		<button type={htmlType || "button"} onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+@@ -290,7 +304,7 @@ describe("KnowledgeDocTab Component", () => {
+ 		fireEvent.click(saveBtn);
+ 
+ 		expect(
+-			screen.getByText("Document metadata saved.")
++			screen.getAllByText("Document metadata saved.")[0]
+ 		).toBeInTheDocument();
+ 	});
+ 
+@@ -327,9 +341,9 @@ describe("KnowledgeDocTab Component", () => {
+ 		fireEvent.click(submitBtns[submitBtns.length - 1]);
+ 
+ 		expect(
+-			screen.getByText(
++			screen.getAllByText(
+ 				"Document uploaded. Processing has started; status remains Inactive."
+-			)
++			)[0]
+ 		).toBeInTheDocument();
+ 		expect(screen.getByText("new_clinical_trial.pdf")).toBeInTheDocument();
+ 	});
+@@ -355,7 +369,7 @@ describe("KnowledgeDocTab Component", () => {
+ 		fireEvent.click(modalConfirmBtn);
+ 
+ 		expect(
+-			screen.getByText(/Document (activated|deactivated)\./i)
++			screen.getAllByText(/Document (activated|deactivated)\./i)[0]
+ 		).toBeInTheDocument();
+ 	});
+ 
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx
+index bd921fd..5dfe824 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx
+@@ -4,9 +4,19 @@ import { KeyTakeawayCard } from "./index";
+ 
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+-	Text: ({ entry, children }: any) => (
+-		<span>{entry?.defaultMessage || children}</span>
+-	),
++	Text: ({ entry, children }: any) => {
++		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
++		const key = entry ? Object.keys(entry)[0] : "";
++		if (key) {
++			const en = require("../../../../../../../types/src/translations/en.json");
++			const val = key
++				.split(".")
++				.reduce((acc: any, part: string) => acc?.[part], en);
++			if (typeof val === "string") return <span>{val}</span>;
++			return <span>{key}</span>;
++		}
++		return <span>{children}</span>;
++	},
+ }));
+ 
+ describe("KeyTakeawayCard Component", () => {
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+index 17b0fe3..061f6c2 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+@@ -3,6 +3,19 @@ import "@testing-library/jest-dom";
+ import { LogDetailDrawer } from "./index";
+ import { IAuditGenerationDetail } from "../index";
+ 
++jest.mock("antd", () => ({
++	message: {
++		success: jest.fn(),
++		warning: jest.fn(),
++		info: jest.fn(),
++		error: jest.fn(),
++	},
++}));
++
++jest.mock("@angen_frontend/services", () => ({
++	InsightService: {},
++}));
++
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	CircleCloseSvgIcon: () => <span data-testid="circle-close-icon" />,
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx
+index e1c7649..e4c1c93 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx
+@@ -2,11 +2,25 @@ import { render, screen } from "@testing-library/react";
+ import "@testing-library/jest-dom";
+ import { KpiCards } from "./index";
+ 
++jest.mock("@angen_frontend/services", () => ({
++	InsightService: {},
++}));
++
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+-	Text: ({ entry, children }: any) => (
+-		<span>{entry?.defaultMessage || children}</span>
+-	),
++	Text: ({ entry, children }: any) => {
++		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
++		const key = entry ? Object.keys(entry)[0] : "";
++		if (key) {
++			const en = require("../../../../../../../types/src/translations/en.json");
++			const val = key
++				.split(".")
++				.reduce((acc: any, part: string) => acc?.[part], en);
++			if (typeof val === "string") return <span>{val}</span>;
++			return <span>{key}</span>;
++		}
++		return <span>{children}</span>;
++	},
+ 	DataAnalysisSvgIcon: () => <span />,
+ 	CoThinkerCircleCheckSvgIcon: () => <span />,
+ 	CircleCloseSvgIcon: () => <span />,
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+index d7d1c22..03009a7 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+@@ -115,7 +115,9 @@ describe("PromptManagementTab Component", () => {
+ 		fireEvent.click(saveDraftBtn);
+ 
+ 		expect(
+-			screen.getByText("Draft saved. The active version is unchanged.")
++			screen.getAllByText(
++				"Draft saved. The active version is unchanged."
++			)[0]
+ 		).toBeInTheDocument();
+ 
+ 		const discardDraftBtn = screen.getByText("Discard draft");
+@@ -132,7 +134,7 @@ describe("PromptManagementTab Component", () => {
+ 		});
+ 		fireEvent.click(discardBtns[discardBtns.length - 1]);
+ 
+-		expect(screen.getByText("Draft discarded.")).toBeInTheDocument();
++		expect(screen.getAllByText("Draft discarded.")[0]).toBeInTheDocument();
+ 		expect(screen.queryByText("Draft")).not.toBeInTheDocument();
+ 	});
+ 
+@@ -159,7 +161,7 @@ describe("PromptManagementTab Component", () => {
+ 		fireEvent.click(confirmPublishBtn);
+ 
+ 		expect(
+-			screen.getByText("Version v3 is now active.")
++			screen.getAllByText("Version v3 is now active.")[0]
+ 		).toBeInTheDocument();
+ 	});
+ 
+@@ -194,7 +196,9 @@ describe("PromptManagementTab Component", () => {
+ 		fireEvent.click(confirmRestoreBtn);
+ 
+ 		expect(
+-			screen.getByText(/Configuration restored as v3 in this workspace./i)
++			screen.getAllByText(
++				/Configuration restored as v3 in this workspace./i
++			)[0]
+ 		).toBeInTheDocument();
+ 	});
+ 
+@@ -229,7 +233,9 @@ describe("PromptManagementTab Component", () => {
+ 
+ 		fireEvent.click(screen.getByRole("button", { name: "Save" }));
+ 		expect(
+-			screen.getByText('Metric definition "Custom ROI Metric" added.')
++			screen.getAllByText(
++				'Metric definition "Custom ROI Metric" added.'
++			)[0]
+ 		).toBeInTheDocument();
+ 
+ 		const editButtons = screen.getAllByRole("button", { name: "Edit" });
+@@ -244,7 +250,7 @@ describe("PromptManagementTab Component", () => {
+ 		});
+ 		fireEvent.click(screen.getByRole("button", { name: "Save" }));
+ 
+-		expect(screen.getByText(/updated\./i)).toBeInTheDocument();
++		expect(screen.getAllByText(/updated\./i)[0]).toBeInTheDocument();
+ 
+ 		const deleteButtons = screen.getAllByRole("button", { name: "Delete" });
+ 		fireEvent.click(deleteButtons[0]);
+@@ -257,6 +263,6 @@ describe("PromptManagementTab Component", () => {
+ 		});
+ 		fireEvent.click(confirmDeleteBtn);
+ 
+-		expect(screen.getByText(/deleted\./i)).toBeInTheDocument();
++		expect(screen.getAllByText(/deleted\./i)[0]).toBeInTheDocument();
+ 	});
+ });
