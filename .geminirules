@@ -8,12 +8,12 @@
    - 纯前端研发工程师。
    - **无需关心任何后端逻辑、接口实现或数据存储**，专注纯前端页面、路由、交互与组件开发。
 2. **当前项目基线与需求状态**：
-   - **当前聚焦阶段：一期需求 Feedback Dashboard 问题修复与 CR 意见修改**。
-   - JIRA 卡号：`JEJQ-15592`。
-   - 云电脑分支：`feature/JEJQ-15592-feedback-dashboard-fix-cr-ai`。
-   - 本地工作基线目录：`angen_frontend-feature-JEJQ-15592-feedback-dashboard-fix-cr-ai@a9a4b7279f0`（初始基线 Tag：`baseline_a9a4b7279f0`）。
+   - **当前聚焦阶段：二期需求 Co-Thinker Portal 管理分析平台（已合并最新 `master` 分支与一期 `JEJQ-15592` 分支）**。
+   - JIRA 卡号：`JEJQ-15590`。
+   - 云电脑分支：`feature/JEJQ-15590-admin-portal-shell`。
+   - 本地工作基线目录：`angen_frontend-feature-JEJQ-15590-admin-portal-shell@551cc1cdd5a`（初始基线 Tag：`baseline_551cc1cdd5a`，最新已应用 Tag：`applied_patch_63`）。
    - 工程类型：基于 npm workspaces 的前端 Monorepo（包含 `packages/web`, `packages/components`, `packages/services`, `packages/types`）。
-   - **二期业务状态：暂时搁置**（二期需求为独立全屏脱壳管理分析平台 `Co-Thinker Portal`，卡号 `JEJQ-15590`，之前已完成 `patch_01` 至 `patch_45`）。
+   - **一期业务状态：已合入当前二期基线**（一期需求 `JEJQ-15592` 独立分支最新基线为 `angen_frontend-feature-JEJQ-15592-feedback-dashboard-fix-cr-ai@24586993cd0`，其全部变更与 `master` 最新变更均已合入 `551cc1cdd5a`；二期此前已完成 `patch_01` 至 `patch_63`）。
 3. **一期核心业务与功能范围（全部 AI 解读卡片生态体系）**：
    - **业务场景定位**：Custom Pages（自定义大盘报表页面）顶部的自动化洞察解读（Master Commentary）以及单面板级（Panel Scope）AI 辅助解读。
    - **核心视觉与交互组成（AI-Generated Insights）**：
@@ -60,11 +60,11 @@
    - **云电脑代码一旦应用几乎不能回滚，只能增量应用 patch**。
    - 严禁要求用户在云电脑执行 `git checkout`、`git reset` 或 `rm -rf` 等回滚、撤销或删除指令。
    - 任何问题修复、样式调整或功能重构，必须将云电脑上一次成功应用的 patch 作为不可撤销的历史基线，在此基础上生成全新的递增补丁。
-   - **当前一期云电脑已确认最新基线**：已成功合入 patch_15592_14_cothinker_add_feedback_success_modal.patch（本地 Tag：pplied_patch_15592_14，commit 7f2067）。下一个补丁必须以 patch_15592_15_xxx.patch 递增命名，彻底与二期的 patch_01~patch_45 隔离。
+   - **当前二期云电脑已确认最新基线**：已基于合并了 `master` 与一期分支的 `551cc1cdd5a`（含 `patch_01` ~ `patch_57` 全部变更）建立新基线，已应用 `patch_58` 并交付 `patch_59_cothinker_fix_doc_chunks_style_and_remove_tokens.patch`（本地 Tag：`applied_patch_59`）。下一个二期补丁必须以 `patch_60_xxx.patch` 递增命名（一期独立分支已合入至 `patch_15592_22`，基线为 `24586993cd0`）。
 7. **Git Commit 提交信息规范（强制执行）**：
-   - 给用户输出的 `git commit` 命令中，**提交信息最前面必须严格包含当前 JIRA 需求编号 `JEJQ-15592`**。
-   - 标准格式：`git commit -m "JEJQ-15592 <type>(<scope>): <description>"`（例如：`git commit -m "JEJQ-15592 fix(feedback-dashboard): address reviewer comments"`）。
-   - 严禁遗漏开头的 `JEJQ-15592` 标识，以严格匹配工程的 Husky `commit-msg` 钩子校验与 J&J 审计规范。
+   - 给用户输出的 `git commit` 命令中，**提交信息最前面必须严格包含当前 JIRA 需求编号 `JEJQ-15590`**（若在 `JEJQ-15592` 分支则为 `JEJQ-15592`）。
+   - 标准格式：`git commit -m "JEJQ-15590 <type>(<scope>): <description>"`（例如：`git commit -m "JEJQ-15590 fix(cothinker-admin): address reviewer comments"`）。
+   - 严禁遗漏开头的 `JEJQ-15590` 标识，以严格匹配工程的 Husky `commit-msg` 钩子校验与 J&J 审计规范。
 8. **云电脑传递通道工程自动同步（强制执行）**：
    - **通道工程本地路径**：C:\Users\Zmf\Desktop\project\通道\demo（远程仓库：https://github.com/ZFF9/demo.git）。
    - **业务场景定位**：用户使用该工程作为本地向云电脑传递补丁与核心文件的专用通道。
@@ -76,6 +76,12 @@
    - **双端代码状态分裂防范**：
      - 云电脑在遇到补丁报错时，可能会出现部分文件已改动但核心文件未合入的半更新状态（如测试文件已增加新用例，但业务组件尚未合入新逻辑）；
      - 生成补丁时必须以云电脑实际生效的代码作为单一事实来源，严禁盲目假设所有补丁都完整合入；若用户提供最新代码包，必须全量 diff 审校真实上下文后再生成补丁。
+   - **对齐云桌面 Prettier 2.8.8 基线（强制执行 - 最高优先级）**：
+     - 云桌面在执行 `git commit` 时，会通过 Husky + `lint-staged` 自动对所有暂存文件运行 `prettier@2.8.8 --write --ignore-unknown`（注意：项目 `package.json` 锁定版本为 `prettier@^2.8.8`，严禁使用默认 Prettier 3.x）；
+     - **生成任何补丁前必须执行的标准动作**：
+       1. 若目标修改文件在此前的补丁中已被提交过，修改前**必须先在本地对该文件执行 `npx prettier@2.8.8 --write <file>` 并转换为 LF 换行符**，使本地基线与云桌面 Git 仓库中的实际文件状态 100% 字节级对齐；
+       2. 完成代码修改后，**必须再次对所有涉及的文件执行 `npx prettier@2.8.8 --write <files>` 并统一为 LF 换行符**，然后再执行 `git diff` 生成补丁；
+       3. 所有涉及的文件均必须先对齐云桌面 `prettier@2.8.8` 格式后再生成补丁，确保云桌面 `git apply` 100% 零冲突。
    - **Prettier 与编辑器折行免疫（强制执行）**：
      - 云电脑环境（VS Code / Prettier / ESLint pre-commit）常对长 JSX 标签属性、长三元表达式、长字符串进行自动换行折行；
      - `git apply` 默认对上下文行极其严格，一旦遭遇折行差异即报 `patch failed`；
@@ -184,5 +190,19 @@
    - **多语言国际化（`<Text />`）与 JSON 洁净度规范**：
      - `<Text />` 组件必须使用 `entry={{ "key": {} }}` 格式，且所有新增 key 必须同步写入 `en.json`、`ja.json`、`zh-CN.json`、`ko.json` 四国语言文件；
      - 写入语言包 JSON 时，**严禁将源码行末的逗号 `,`、首尾多余双引号 `"` 或三元表达式直接写入 JSON 值中**，写入后必须执行 JSON 值洁净度校验。
+
+5. **原生 HTML 标签与排版组件重构规范（强制执行 - 杜绝 Reviewer 异议）**：
+   - **交互控件组件化原则（严禁原生表单控件）**：
+     - ❌ **严禁在页面或组件中使用原生 `<select>` 标签**：原生下拉框外观、箭头和选项弹层在各操作系统下不受控且无法应用 Figma 样式，必须统一替换为 Ant Design `Select` 或 `@angen_frontend/components` 中的 `GenericSelect` / `GenericMultiSelect`；
+     - ❌ **严禁在表单内使用未显式声明 `type="button"` 的裸 `<button>`**：必须显式声明 `type="button"` 防止触发表单误提交，主操作按钮优先使用 `GenericButtonV2`；
+     - ❌ **原生 `<input>` 规范化**：优先使用 Ant Design `Input` 或保持完全受控模式，保证视觉与输入状态机统一。
+   - **标题与加粗排版规范（div + class / span + class 铁律）**：
+     - ❌ **严禁在深层组件与卡片中滥用 `<h1>`~`<h6>`**：B 端后台无 SEO 诉求，原生标题自带浏览器默认外边距与行高污染，且在抽屉或卡片中易引发无障碍（a11y）标题层级跳跃审查缺陷；所有页面、面板、抽屉及卡片标题统一使用 `<div className="xxxTitle">` 并通过 SCSS 精准控制字体与间距；
+     - ❌ **严禁使用 `<strong>`、`<b>` 标签进行纯视觉加粗**：视觉加粗不代表语意强调，统一重构为 `<span className="xxx">` 并在 SCSS 中指定 `font-weight: 600`，保持与平台全仓业务代码（全仓 0 处 `strong`）风格 100% 强一致；
+     - ❌ **严禁使用 `<dl>`, `<dt>`, `<dd>` 描述列表标签**：原生 `<dd>` 自带浏览器内联缩进；所有键值对详情展示统一重构为标准 Flex/Grid 结构的 `<div className="metadataGrid"><div className="metadataItem"><span className="label">...</span><span className="value">...</span></div></div>`。
+   - **SCSS 样式选择器纯净化原则（严禁裸标签选择器）**：
+     - ❌ **严禁在 SCSS 中直接使用裸标签选择器**（如 `h1 {`, `h2 {`, `h3 {`, `h4 {`, `select {`, `strong {`, `input {`）；
+     - ✅ **样式必须 100% 绑定至语义类名**（如 `.sectionTitle`, `.metricValue`, `.filterSelect`），彻底杜绝样式穿透、意外继承与选择器特异度混乱。
+
 
 
