@@ -1,0 +1,668 @@
+diff --git a/packages/components/src/index.ts b/packages/components/src/index.ts
+index b287a71..4542eaf 100644
+--- a/packages/components/src/index.ts
++++ b/packages/components/src/index.ts
+@@ -2,6 +2,7 @@
+ 
+ import React from "react";
+ import "antd/dist/reset.css";
++import { Select, message } from "antd";
+ import ChartTypeSvgIcon from "./Icons/ChartTypeSvgIcon";
+ import ChatSvgIcon from "./Icons/SideMenu/ChatSvgIcon";
+ import CloseSvgIcon from "./Icons/CloseSvgIcon";
+@@ -573,4 +574,6 @@ export {
+ 	GenericUploadDragger,
+ 	GenericStatusTag,
+ 	GenericMultiSelect,
++	Select,
++	message,
+ };
+diff --git a/packages/types/src/translations/en.json b/packages/types/src/translations/en.json
+index 2192650..05cd474 100644
+--- a/packages/types/src/translations/en.json
++++ b/packages/types/src/translations/en.json
+@@ -2159,7 +2159,8 @@
+       },
+       "exportExcel": "Export to Excel",
+       "table": {
+-        "title": "Activity Logs"
++        "title": "Activity Logs",
++        "timestamp": "TIMESTAMP"
+       },
+       "detail": {
+         "keyTakeaway": "Key Takeaway",
+@@ -2241,7 +2242,17 @@
+       "version": "Version",
+       "status": "Status",
+       "historyTitle": "Version history",
+-      "historyDesc": "Each version contains the shared instructions and all three role profiles."
++      "historyDesc": "Each version contains the shared instructions and all three role profiles.",
++      "configurationItemsCount": "4 configuration items",
++      "statusActive": "Active",
++      "statusDraft": "Draft",
++      "publishedTogether": "Published together as one configuration",
++      "fieldChangeNote": "Change note",
++      "diffTarget": "Target",
++      "diffActiveVersion": "Active version",
++      "diffDraftVersion": "Draft version",
++      "modalChangedItems": "Changed items",
++      "modalReasonForRestoring": "Reason for restoring"
+     },
+     "knowledgeDoc": {
+       "uploadDoc": "Upload Document",
+@@ -2295,7 +2306,10 @@
+         "uploadedAt": "Uploaded At",
+         "lastUpdated": "Last Updated",
+         "processingStatus": "Processing Status",
+-        "errorTitle": "Processing Failure"
++        "errorTitle": "Processing Failure",
++        "documentId": "Document ID",
++        "format": "Format",
++        "size": "Size"
+       },
+       "status": {
+         "active": "Active",
+diff --git a/packages/types/src/translations/ja.json b/packages/types/src/translations/ja.json
+index 405e0b6..2eaf8a9 100644
+--- a/packages/types/src/translations/ja.json
++++ b/packages/types/src/translations/ja.json
+@@ -2160,7 +2160,8 @@
+       },
+       "exportExcel": "Export to Excel",
+       "table": {
+-        "title": "Activity Logs"
++        "title": "Activity Logs",
++        "timestamp": "TIMESTAMP"
+       },
+       "detail": {
+         "keyTakeaway": "Key Takeaway",
+@@ -2242,7 +2243,17 @@
+       "version": "Version",
+       "status": "Status",
+       "historyTitle": "Version history",
+-      "historyDesc": "Each version contains the shared instructions and all three role profiles."
++      "historyDesc": "Each version contains the shared instructions and all three role profiles.",
++      "configurationItemsCount": "4 configuration items",
++      "statusActive": "Active",
++      "statusDraft": "Draft",
++      "publishedTogether": "Published together as one configuration",
++      "fieldChangeNote": "Change note",
++      "diffTarget": "Target",
++      "diffActiveVersion": "Active version",
++      "diffDraftVersion": "Draft version",
++      "modalChangedItems": "Changed items",
++      "modalReasonForRestoring": "Reason for restoring"
+     },
+     "knowledgeDoc": {
+       "uploadDoc": "Upload Document",
+@@ -2296,7 +2307,10 @@
+         "uploadedAt": "Uploaded At",
+         "lastUpdated": "Last Updated",
+         "processingStatus": "Processing Status",
+-        "errorTitle": "Processing Failure"
++        "errorTitle": "Processing Failure",
++        "documentId": "Document ID",
++        "format": "Format",
++        "size": "Size"
+       },
+       "status": {
+         "active": "Active",
+diff --git a/packages/types/src/translations/ko.json b/packages/types/src/translations/ko.json
+index e362002..47fcecf 100644
+--- a/packages/types/src/translations/ko.json
++++ b/packages/types/src/translations/ko.json
+@@ -2159,7 +2159,8 @@
+       },
+       "exportExcel": "Export to Excel",
+       "table": {
+-        "title": "Activity Logs"
++        "title": "Activity Logs",
++        "timestamp": "TIMESTAMP"
+       },
+       "detail": {
+         "keyTakeaway": "Key Takeaway",
+@@ -2241,7 +2242,17 @@
+       "version": "Version",
+       "status": "Status",
+       "historyTitle": "Version history",
+-      "historyDesc": "Each version contains the shared instructions and all three role profiles."
++      "historyDesc": "Each version contains the shared instructions and all three role profiles.",
++      "configurationItemsCount": "4 configuration items",
++      "statusActive": "Active",
++      "statusDraft": "Draft",
++      "publishedTogether": "Published together as one configuration",
++      "fieldChangeNote": "Change note",
++      "diffTarget": "Target",
++      "diffActiveVersion": "Active version",
++      "diffDraftVersion": "Draft version",
++      "modalChangedItems": "Changed items",
++      "modalReasonForRestoring": "Reason for restoring"
+     },
+     "knowledgeDoc": {
+       "uploadDoc": "Upload Document",
+@@ -2295,7 +2306,10 @@
+         "uploadedAt": "Uploaded At",
+         "lastUpdated": "Last Updated",
+         "processingStatus": "Processing Status",
+-        "errorTitle": "Processing Failure"
++        "errorTitle": "Processing Failure",
++        "documentId": "Document ID",
++        "format": "Format",
++        "size": "Size"
+       },
+       "status": {
+         "active": "Active",
+diff --git a/packages/types/src/translations/zh-CN.json b/packages/types/src/translations/zh-CN.json
+index 8f36616..f9dd8c2 100644
+--- a/packages/types/src/translations/zh-CN.json
++++ b/packages/types/src/translations/zh-CN.json
+@@ -2168,7 +2168,8 @@
+       },
+       "exportExcel": "Export to Excel",
+       "table": {
+-        "title": "Activity Logs"
++        "title": "Activity Logs",
++        "timestamp": "TIMESTAMP"
+       },
+       "detail": {
+         "keyTakeaway": "Key Takeaway",
+@@ -2250,7 +2251,17 @@
+       "version": "Version",
+       "status": "Status",
+       "historyTitle": "Version history",
+-      "historyDesc": "Each version contains the shared instructions and all three role profiles."
++      "historyDesc": "Each version contains the shared instructions and all three role profiles.",
++      "configurationItemsCount": "4 configuration items",
++      "statusActive": "Active",
++      "statusDraft": "Draft",
++      "publishedTogether": "Published together as one configuration",
++      "fieldChangeNote": "Change note",
++      "diffTarget": "Target",
++      "diffActiveVersion": "Active version",
++      "diffDraftVersion": "Draft version",
++      "modalChangedItems": "Changed items",
++      "modalReasonForRestoring": "Reason for restoring"
+     },
+     "knowledgeDoc": {
+       "uploadDoc": "Upload Document",
+@@ -2304,7 +2315,10 @@
+         "uploadedAt": "Uploaded At",
+         "lastUpdated": "Last Updated",
+         "processingStatus": "Processing Status",
+-        "errorTitle": "Processing Failure"
++        "errorTitle": "Processing Failure",
++        "documentId": "Document ID",
++        "format": "Format",
++        "size": "Size"
+       },
+       "status": {
+         "active": "Active",
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+index b467cca..f8efa00 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+@@ -170,20 +170,39 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 						<div className="metadata-grid">
+ 							<div className="metadata-item">
+ 								<span className="metadata-label">
+-									Document ID
++									<Text
++										entry={{
++											"cothinker.knowledgeDoc.detail.documentId":
++												{},
++										}}
++									/>
+ 								</span>
+ 								<span className="metadata-value document-id">
+ 									{doc.documentId || doc.id}
+ 								</span>
+ 							</div>
+ 							<div className="metadata-item">
+-								<span className="metadata-label">Format</span>
++								<span className="metadata-label">
++									<Text
++										entry={{
++											"cothinker.knowledgeDoc.detail.format":
++												{},
++										}}
++									/>
++								</span>
+ 								<span className="metadata-value">
+ 									{documentFormat(doc.fileName)}
+ 								</span>
+ 							</div>
+ 							<div className="metadata-item">
+-								<span className="metadata-label">Size</span>
++								<span className="metadata-label">
++									<Text
++										entry={{
++											"cothinker.knowledgeDoc.detail.size":
++												{},
++										}}
++									/>
++								</span>
+ 								<span className="metadata-value">
+ 									{formatDocumentSize(doc.fileSizeBytes)}
+ 								</span>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+index 11cc254..e32e765 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+@@ -1,10 +1,10 @@
+ import { FC, useState, useEffect, ChangeEvent } from "react";
+-import { Select } from "antd";
+ import {
+ 	GenericUploadDragger,
+ 	GenericButtonV2,
+ 	GenericModalV2,
+ 	Text,
++	Select,
+ } from "@angen_frontend/components";
+ import { IKnowledgeDocument, KNOWLEDGE_BRANDS, documentDate } from "../index";
+ 
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+index 31c5467..283b242 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+@@ -2,32 +2,36 @@ import { render, screen, fireEvent } from "@testing-library/react";
+ import "@testing-library/jest-dom";
+ import { KnowledgeDocTab } from "./index";
+ 
+-jest.mock("antd", () => {
+-	const Select = ({ value, onChange, children, id, className }: any) => (
+-		<select
+-			id={id}
+-			className={className}
+-			value={value}
+-			data-testid={id}
+-			onChange={(e: any) => onChange?.(e.target.value)}
+-		>
+-			{children}
+-		</select>
+-	);
+-	Select.Option = ({ value, children }: any) => (
+-		<option value={value}>{children}</option>
+-	);
+-	return {
+-		Select,
+-	};
+-});
+-
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	DocFileSvgIcon: () => <span data-testid="doc-file-icon" />,
+ 	RefreshSvgIcon: () => <span data-testid="refresh-icon" />,
+ 	SearchSvgIcon: () => <span data-testid="search-icon" />,
+ 	UploadSvgIcon: () => <span data-testid="upload-icon" />,
++	Select: Object.assign(
++		({ value, onChange, children, id, className }: any) => (
++			<select
++				id={id}
++				className={className}
++				value={value}
++				data-testid={id}
++				onChange={(e: any) => onChange?.(e.target.value)}
++			>
++				{children}
++			</select>
++		),
++		{
++			Option: ({ value, children }: any) => (
++				<option value={value}>{children}</option>
++			),
++		}
++	),
++	message: {
++		success: jest.fn(),
++		error: jest.fn(),
++		warning: jest.fn(),
++		info: jest.fn(),
++	},
+ 	Text: ({ entry, children }: any) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+index 26f4773..39e110c 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+@@ -1,5 +1,4 @@
+ import { FC, useState, useMemo, FormEvent } from "react";
+-import { message, Select } from "antd";
+ import {
+ 	SearchSvgIcon,
+ 	UploadSvgIcon,
+@@ -7,6 +6,8 @@ import {
+ 	GenericButtonV2,
+ 	GenericModalV2,
+ 	Text,
++	Select,
++	message,
+ } from "@angen_frontend/components";
+ import { KnowledgeDocumentTable } from "./KnowledgeDocumentTable";
+ import { KnowledgeDocumentEditor } from "./KnowledgeDocumentEditor";
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+index 061f6c2..75b1580 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+@@ -3,15 +3,6 @@ import "@testing-library/jest-dom";
+ import { LogDetailDrawer } from "./index";
+ import { IAuditGenerationDetail } from "../index";
+ 
+-jest.mock("antd", () => ({
+-	message: {
+-		success: jest.fn(),
+-		warning: jest.fn(),
+-		info: jest.fn(),
+-		error: jest.fn(),
+-	},
+-}));
+-
+ jest.mock("@angen_frontend/services", () => ({
+ 	InsightService: {},
+ }));
+@@ -21,6 +12,12 @@ jest.mock("@angen_frontend/components", () => ({
+ 	CircleCloseSvgIcon: () => <span data-testid="circle-close-icon" />,
+ 	CoThinkerCircleCheckSvgIcon: () => <span data-testid="circle-check-icon" />,
+ 	CopySvgIcon: () => <span data-testid="copy-icon" />,
++	message: {
++		success: jest.fn(),
++		warning: jest.fn(),
++		info: jest.fn(),
++		error: jest.fn(),
++	},
+ 	Text: ({ entry, children }: any) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+index 158ae59..620abdc 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+@@ -1,5 +1,4 @@
+ import { FC, useState } from "react";
+-import { message } from "antd";
+ import {
+ 	CoThinkerCircleCheckSvgIcon,
+ 	CircleCloseSvgIcon,
+@@ -7,6 +6,7 @@ import {
+ 	GenericSideDrawer,
+ 	GenericButtonV2,
+ 	Text,
++	message,
+ } from "@angen_frontend/components";
+ import {
+ 	IAuditGenerationDetail,
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+index 678d66a..0505548 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+@@ -13,6 +13,12 @@ jest.mock("@angen_frontend/components", () => ({
+ 	CoThinkerCircleCheckSvgIcon: () => <span />,
+ 	CopySvgIcon: () => <span />,
+ 	SortSvgIcon: () => <span />,
++	message: {
++		success: jest.fn(),
++		error: jest.fn(),
++		warning: jest.fn(),
++		info: jest.fn(),
++	},
+ 	Text: ({ entry, children }: any) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+index 25d4d8b..5f4b7b8 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+@@ -1,5 +1,4 @@
+ import { FC, useState, useEffect, useMemo, useRef, useCallback } from "react";
+-import { message } from "antd";
+ import {
+ 	CoThinkerDownloadSvgIcon,
+ 	SearchSvgIcon,
+@@ -12,6 +11,7 @@ import {
+ 	GenericDateRangePicker,
+ 	GenericMultiSelect,
+ 	Text,
++	message,
+ } from "@angen_frontend/components";
+ import { LogDetailDrawer } from "./LogDetailDrawer";
+ import {
+@@ -414,7 +414,13 @@ export const LogAuditTab: FC = () => {
+ 			{
+ 				title: (
+ 					<span className="sortable" onClick={toggleSort}>
+-						<span>TIMESTAMP</span>
++						<span>
++							<Text
++								entry={{
++									"cothinker.logAudit.table.timestamp": {},
++								}}
++							/>
++						</span>
+ 						<SortSvgIcon className="sort-icon" />
+ 					</span>
+ 				),
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
+index 284a4d3..1d90aba 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
+@@ -106,7 +106,13 @@ export const ConfigurationPanel: FC<IProps> = ({ hasDraft, onOpenEditor }) => {
+ 						<Text entry={{ "cothinker.prompt.configDesc": {} }} />
+ 					</p>
+ 				</div>
+-				<span className="count-badge">4 configuration items</span>
++				<span className="count-badge">
++					<Text
++						entry={{
++							"cothinker.prompt.configurationItemsCount": {},
++						}}
++					/>
++				</span>
+ 			</div>
+ 
+ 			<GenericDataTable<IConfigEntry>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+index af95fa6..ccd3b12 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+@@ -1,9 +1,9 @@
+ import { FC, useState, useMemo } from "react";
+-import { Select } from "antd";
+ import {
+ 	GenericSideDrawer,
+ 	GenericButtonV2,
+ 	Text,
++	Select,
+ } from "@angen_frontend/components";
+ import {
+ 	PromptScope,
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+index 03009a7..3c0ce5b 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+@@ -9,6 +9,30 @@ jest.mock("@angen_frontend/components", () => ({
+ 	CoThinkerPlusSvgIcon: () => <span data-testid="plus-icon" />,
+ 	SearchSvgIcon: () => <span data-testid="search-icon" />,
+ 	CoThinkerDownloadSvgIcon: () => <span data-testid="download-icon" />,
++	message: {
++		success: jest.fn(),
++		error: jest.fn(),
++		warning: jest.fn(),
++		info: jest.fn(),
++	},
++	Select: Object.assign(
++		({ value, onChange, children, id, className }: any) => (
++			<select
++				id={id}
++				className={className}
++				value={value}
++				data-testid={id}
++				onChange={(e: any) => onChange?.(e.target.value)}
++			>
++				{children}
++			</select>
++		),
++		{
++			Option: ({ value, children }: any) => (
++				<option value={value}>{children}</option>
++			),
++		}
++	),
+ 	Text: ({ entry, children }: any) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+index 757b524..ce3cd31 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+@@ -1,11 +1,11 @@
+ import { FC, useState, useMemo } from "react";
+-import { message } from "antd";
+ import {
+ 	EditPenSvgIcon,
+ 	CollectionSvgIcon,
+ 	GenericButtonV2,
+ 	GenericModalV2,
+ 	Text,
++	message,
+ } from "@angen_frontend/components";
+ import { ConfigurationPanel } from "./ConfigurationPanel";
+ import { VersionHistoryPanel } from "./VersionHistoryPanel";
+@@ -832,7 +832,13 @@ export const PromptManagementTab: FC = () => {
+ 									}}
+ 								/>
+ 							</span>
+-							<span className="active-tag">Active</span>
++							<span className="active-tag">
++								<Text
++									entry={{
++										"cothinker.prompt.statusActive": {},
++									}}
++								/>
++							</span>
+ 						</div>
+ 						<p>{activeVersion.changeNote}</p>
+ 					</div>
+@@ -840,7 +846,13 @@ export const PromptManagementTab: FC = () => {
+ 						<span className="textBold">
+ 							1 shared prompt · 3 role profiles
+ 						</span>
+-						<span>Published together as one configuration</span>
++						<span>
++							<Text
++								entry={{
++									"cothinker.prompt.publishedTogether": {},
++								}}
++							/>
++						</span>
+ 					</div>
+ 				</section>
+ 			) : (
+@@ -873,7 +885,13 @@ export const PromptManagementTab: FC = () => {
+ 				<section className="draft-bar" aria-label="Draft workspace">
+ 					<div className="draft-heading">
+ 						<div className="draft-meta-group">
+-							<span className="draft-tag">Draft</span>
++							<span className="draft-tag">
++								<Text
++									entry={{
++										"cothinker.prompt.statusDraft": {},
++									}}
++								/>
++							</span>
+ 							<span className="textBold">
+ 								Based on v{activeVersion.version}
+ 							</span>
+@@ -889,7 +907,13 @@ export const PromptManagementTab: FC = () => {
+ 							Discard draft
+ 						</button>
+ 					</div>
+-					<label htmlFor="change-note">Change note</label>
++					<label htmlFor="change-note">
++						<Text
++							entry={{
++								"cothinker.prompt.fieldChangeNote": {},
++							}}
++						/>
++					</label>
+ 					<input
+ 						id="change-note"
+ 						type="text"
+@@ -1034,9 +1058,30 @@ export const PromptManagementTab: FC = () => {
+ 							<table className="diff-table">
+ 								<thead>
+ 									<tr>
+-										<th>Target</th>
+-										<th>Active version</th>
+-										<th>Draft version</th>
++										<th>
++											<Text
++												entry={{
++													"cothinker.prompt.diffTarget":
++														{},
++												}}
++											/>
++										</th>
++										<th>
++											<Text
++												entry={{
++													"cothinker.prompt.diffActiveVersion":
++														{},
++												}}
++											/>
++										</th>
++										<th>
++											<Text
++												entry={{
++													"cothinker.prompt.diffDraftVersion":
++														{},
++												}}
++											/>
++										</th>
+ 									</tr>
+ 								</thead>
+ 								<tbody>
+@@ -1093,13 +1138,26 @@ export const PromptManagementTab: FC = () => {
+ 							. This replaces the current active version.
+ 						</p>
+ 						<div className="form-group">
+-							<label>Change note</label>
++							<label>
++								<Text
++									entry={{
++										"cothinker.prompt.fieldChangeNote": {},
++									}}
++								/>
++							</label>
+ 							<p>
+ 								{draftChangeNote || "(No change note provided)"}
+ 							</p>
+ 						</div>
+ 						<div className="form-group">
+-							<label>Changed items</label>
++							<label>
++								<Text
++									entry={{
++										"cothinker.prompt.modalChangedItems":
++											{},
++									}}
++								/>
++							</label>
+ 							<p>
+ 								{changedFields.length > 0
+ 									? `${changedFields.length} field(s) modified.`
+@@ -1182,7 +1240,14 @@ export const PromptManagementTab: FC = () => {
+ 							available.
+ 						</p>
+ 						<div className="form-group">
+-							<label>Reason for restoring</label>
++							<label>
++								<Text
++									entry={{
++										"cothinker.prompt.modalReasonForRestoring":
++											{},
++									}}
++								/>
++							</label>
+ 							<textarea
+ 								rows={3}
+ 								className="textarea-box"
