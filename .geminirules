@@ -64,6 +64,7 @@
 7. **Git Commit 提交信息规范（强制执行）**：
    - 给用户输出的 `git commit` 命令中，**提交信息最前面必须严格包含当前 JIRA 需求编号 `JEJQ-15590`**（若在 `JEJQ-15592` 分支则为 `JEJQ-15592`）。
    - 标准格式：`git commit -m "JEJQ-15590 <type>(<scope>): <description>"`（例如：`git commit -m "JEJQ-15590 fix(cothinker-admin): address reviewer comments"`）。
+   - ❌ **严禁在 commit 命令及提交信息中出现 `patch_xx`、`patch_64`、`(patch_xx)` 或任何类似补丁编号词汇**：所有提交信息必须保持标准的业务与工程语义描述，严禁夹带内部临时补丁编号痕迹，确保 Git 提交日志纯粹专业，彻底避免审查人异议或 JIRA 联动审计风险。
    - 严禁遗漏开头的 `JEJQ-15590` 标识，以严格匹配工程的 Husky `commit-msg` 钩子校验与 J&J 审计规范。
 8. **云电脑传递通道工程自动同步（强制执行）**：
    - **通道工程本地路径**：C:\Users\Zmf\Desktop\project\通道\demo（远程仓库：https://github.com/ZFF9/demo.git）。
