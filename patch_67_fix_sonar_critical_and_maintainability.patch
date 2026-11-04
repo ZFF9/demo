@@ -1,0 +1,1004 @@
+diff --git a/packages/components/src/FeedbackChart/index.spec.tsx b/packages/components/src/FeedbackChart/index.spec.tsx
+index 0c52a4d..58de554 100644
+--- a/packages/components/src/FeedbackChart/index.spec.tsx
++++ b/packages/components/src/FeedbackChart/index.spec.tsx
+@@ -19,19 +19,24 @@ jest.mock("echarts", () => ({
+ 
+ describe("FeedbackChart", () => {
+ 	beforeAll(() => {
+-		global.ResizeObserver = class ResizeObserver {
+-			cb: any;
+-			constructor(cb: any) {
+-				this.cb = cb;
++		class MockResizeObserver implements ResizeObserver {
++			private readonly callback: ResizeObserverCallback;
++			private readonly observedElements = new Set<Element>();
++			constructor(callback: ResizeObserverCallback) {
++				this.callback = callback;
+ 			}
+-			observe() {
+-				if (this.cb) {
+-					this.cb([], this);
+-				}
++			observe(target: Element) {
++				this.observedElements.add(target);
++				this.callback([], this);
+ 			}
+-			unobserve() {}
+-			disconnect() {}
+-		} as any;
++			unobserve(target: Element): void {
++				this.observedElements.delete(target);
++			}
++			disconnect(): void {
++				this.observedElements.clear();
++			}
++		}
++		global.ResizeObserver = MockResizeObserver;
+ 	});
+ 
+ 	beforeEach(() => {
+diff --git a/packages/components/src/FeedbackChart/index.tsx b/packages/components/src/FeedbackChart/index.tsx
+index 37ad97f..5ee9780 100644
+--- a/packages/components/src/FeedbackChart/index.tsx
++++ b/packages/components/src/FeedbackChart/index.tsx
+@@ -1,5 +1,6 @@
+-import { FC, useRef, useMemo, useEffect } from "react";
+-import * as echarts from "echarts";
++import { useRef, useMemo, useEffect } from "react";
++import type { FC } from "react";
++import { init as initChart } from "echarts";
+ import type { EChartsOption } from "echarts";
+ 
+ export interface IRoleFeedbackItem {
+@@ -41,11 +42,14 @@ const FEEDBACK_RATE_BANDS = [
+ 	{ label: "Review", range: "60%-79%", color: "#D97706" },
+ 	{ label: "Attention", range: "<60%", color: "#DC2626" },
+ ];
++const FEEDBACK_RATE_OPTIMAL_MIN = 80;
++const FEEDBACK_RATE_REVIEW_MIN = 60;
++const DATE_PART_COUNT = 3;
+ 
+ const getRoleBarColor = (rate: number | null | undefined): string => {
+ 	if (rate === null || rate === undefined) return "#94A3B8";
+-	if (rate >= 80) return "#059669";
+-	if (rate >= 60) return "#D97706";
++	if (rate >= FEEDBACK_RATE_OPTIMAL_MIN) return "#059669";
++	if (rate >= FEEDBACK_RATE_REVIEW_MIN) return "#D97706";
+ 	return "#DC2626";
+ };
+ 
+@@ -169,7 +173,7 @@ export const FeedbackChart: FC<IFeedbackChartProps> = (props) => {
+ 					fontSize: 12,
+ 					formatter: (val: string) => {
+ 						const parts = val.split("-");
+-						if (parts.length === 3) {
++						if (parts.length === DATE_PART_COUNT) {
+ 							return `${Number(parts[1])}/${Number(parts[2])}`;
+ 						}
+ 						return val;
+@@ -208,7 +212,7 @@ export const FeedbackChart: FC<IFeedbackChartProps> = (props) => {
+ 
+ 	useEffect(() => {
+ 		if (!chartRef.current) return;
+-		const chartInstance = echarts.init(chartRef.current, undefined, {
++		const chartInstance = initChart(chartRef.current, undefined, {
+ 			renderer: "svg",
+ 		});
+ 		chartInstance.setOption(option);
+diff --git a/packages/components/src/GenericDataTable/index.tsx b/packages/components/src/GenericDataTable/index.tsx
+index 7615f68..c6b9f58 100644
+--- a/packages/components/src/GenericDataTable/index.tsx
++++ b/packages/components/src/GenericDataTable/index.tsx
+@@ -32,6 +32,7 @@ export interface IGenericDataTableProps<T>
+ }
+ 
+ const DEFAULT_PAGE_SIZES = ["5", "10", "20"];
++const DEFAULT_PAGE_SIZE = 5;
+ 
+ export const GenericDataTable = <T extends object>({
+ 	dataSource,
+@@ -46,7 +47,7 @@ export const GenericDataTable = <T extends object>({
+ }: IGenericDataTableProps<T>) => {
+ 	const spinning = isLoading ?? loading ?? false;
+ 	const current = pagination ? pagination.current : 1;
+-	const pageSize = pagination ? pagination.pageSize : 5;
++	const pageSize = pagination ? pagination.pageSize : DEFAULT_PAGE_SIZE;
+ 	const total = pagination ? pagination.total : 0;
+ 	const pageSizes =
+ 		(pagination && pagination.pageSizeOptions) || DEFAULT_PAGE_SIZES;
+diff --git a/packages/components/src/index.ts b/packages/components/src/index.ts
+index 4542eaf..0757253 100644
+--- a/packages/components/src/index.ts
++++ b/packages/components/src/index.ts
+@@ -292,9 +292,19 @@ import DocFileSvgIcon from "./Icons/DocFileSvgIcon";
+ import RefreshSvgIcon from "./Icons/RefreshSvgIcon";
+ import { FeedbackChart } from "./FeedbackChart";
+ 
+-const RoleFeedbackChart: React.FC<any> = (props) =>
++interface FeedbackChartWrapperProps {
++	data: import("./FeedbackChart").IRoleFeedbackItem[];
++	className?: string;
++}
++
++interface FeedbackTrendChartWrapperProps {
++	data: import("./FeedbackChart").IFeedbackTrendItem[];
++	className?: string;
++}
++
++const RoleFeedbackChart: React.FC<FeedbackChartWrapperProps> = (props) =>
+ 	React.createElement(FeedbackChart, { type: "role", ...props });
+-const FeedbackTrendChart: React.FC<any> = (props) =>
++const FeedbackTrendChart: React.FC<FeedbackTrendChartWrapperProps> = (props) =>
+ 	React.createElement(FeedbackChart, { type: "trend", ...props });
+ 
+ export {
+diff --git a/packages/services/src/InsightService/index.ts b/packages/services/src/InsightService/index.ts
+index 8994264..05ce836 100644
+--- a/packages/services/src/InsightService/index.ts
++++ b/packages/services/src/InsightService/index.ts
+@@ -208,6 +208,29 @@ const PORTAL_PROMPTS_VERSIONS_PATH = "/commentary/v1/portal/prompts/versions";
+ const PORTAL_PROMPTS_VERSIONS_EXPORT_PATH =
+ 	"/commentary/v1/portal/prompts/versions/export";
+ 
++const appendAuditFilters = (
++	query: URLSearchParams,
++	params: Omit<ILogAuditFilterParams, "page" | "pageSize">
++) => {
++	if (params.startDate) query.append("startDate", params.startDate);
++	if (params.endDate) query.append("endDate", params.endDate);
++	if (params.username?.trim()) query.append("username", params.username.trim());
++	params.roles?.forEach((role) => query.append("roles", role));
++};
++
++const getExportFilename = (disposition: string | null): string => {
++	const match = disposition?.match(/filename=["']?([^"';]+)["']?/i);
++	if (match?.[1]) return match[1];
++	const date = new Date();
++	const pad = (value: number) => String(value).padStart(2, "0");
++	const utc = `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(
++		date.getUTCDate()
++	)}_${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(
++		date.getUTCSeconds()
++	)}`;
++	return `cothinker_logs_${utc}.xlsx`;
++};
++
+ export class InsightTimeoutError extends Error {
+ 	public readonly isTimeout = true;
+ 	public readonly correlationId?: string;
+@@ -489,14 +512,7 @@ async function exportAuditGenerations(
+ 	params: Omit<ILogAuditFilterParams, "page" | "pageSize">
+ ): Promise<IPortalAuditExportResult> {
+ 	const query = new URLSearchParams();
+-	if (params.startDate) query.append("startDate", params.startDate);
+-	if (params.endDate) query.append("endDate", params.endDate);
+-	if (params.username && params.username.trim()) {
+-		query.append("username", params.username.trim());
+-	}
+-	if (params.roles && params.roles.length > 0) {
+-		params.roles.forEach((r) => query.append("roles", r));
+-	}
++	appendAuditFilters(query, params);
+ 	const qs = query.toString();
+ 	const fullUrl = `/api${PORTAL_AUDIT_GENERATIONS_EXPORT_PATH}${
+ 		qs ? `?${qs}` : ""
+@@ -521,28 +537,13 @@ async function exportAuditGenerations(
+ 		throw new Error(errorMsg);
+ 	}
+ 
+-	let filename = "";
+-	const disposition = response.headers.get("content-disposition");
+-	if (disposition) {
+-		const match = disposition.match(/filename=["']?([^"';]+)["']?/i);
+-		if (match && match[1]) {
+-			filename = match[1];
+-		}
+-	}
+-
+-	if (!filename) {
+-		const d = new Date();
+-		const pad = (n: number) => String(n).padStart(2, "0");
+-		const utcStr = `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(
+-			d.getUTCDate()
+-		)}_${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(
+-			d.getUTCSeconds()
+-		)}`;
+-		filename = `cothinker_logs_${utcStr}.xlsx`;
+-	}
+-
+ 	const blob = await response.blob();
+-	return { blob, filename };
++	return {
++		blob,
++		filename: getExportFilename(
++			response.headers.get("content-disposition")
++		),
++	};
+ }
+ 
+ export {
+diff --git a/packages/services/src/index.ts b/packages/services/src/index.ts
+index 9ec0107..09ebdba 100644
+--- a/packages/services/src/index.ts
++++ b/packages/services/src/index.ts
+@@ -17,7 +17,19 @@ import { PanelService } from "./CustomPageService/panel";
+ import type { IConfig, IConfiguration } from "./ConfigService/types";
+ 
+ export type { IConfig, IConfiguration };
+-export * from "./InsightService";
++export {
++	InsightService,
++	InsightTimeoutError,
++	PORTAL_OVERVIEW_SUMMARY_PATH,
++	PORTAL_FEEDBACK_BY_ROLE_PATH,
++	PORTAL_FEEDBACK_TREND_PATH,
++	PORTAL_AUDIT_GENERATIONS_PATH,
++	PORTAL_AUDIT_GENERATIONS_EXPORT_PATH,
++	PORTAL_PROMPTS_DRAFT_DELETE_PATH,
++	PORTAL_PROMPTS_DRAFT_SAVE_PATH,
++	PORTAL_PROMPTS_VERSIONS_PATH,
++	PORTAL_PROMPTS_VERSIONS_EXPORT_PATH,
++} from "./InsightService";
+ export {
+ 	ConfigService,
+ 	LanguageService,
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
+index ccfe434..2e01c17 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
+@@ -23,6 +23,8 @@ interface IKnowledgeDocumentTableProps {
+ 	onChangeStatus: (doc: IKnowledgeDocument) => void;
+ }
+ 
++const KEYBOARD_ENTER_CODE = 13;
++
+ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 	documents,
+ 	pageSize,
+@@ -46,7 +48,7 @@ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 	};
+ 
+ 	const handleJumpKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+-		if (e.key === "Enter" || e.keyCode === 13) {
++		if (e.key === "Enter" || e.keyCode === KEYBOARD_ENTER_CODE) {
+ 			handleJump();
+ 		}
+ 	};
+@@ -56,7 +58,7 @@ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 			{
+ 				title: "DOCUMENT",
+ 				key: "document",
+-				render: (_: any, row: IKnowledgeDocument) => (
++				render: (_: unknown, row: IKnowledgeDocument) => (
+ 					<div className="document-name-cell">
+ 						<DocFileSvgIcon
+ 							size={20}
+@@ -83,7 +85,7 @@ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 			{
+ 				title: "STATUS",
+ 				key: "status",
+-				render: (_: any, row: IKnowledgeDocument) => {
++				render: (_: unknown, row: IKnowledgeDocument) => {
+ 					const availability = getDocumentAvailability(row);
+ 					return (
+ 						<div className="status-cell">
+@@ -131,7 +133,7 @@ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 			{
+ 				title: "ACTIONS",
+ 				key: "actions",
+-				render: (_: any, row: IKnowledgeDocument) => (
++				render: (_: unknown, row: IKnowledgeDocument) => (
+ 					<div className="actions-cell">
+ 						<button
+ 							type="button"
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+index 39e110c..c36334f 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+@@ -80,6 +80,24 @@ export const KNOWLEDGE_BRANDS: DocBrand[] = [
+ 
+ export const DOCUMENT_PROCESSING_FAILURE =
+ 	"Document processing did not complete. Retry processing to continue.";
++const BYTES_PER_KILOBYTE = 1024;
++const BYTES_PER_MEGABYTE = BYTES_PER_KILOBYTE * BYTES_PER_KILOBYTE;
++const SAMPLE_DOCUMENT_SIZE_STEP = 163840;
++const FAILED_SAMPLE_FORMAT_INDEX = 6;
++const INACTIVE_SAMPLE_FORMAT_INDEX = 3;
++const FUTURE_EFFECTIVE_FORMAT_INDEX = 4;
++const INITIAL_FORMAT_INDEX = 0;
++const INACTIVE_BRAND_INDEX_LIMIT = 2;
++const DAYS_IN_MILLISECONDS = 86400000;
++const SAMPLE_DATE_STEP_DAYS = 5;
++const FUTURE_EFFECTIVE_OFFSET_DAYS = 7;
++const PAST_EFFECTIVE_OFFSET_DAYS = -365;
++const SAMPLE_UPLOADER_COUNT = 3;
++const EFFECTIVE_TO_FORMAT_INDEX = 5;
++const EXPIRED_OFFSET_DAYS = -1;
++const DEFAULT_PAGE_SIZE = 5;
++const TOAST_DURATION_MS = 3000;
++const PROCESSING_RETRY_DELAY_MS = 2000;
+ 
+ export function documentDate(date = new Date()): string {
+ 	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+@@ -89,9 +107,10 @@ export function documentDate(date = new Date()): string {
+ }
+ 
+ export function formatDocumentSize(bytes: number): string {
+-	if (bytes < 1024) return `${bytes} B`;
+-	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+-	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
++	if (bytes < BYTES_PER_KILOBYTE) return `${bytes} B`;
++	if (bytes < BYTES_PER_MEGABYTE)
++		return `${(bytes / BYTES_PER_KILOBYTE).toFixed(1)} KB`;
++	return `${(bytes / BYTES_PER_MEGABYTE).toFixed(1)} MB`;
+ }
+ 
+ export function documentFormat(fileName: string): string {
+@@ -170,12 +189,22 @@ export function initialKnowledgeDocuments(
+ 
+ 	return KNOWLEDGE_BRANDS.flatMap((brand, brandIndex) =>
+ 		formats.map((format, index) => {
+-			const sizeBytes = (index + 1) * 163840 + brandIndex * 1024;
+-			const isFailed = index === 6 || (index === 0 && brandIndex < 2);
++			const sizeBytes =
++				(index + 1) * SAMPLE_DOCUMENT_SIZE_STEP +
++				brandIndex * BYTES_PER_KILOBYTE;
++			const isFailed =
++				index === FAILED_SAMPLE_FORMAT_INDEX ||
++				(index === INITIAL_FORMAT_INDEX &&
++					brandIndex < INACTIVE_BRAND_INDEX_LIMIT);
+ 			const isInactive =
+-				index === 3 || index === 6 || (index === 0 && brandIndex < 2);
++				index === INACTIVE_SAMPLE_FORMAT_INDEX ||
++				index === FAILED_SAMPLE_FORMAT_INDEX ||
++				(index === INITIAL_FORMAT_INDEX &&
++					brandIndex < INACTIVE_BRAND_INDEX_LIMIT);
+ 			const baseDate = new Date(
+-				now.getTime() - (index * 5 + brandIndex + 1) * 86400000
++				now.getTime() -
++					(index * SAMPLE_DATE_STEP_DAYS + brandIndex + 1) *
++						DAYS_IN_MILLISECONDS
+ 			);
+ 
+ 			return {
+@@ -185,12 +214,19 @@ export function initialKnowledgeDocuments(
+ 				fileSize: formatDocumentSize(sizeBytes),
+ 				fileSizeBytes: sizeBytes,
+ 				uploadedBy: ["John Doe", "Sarah Johnson", "Michael Chen"][
+-					index % 3
++				index % SAMPLE_UPLOADER_COUNT
+ 				],
+ 				uploadedAt: baseDate.toISOString(),
+ 				brand,
+-				effectiveFrom: relativeDate(index === 4 ? 7 : -365),
+-				effectiveTo: index === 5 ? relativeDate(-1) : undefined,
++				effectiveFrom: relativeDate(
++					index === FUTURE_EFFECTIVE_FORMAT_INDEX
++						? FUTURE_EFFECTIVE_OFFSET_DAYS
++						: PAST_EFFECTIVE_OFFSET_DAYS
++				),
++				effectiveTo:
++					index === EFFECTIVE_TO_FORMAT_INDEX
++						? relativeDate(EXPIRED_OFFSET_DAYS)
++						: undefined,
+ 				description: `${brand} ${topics[index]
+ 					.replace(/_/g, " ")
+ 					.toLowerCase()} provides business context for interpreting market performance and engagement signals.`,
+@@ -225,7 +261,7 @@ export const KnowledgeDocTab: FC = () => {
+ 	});
+ 
+ 	const [currentPage, setCurrentPage] = useState<number>(1);
+-	const [pageSize, setPageSize] = useState<number>(5);
++	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+ 
+ 	const [detailDoc, setDetailDoc] = useState<IKnowledgeDocument | null>(null);
+ 	const [detailVisible, setDetailVisible] = useState<boolean>(false);
+@@ -255,7 +291,7 @@ export const KnowledgeDocTab: FC = () => {
+ 		else message.info(text);
+ 		setTimeout(() => {
+ 			setToastMsg(null);
+-		}, 3000);
++		}, TOAST_DURATION_MS);
+ 	};
+ 
+ 	const filteredDocuments = useMemo(() => {
+@@ -368,7 +404,7 @@ export const KnowledgeDocTab: FC = () => {
+ 							: d
+ 					)
+ 				);
+-			}, 3000);
++			}, TOAST_DURATION_MS);
+ 		}
+ 		setEditorVisible(false);
+ 	};
+@@ -454,7 +490,7 @@ export const KnowledgeDocTab: FC = () => {
+ 						: null
+ 				);
+ 			}
+-		}, 2000);
++		}, PROCESSING_RETRY_DELAY_MS);
+ 	};
+ 
+ 	return (
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+index 620abdc..d92103e 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+@@ -27,6 +27,7 @@ interface IProps {
+ }
+ 
+ type TabType = "payload" | "chunks" | "feedback" | "prompt";
++const COPY_TOAST_DURATION_MS = 2200;
+ 
+ export const LogDetailDrawer: FC<IProps> = ({
+ 	visible,
+@@ -44,7 +45,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 		message.success(msg);
+ 		setTimeout(() => {
+ 			setCopyToast(null);
+-		}, 2200);
++		}, COPY_TOAST_DURATION_MS);
+ 	};
+ 
+ 	const copyToClipboard = async (text: string, successMsg: string) => {
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+index 5f4b7b8..6f87bf8 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.tsx
+@@ -47,6 +47,18 @@ export const formatDuration = (ms: number | null): string => {
+ 	return `${(ms / 1000).toFixed(2)}s`;
+ };
+ 
++const INPUT_TOKEN_COST_PER_THOUSAND = 0.003;
++const OUTPUT_TOKEN_COST_PER_THOUSAND = 0.006;
++const TOTAL_TOKEN_COST_PER_THOUSAND = 0.0045;
++const TOKEN_COST_MINIMUM = 0.01;
++const PROMPT_VERSION_PREVIEW_LENGTH = 10;
++const PROMPT_VERSION_VISIBLE_LENGTH = 7;
++const KEYBOARD_ENTER_CODE = 13;
++const DEFAULT_PAGE_SIZE_OPTIONS = ["5", "10", "20"];
++const FALLBACK_INPUT_TOKEN_RATIO = 0.78;
++const DEFAULT_PAGE_SIZE = 5;
++const EXPORT_URL_REVOKE_DELAY_MS = 1500;
++
+ export const resolveEstimatedCost = (record: {
+ 	estimatedCost?: number | null;
+ 	inputTokens?: number | null;
+@@ -63,10 +75,18 @@ export const resolveEstimatedCost = (record: {
+ 	const inTok = record.inputTokens ?? 0;
+ 	const outTok = record.outputTokens ?? 0;
+ 	if (inTok > 0 || outTok > 0) {
+-		return Math.max(0.01, (inTok * 0.003 + outTok * 0.006) / 1000);
++		return Math.max(
++			TOKEN_COST_MINIMUM,
++			(inTok * INPUT_TOKEN_COST_PER_THOUSAND +
++				outTok * OUTPUT_TOKEN_COST_PER_THOUSAND) /
++				1000
++		);
+ 	}
+ 	if (record.totalTokens && record.totalTokens > 0) {
+-		return Math.max(0.01, (record.totalTokens / 1000) * 0.0045);
++		return Math.max(
++			TOKEN_COST_MINIMUM,
++			(record.totalTokens / 1000) * TOTAL_TOKEN_COST_PER_THOUSAND
++		);
+ 	}
+ 	return null;
+ };
+@@ -137,7 +157,8 @@ const buildFallbackDetail = (
+ 	item: IAuditGenerationItem
+ ): IAuditGenerationDetail => {
+ 	const totalTok = item.totalTokens ?? 0;
+-	const inTok = item.inputTokens ?? Math.round(totalTok * 0.78);
++	const inTok =
++		item.inputTokens ?? Math.round(totalTok * FALLBACK_INPUT_TOKEN_RATIO);
+ 	const outTok = item.outputTokens ?? Math.max(0, totalTok - inTok);
+ 	const fbStatus: FeedbackStatus = item.feedback?.status || "none";
+ 	return {
+@@ -212,7 +233,7 @@ export const LogAuditTab: FC = () => {
+ 	const [exporting, setExporting] = useState<boolean>(false);
+ 
+ 	const [page, setPage] = useState<number>(1);
+-	const [pageSize, setPageSize] = useState<number>(5);
++	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+ 	const [total, setTotal] = useState<number>(0);
+ 	const [items, setItems] = useState<IAuditGenerationItem[]>([]);
+ 
+@@ -372,7 +393,7 @@ export const LogAuditTab: FC = () => {
+ 			document.body.removeChild(a);
+ 			setTimeout(() => {
+ 				URL.revokeObjectURL(url);
+-			}, 1500);
++			}, EXPORT_URL_REVOKE_DELAY_MS);
+ 			message.success("Export successful");
+ 		} catch (err) {
+ 			const msg =
+@@ -403,8 +424,8 @@ export const LogAuditTab: FC = () => {
+ 
+ 	const renderPromptVersion = (ver: string | null | undefined) => {
+ 		if (!ver) return "-";
+-		if (ver.length > 10) {
+-			return `${ver.slice(0, 7)}...`;
++		if (ver.length > PROMPT_VERSION_PREVIEW_LENGTH) {
++			return `${ver.slice(0, PROMPT_VERSION_VISIBLE_LENGTH)}...`;
+ 		}
+ 		return ver;
+ 	};
+@@ -465,7 +486,7 @@ export const LogAuditTab: FC = () => {
+ 			{
+ 				title: "LLM COST",
+ 				key: "cost",
+-				render: (_: any, record: IAuditGenerationItem) => (
++				render: (_: unknown, record: IAuditGenerationItem) => (
+ 					<div className="cost-cell">
+ 						<span className="cost-value">
+ 							{formatUsd(resolveEstimatedCost(record))}
+@@ -480,7 +501,7 @@ export const LogAuditTab: FC = () => {
+ 				title: "FEEDBACK",
+ 				key: "feedback",
+ 				align: "center" as const,
+-				render: (_: any, record: IAuditGenerationItem) => (
++				render: (_: unknown, record: IAuditGenerationItem) => (
+ 					<div className="feedback-cell">
+ 						{record.feedback?.status === "up" && (
+ 							<CoThinkerCircleCheckSvgIcon className="feedback-icon-check" />
+@@ -499,7 +520,7 @@ export const LogAuditTab: FC = () => {
+ 				title: "ACTIONS",
+ 				key: "actions",
+ 				align: "center" as const,
+-				render: (_: any, record: IAuditGenerationItem) => (
++				render: (_: unknown, record: IAuditGenerationItem) => (
+ 					<GenericButtonV2
+ 						type="link"
+ 						className="view-action-btn"
+@@ -584,7 +605,8 @@ export const LogAuditTab: FC = () => {
+ 									setUsernameSearch(e.target.value)
+ 								}
+ 								onKeyDown={(e) =>
+-									(e.key === "Enter" || e.keyCode === 13) &&
++									(e.key === "Enter" ||
++										e.keyCode === KEYBOARD_ENTER_CODE) &&
+ 									handleSearch()
+ 								}
+ 							/>
+@@ -677,7 +699,7 @@ export const LogAuditTab: FC = () => {
+ 							pageSize,
+ 							total,
+ 							showSizeChanger: true,
+-							pageSizeOptions: ["5", "10", "20"],
++							pageSizeOptions: DEFAULT_PAGE_SIZE_OPTIONS,
+ 							showTotal: (t) => `Total ${t}`,
+ 							onChange: (newPage, newPageSize) => {
+ 								setPage(newPage);
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+index 2d32c05..afd5c0a 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+@@ -74,11 +74,19 @@ jest.mock("echarts", () => ({
+ 
+ describe("OverviewTab Component", () => {
+ 	beforeAll(() => {
+-		global.ResizeObserver = class ResizeObserver {
+-			observe() {}
+-			unobserve() {}
+-			disconnect() {}
+-		};
++		class MockResizeObserver implements ResizeObserver {
++			private readonly observedElements = new Set<Element>();
++			observe(target: Element): void {
++				this.observedElements.add(target);
++			}
++			unobserve(target: Element): void {
++				this.observedElements.delete(target);
++			}
++			disconnect(): void {
++				this.observedElements.clear();
++			}
++		}
++		global.ResizeObserver = MockResizeObserver;
+ 	});
+ 
+ 	beforeEach(() => {
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx
+index e3adb96..86ca072 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx
+@@ -42,6 +42,56 @@ export interface FeedbackMetrics extends FeedbackSummary {
+ 	feedbackTrend: FeedbackTrendPoint[];
+ }
+ 
++const toPercentValue = (value: number | null | undefined): number | null => {
++	if (value === null || value === undefined) return null;
++	if (value <= 1) return Number((value * 100).toFixed(2));
++	return value;
++};
++
++const mapRoleFeedback = (
++	item: {
++		role: string;
++		generations: number;
++		positive: number;
++		negative: number;
++		rated: number;
++		noFeedback: number;
++		positiveRate: number | null;
++		feedbackCoverage: number | null;
++	}
++): RoleFeedbackBreakdown => ({
++	role: item.role,
++	totalGenerations: item.generations,
++	thumbsUpCount: item.positive,
++	thumbsDownCount: item.negative,
++	ratedCount: item.rated,
++	noFeedbackCount: item.noFeedback,
++	positiveFeedbackRate: toPercentValue(item.positiveRate),
++	feedbackCoverage: toPercentValue(item.feedbackCoverage),
++});
++
++const mapFeedbackTrendPoint = (
++	point: {
++		date: string;
++		generations: number;
++		positive: number;
++		negative: number;
++		rated: number;
++		noFeedback: number;
++		positiveRate: number | null;
++		feedbackCoverage: number | null;
++	}
++): FeedbackTrendPoint => ({
++	date: point.date,
++	totalGenerations: point.generations,
++	thumbsUpCount: point.positive,
++	thumbsDownCount: point.negative,
++	ratedCount: point.rated,
++	noFeedbackCount: point.noFeedback,
++	positiveFeedbackRate: toPercentValue(point.positiveRate),
++	feedbackCoverage: toPercentValue(point.feedbackCoverage),
++});
++
+ export const formatUsd = (val: number | null | undefined): string => {
+ 	if (val === null || val === undefined || Number.isNaN(val)) return "--";
+ 	return new Intl.NumberFormat("en-US", {
+@@ -131,58 +181,12 @@ export const OverviewTab: FC<IProps> = ({ initialMetrics }) => {
+ 					? Math.round(totalLlmTokens / totalGenerations)
+ 					: null;
+ 
+-			const roleFeedbackBreakdown = (roleRes?.items || []).map((item) => {
+-				const posRate =
+-					item.positiveRate !== null &&
+-					item.positiveRate !== undefined
+-						? item.positiveRate <= 1
+-							? Number((item.positiveRate * 100).toFixed(2))
+-							: item.positiveRate
+-						: null;
+-				const covRate =
+-					item.feedbackCoverage !== null &&
+-					item.feedbackCoverage !== undefined
+-						? item.feedbackCoverage <= 1
+-							? Number((item.feedbackCoverage * 100).toFixed(2))
+-							: item.feedbackCoverage
+-						: null;
+-				return {
+-					role: item.role,
+-					totalGenerations: item.generations,
+-					thumbsUpCount: item.positive,
+-					thumbsDownCount: item.negative,
+-					ratedCount: item.rated,
+-					noFeedbackCount: item.noFeedback,
+-					positiveFeedbackRate: posRate,
+-					feedbackCoverage: covRate,
+-				};
+-			});
+-
+-			const feedbackTrend = (trendRes?.points || []).map((pt) => {
+-				const posRate =
+-					pt.positiveRate !== null && pt.positiveRate !== undefined
+-						? pt.positiveRate <= 1
+-							? Number((pt.positiveRate * 100).toFixed(2))
+-							: pt.positiveRate
+-						: null;
+-				const covRate =
+-					pt.feedbackCoverage !== null &&
+-					pt.feedbackCoverage !== undefined
+-						? pt.feedbackCoverage <= 1
+-							? Number((pt.feedbackCoverage * 100).toFixed(2))
+-							: pt.feedbackCoverage
+-						: null;
+-				return {
+-					date: pt.date,
+-					totalGenerations: pt.generations,
+-					thumbsUpCount: pt.positive,
+-					thumbsDownCount: pt.negative,
+-					ratedCount: pt.rated,
+-					noFeedbackCount: pt.noFeedback,
+-					positiveFeedbackRate: posRate,
+-					feedbackCoverage: covRate,
+-				};
+-			});
++			const roleFeedbackBreakdown = (roleRes?.items || []).map(
++				mapRoleFeedback
++			);
++			const feedbackTrend = (trendRes?.points || []).map(
++				mapFeedbackTrendPoint
++			);
+ 
+ 			setMetrics({
+ 				timeRange: {
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
+index 1d90aba..d316a1a 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
+@@ -56,7 +56,7 @@ export const ConfigurationPanel: FC<IProps> = ({ hasDraft, onOpenEditor }) => {
+ 			{
+ 				title: <Text entry={{ "cothinker.prompt.config": {} }} />,
+ 				key: "configuration",
+-				render: (_: any, row: IConfigEntry) => (
++				render: (_: unknown, row: IConfigEntry) => (
+ 					<div>
+ 						<button
+ 							type="button"
+@@ -73,7 +73,7 @@ export const ConfigurationPanel: FC<IProps> = ({ hasDraft, onOpenEditor }) => {
+ 				title: <Text entry={{ "cothinker.prompt.scope": {} }} />,
+ 				key: "scope",
+ 				width: 130,
+-				render: (_: any, row: IConfigEntry) => (
++				render: (_: unknown, row: IConfigEntry) => (
+ 					<span className="scope-text">{row.type}</span>
+ 				),
+ 			},
+@@ -81,7 +81,7 @@ export const ConfigurationPanel: FC<IProps> = ({ hasDraft, onOpenEditor }) => {
+ 				title: <Text entry={{ "cothinker.common.actions": {} }} />,
+ 				key: "actions",
+ 				width: 100,
+-				render: (_: any, row: IConfigEntry) => (
++				render: (_: unknown, row: IConfigEntry) => (
+ 					<button
+ 						type="button"
+ 						className="action-link"
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+index c26a747..ce28fb4 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+@@ -47,6 +47,32 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 		);
+ 	}, [metrics, searchQuery]);
+ 
++	const renderMetricsContent = () => {
++		if (metrics.length === 0) {
++			return (
++				<div className="empty-metrics-notice">
++					<Text entry={{ "cothinker.prompt.noMetricsYet": {} }} />
++				</div>
++			);
++		}
++		if (filteredMetrics.length === 0) {
++			return (
++				<div className="empty-metrics-notice">
++					<Text entry={{ "cothinker.prompt.noMetricsMatch": {} }} />
++				</div>
++			);
++		}
++		return (
++			<GenericDataTable<IMetricDefinition>
++				className="metrics-table"
++				columns={columns}
++				dataSource={filteredMetrics}
++				rowKey="id"
++				pagination={false}
++			/>
++		);
++	};
++
+ 	const handleOpenAdd = () => {
+ 		setEditingMetric(null);
+ 		setNameInput("");
+@@ -106,7 +132,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 				title: <Text entry={{ "cothinker.prompt.metricName": {} }} />,
+ 				key: "name",
+ 				width: 220,
+-				render: (_: any, m: IMetricDefinition) => (
++				render: (_: unknown, m: IMetricDefinition) => (
+ 					<span className="metric-title">{m.name}</span>
+ 				),
+ 			},
+@@ -115,14 +141,14 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 					<Text entry={{ "cothinker.prompt.whatItMeasures": {} }} />
+ 				),
+ 				key: "measures",
+-				render: (_: any, m: IMetricDefinition) => (
++				render: (_: unknown, m: IMetricDefinition) => (
+ 					<p className="cell-text">{m.whatItMeasures}</p>
+ 				),
+ 			},
+ 			{
+ 				title: <Text entry={{ "cothinker.prompt.whyItMatters": {} }} />,
+ 				key: "matters",
+-				render: (_: any, m: IMetricDefinition) => (
++				render: (_: unknown, m: IMetricDefinition) => (
+ 					<p className="cell-text">{m.whyItMatters}</p>
+ 				),
+ 			},
+@@ -130,7 +156,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 				title: <Text entry={{ "cothinker.prompt.lastUpdated": {} }} />,
+ 				key: "updated",
+ 				width: 170,
+-				render: (_: any, m: IMetricDefinition) => (
++				render: (_: unknown, m: IMetricDefinition) => (
+ 					<div className="meta-cell">
+ 						<span>{m.updatedBy}</span>
+ 						<span className="date-sub">
+@@ -147,7 +173,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 				title: <Text entry={{ "cothinker.common.actions": {} }} />,
+ 				key: "actions",
+ 				width: 130,
+-				render: (_: any, m: IMetricDefinition) => (
++				render: (_: unknown, m: IMetricDefinition) => (
+ 					<div className="metric-actions">
+ 						<button
+ 							type="button"
+@@ -213,23 +239,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 				</span>
+ 			</div>
+ 
+-			{metrics.length === 0 ? (
+-				<div className="empty-metrics-notice">
+-					<Text entry={{ "cothinker.prompt.noMetricsYet": {} }} />
+-				</div>
+-			) : filteredMetrics.length === 0 ? (
+-				<div className="empty-metrics-notice">
+-					<Text entry={{ "cothinker.prompt.noMetricsMatch": {} }} />
+-				</div>
+-			) : (
+-				<GenericDataTable<IMetricDefinition>
+-					className="metrics-table"
+-					columns={columns}
+-					dataSource={filteredMetrics}
+-					rowKey="id"
+-					pagination={false}
+-				/>
+-			)}
++			{renderMetricsContent()}
+ 
+ 			{editorVisible && (
+ 				<GenericModalV2
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+index ccd3b12..7dea1e7 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+@@ -66,11 +66,13 @@ export const PromptEditorDrawer: FC<IProps> = ({
+ 
+ 	if (!visible) return null;
+ 
+-	const versionLabel = inspectedVersion
+-		? `v${inspectedVersion.version} · Read only`
+-		: isDraft
+-		? "Draft configuration"
+-		: "Active configuration · Read only";
++	let versionLabel = "Active configuration · Read only";
++	if (isDraft) {
++		versionLabel = "Draft configuration";
++	}
++	if (inspectedVersion) {
++		versionLabel = `v${inspectedVersion.version} · Read only`;
++	}
+ 
+ 	return (
+ 		<GenericSideDrawer
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+index 2b65fa2..562bdfe 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+@@ -11,6 +11,8 @@ import {
+ 	formatDateTime,
+ } from "../index";
+ 
++const EXPORT_STATE_RESET_DELAY_MS = 600;
++
+ interface IProps {
+ 	versions: IPromptVersion[];
+ 	activeVersionId: string;
+@@ -49,7 +51,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 		} finally {
+ 			setTimeout(() => {
+ 				setExporting(false);
+-			}, 600);
++			}, EXPORT_STATE_RESET_DELAY_MS);
+ 		}
+ 	};
+ 
+@@ -61,7 +63,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 				title: <Text entry={{ "cothinker.prompt.version": {} }} />,
+ 				key: "version",
+ 				width: 90,
+-				render: (_: any, v: IPromptVersion) => (
++				render: (_: unknown, v: IPromptVersion) => (
+ 					<span className="version-cell">v{v.version}</span>
+ 				),
+ 			},
+@@ -69,7 +71,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 				title: <Text entry={{ "cothinker.prompt.status": {} }} />,
+ 				key: "status",
+ 				width: 112,
+-				render: (_: any, v: IPromptVersion) => (
++				render: (_: unknown, v: IPromptVersion) => (
+ 					<span
+ 						className={
+ 							v.id === activeVersionId
+@@ -84,7 +86,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 			{
+ 				title: <Text entry={{ "cothinker.prompt.changeNote": {} }} />,
+ 				key: "changeNote",
+-				render: (_: any, v: IPromptVersion) => (
++				render: (_: unknown, v: IPromptVersion) => (
+ 					<span className="change-note-cell">
+ 						{v.changeNote || "-"}
+ 					</span>
+@@ -94,7 +96,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 				title: <Text entry={{ "cothinker.prompt.publishedBy": {} }} />,
+ 				key: "publishedBy",
+ 				width: 170,
+-				render: (_: any, v: IPromptVersion) => (
++				render: (_: unknown, v: IPromptVersion) => (
+ 					<span>{v.publishedBy || "-"}</span>
+ 				),
+ 			},
+@@ -102,7 +104,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 				title: <Text entry={{ "cothinker.prompt.publishedAt": {} }} />,
+ 				key: "publishedAt",
+ 				width: 160,
+-				render: (_: any, v: IPromptVersion) => (
++				render: (_: unknown, v: IPromptVersion) => (
+ 					<span>{formatDateTime(v.publishedAt)}</span>
+ 				),
+ 			},
+@@ -110,7 +112,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 				title: <Text entry={{ "cothinker.common.actions": {} }} />,
+ 				key: "actions",
+ 				width: 160,
+-				render: (_: any, v: IPromptVersion) => (
++				render: (_: unknown, v: IPromptVersion) => (
+ 					<div className="history-actions-cell">
+ 						<button
+ 							type="button"
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+index ce3cd31..c1ecc93 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+@@ -157,6 +157,7 @@ Generate analytical commentary based on the user's dashboard view.`,
+ 		},
+ 	},
+ };
++const TOAST_DURATION_MS = 3000;
+ 
+ export const INITIAL_PROMPT_VERSIONS: IPromptVersion[] = [
+ 	{
+@@ -545,7 +546,7 @@ export const PromptManagementTab: FC = () => {
+ 		else message.info(text);
+ 		setTimeout(() => {
+ 			setToastMsg(null);
+-		}, 3000);
++		}, TOAST_DURATION_MS);
+ 	};
+ 
+ 	const isDirty = useMemo(() => {
+@@ -767,11 +768,13 @@ export const PromptManagementTab: FC = () => {
+ 		);
+ 	};
+ 
+-	const currentEditorConfig = inspectedVersion
+-		? inspectedVersion.config
+-		: draftVersion
+-		? draftVersion.config
+-		: activeVersion.config;
++	let currentEditorConfig = activeVersion.config;
++	if (draftVersion) {
++		currentEditorConfig = draftVersion.config;
++	}
++	if (inspectedVersion) {
++		currentEditorConfig = inspectedVersion.config;
++	}
+ 
+ 	return (
+ 		<div className="prompt-workspace">
