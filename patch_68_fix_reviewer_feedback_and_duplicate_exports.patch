@@ -1,0 +1,577 @@
+diff --git a/packages/components/src/FeedbackChart/index.tsx b/packages/components/src/FeedbackChart/index.tsx
+index 5ee9780..ad85214 100644
+--- a/packages/components/src/FeedbackChart/index.tsx
++++ b/packages/components/src/FeedbackChart/index.tsx
+@@ -45,6 +45,21 @@ const FEEDBACK_RATE_BANDS = [
+ const FEEDBACK_RATE_OPTIMAL_MIN = 80;
+ const FEEDBACK_RATE_REVIEW_MIN = 60;
+ const DATE_PART_COUNT = 3;
++const CHART_GRID = { left: 52, right: 24, top: 36, bottom: 40 };
++const AXIS_LABEL_COLOR = "#64748b";
++const Y_AXIS = {
++	type: "value" as const,
++	min: 0,
++	max: 100,
++	interval: 20,
++	axisLabel: {
++		formatter: "{value}%",
++		color: AXIS_LABEL_COLOR,
++		fontSize: 12,
++	},
++	splitLine: { lineStyle: { color: "#f1f5f9" } },
++};
++const AXIS_LINE = { lineStyle: { color: "#e2e8f0" } };
+ 
+ const getRoleBarColor = (rate: number | null | undefined): string => {
+ 	if (rate === null || rate === undefined) return "#94A3B8";
+@@ -75,140 +90,131 @@ const formatTooltipContent = (
+ 	].join("<br/>");
+ };
+ 
+-export const FeedbackChart: FC<IFeedbackChartProps> = (props) => {
+-	const chartRef = useRef<HTMLDivElement>(null);
+-	const isRole = props.type === "role";
++const getDataIndex = (params: unknown): number => {
++	const target = Array.isArray(params) ? params[0] : params;
++	if (
++		typeof target === "object" &&
++		target !== null &&
++		"dataIndex" in target &&
++		typeof target.dataIndex === "number"
++	) {
++		return target.dataIndex;
++	}
++	return -1;
++};
+ 
+-	const option: EChartsOption = useMemo(() => {
+-		const baseAxisLine = { lineStyle: { color: "#e2e8f0" } };
+-		const baseYAxis = {
+-			type: "value" as const,
+-			min: 0,
+-			max: 100,
+-			interval: 20,
+-			axisLabel: {
+-				formatter: "{value}%",
+-				color: "#64748b",
++function createTooltipFormatter<
++	T extends IRoleFeedbackItem | IFeedbackTrendItem
++>(data: T[], getTitle: (item: T) => string) {
++	return (params: unknown): string => {
++		const item = data[getDataIndex(params)];
++		return item ? formatTooltipContent(getTitle(item), item) : "";
++	};
++}
++
++const createRoleChartOption = (data: IRoleFeedbackItem[]): EChartsOption => ({
++	tooltip: {
++		trigger: "axis",
++		confine: true,
++		axisPointer: { type: "shadow" },
++		formatter: createTooltipFormatter(data, (item) => item.role),
++	},
++	grid: CHART_GRID,
++	xAxis: {
++		type: "category",
++		data: data.map((item) => item.role),
++		axisLabel: { interval: 0, fontSize: 12, color: AXIS_LABEL_COLOR },
++		axisLine: AXIS_LINE,
++	},
++	yAxis: Y_AXIS,
++	series: [
++		{
++			type: "bar",
++			barWidth: "36%",
++			data: data.map((item) => ({
++				value: item.positiveFeedbackRate ?? 0,
++				itemStyle: {
++					color: getRoleBarColor(item.positiveFeedbackRate),
++					borderRadius: [4, 4, 0, 0],
++				},
++			})),
++			label: {
++				show: true,
++				position: "top",
++				formatter: (params: unknown) =>
++					formatPercent(
++						data[getDataIndex(params)]?.positiveFeedbackRate
++					),
+ 				fontSize: 12,
++				fontWeight: 600,
++				color: "#334155",
+ 			},
+-			splitLine: { lineStyle: { color: "#f1f5f9" } },
+-		};
++		},
++	],
++});
+ 
+-		if (isRole) {
+-			const roleData = props.data as IRoleFeedbackItem[];
+-			return {
+-				tooltip: {
+-					trigger: "axis",
+-					confine: true,
+-					axisPointer: { type: "shadow" },
+-					formatter: (params: unknown) => {
+-						const target = Array.isArray(params)
+-							? params[0]
+-							: params;
+-						const idx = (target as { dataIndex: number })
+-							?.dataIndex;
+-						const item = roleData[idx];
+-						if (!item) return "";
+-						return formatTooltipContent(item.role, item);
+-					},
+-				},
+-				grid: { left: 52, right: 24, top: 36, bottom: 40 },
+-				xAxis: {
+-					type: "category",
+-					data: roleData.map((d) => d.role),
+-					axisLabel: { interval: 0, fontSize: 12, color: "#64748b" },
+-					axisLine: baseAxisLine,
+-				},
+-				yAxis: baseYAxis,
+-				series: [
+-					{
+-						type: "bar",
+-						barWidth: "36%",
+-						data: roleData.map((d) => ({
+-							value: d.positiveFeedbackRate ?? 0,
+-							itemStyle: {
+-								color: getRoleBarColor(d.positiveFeedbackRate),
+-								borderRadius: [4, 4, 0, 0],
+-							},
+-						})),
+-						label: {
+-							show: true,
+-							position: "top",
+-							formatter: (params: unknown) => {
+-								const idx = (params as { dataIndex: number })
+-									.dataIndex;
+-								return formatPercent(
+-									roleData[idx]?.positiveFeedbackRate
+-								);
+-							},
+-							fontSize: 12,
+-							fontWeight: 600,
+-							color: "#334155",
+-						},
+-					},
+-				],
+-			};
+-		}
++const formatTrendDate = (value: string): string => {
++	const parts = value.split("-");
++	return parts.length === DATE_PART_COUNT
++		? `${Number(parts[1])}/${Number(parts[2])}`
++		: value;
++};
+ 
+-		const trendData = props.data as IFeedbackTrendItem[];
+-		return {
+-			tooltip: {
+-				trigger: "axis",
+-				confine: true,
+-				formatter: (params: unknown) => {
+-					const target = Array.isArray(params) ? params[0] : params;
+-					const idx = (target as { dataIndex: number })?.dataIndex;
+-					const item = trendData[idx];
+-					if (!item) return "";
+-					return formatTooltipContent(item.date, item);
+-				},
+-			},
+-			grid: { left: 52, right: 24, top: 36, bottom: 40 },
+-			xAxis: {
+-				type: "category",
+-				boundaryGap: false,
+-				data: trendData.map((d) => d.date),
+-				axisLabel: {
+-					color: "#64748b",
+-					fontSize: 12,
+-					formatter: (val: string) => {
+-						const parts = val.split("-");
+-						if (parts.length === DATE_PART_COUNT) {
+-							return `${Number(parts[1])}/${Number(parts[2])}`;
+-						}
+-						return val;
+-					},
++const createTrendChartOption = (data: IFeedbackTrendItem[]): EChartsOption => ({
++	tooltip: {
++		trigger: "axis",
++		confine: true,
++		formatter: createTooltipFormatter(data, (item) => item.date),
++	},
++	grid: CHART_GRID,
++	xAxis: {
++		type: "category",
++		boundaryGap: false,
++		data: data.map((item) => item.date),
++		axisLabel: {
++			color: AXIS_LABEL_COLOR,
++			fontSize: 12,
++			formatter: formatTrendDate,
++		},
++		axisLine: AXIS_LINE,
++	},
++	yAxis: Y_AXIS,
++	series: [
++		{
++			type: "line",
++			data: data.map((item) => item.positiveFeedbackRate),
++			smooth: false,
++			symbol: "circle",
++			symbolSize: 6,
++			lineStyle: { color: "#CC0000", width: 2.5 },
++			itemStyle: { color: "#CC0000" },
++			areaStyle: {
++				color: {
++					type: "linear",
++					x: 0,
++					y: 0,
++					x2: 0,
++					y2: 1,
++					colorStops: [
++						{ offset: 0, color: "rgba(204, 0, 0, 0.22)" },
++						{ offset: 1, color: "rgba(204, 0, 0, 0.01)" },
++					],
++					global: false,
+ 				},
+-				axisLine: baseAxisLine,
+ 			},
+-			yAxis: baseYAxis,
+-			series: [
+-				{
+-					type: "line",
+-					data: trendData.map((d) => d.positiveFeedbackRate),
+-					smooth: false,
+-					symbol: "circle",
+-					symbolSize: 6,
+-					lineStyle: { color: "#CC0000", width: 2.5 },
+-					itemStyle: { color: "#CC0000" },
+-					areaStyle: {
+-						color: {
+-							type: "linear",
+-							x: 0,
+-							y: 0,
+-							x2: 0,
+-							y2: 1,
+-							colorStops: [
+-								{ offset: 0, color: "rgba(204, 0, 0, 0.22)" },
+-								{ offset: 1, color: "rgba(204, 0, 0, 0.01)" },
+-							],
+-							global: false,
+-						},
+-					},
+-				},
+-			],
+-		};
+-	}, [isRole, props.data]);
++		},
++	],
++});
++
++export const FeedbackChart: FC<IFeedbackChartProps> = (props) => {
++	const chartRef = useRef<HTMLDivElement>(null);
++	const isRole = props.type === "role";
++	const { data } = props;
++
++	const option = useMemo(() => {
++		if (props.type === "role") return createRoleChartOption(props.data);
++		return createTrendChartOption(props.data);
++	}, [props.type, data]);
+ 
+ 	useEffect(() => {
+ 		if (!chartRef.current) return;
+diff --git a/packages/components/src/FeedbackTrendChart/index.spec.tsx b/packages/components/src/FeedbackTrendChart/index.spec.tsx
+new file mode 100644
+index 0000000..8442153
+--- /dev/null
++++ b/packages/components/src/FeedbackTrendChart/index.spec.tsx
+@@ -0,0 +1,54 @@
++import { render, screen } from "@testing-library/react";
++import "@testing-library/jest-dom";
++import { FeedbackTrendChart } from "./index";
++
++jest.mock("../FeedbackChart", () => ({
++	FeedbackChart: ({
++		type,
++		data,
++		className,
++	}: {
++		type: string;
++		data: unknown[];
++		className?: string;
++	}) => (
++		<div
++			data-testid="feedback-chart"
++			data-type={type}
++			data-count={data.length}
++			className={className}
++		/>
++	),
++}));
++
++describe("FeedbackTrendChart", () => {
++	it("renders the trend chart with its data and class name", () => {
++		render(
++			<FeedbackTrendChart
++				data={[
++					{
++						date: "2026-10-22",
++						totalGenerations: 10,
++						thumbsUpCount: 7,
++						thumbsDownCount: 3,
++						ratedCount: 10,
++						noFeedbackCount: 0,
++						positiveFeedbackRate: 70,
++						feedbackCoverage: 100,
++					},
++				]}
++				className="trend-chart"
++			/>
++		);
++
++		expect(screen.getByTestId("feedback-chart")).toHaveAttribute(
++			"data-type",
++			"trend"
++		);
++		expect(screen.getByTestId("feedback-chart")).toHaveAttribute(
++			"data-count",
++			"1"
++		);
++		expect(screen.getByTestId("feedback-chart")).toHaveClass("trend-chart");
++	});
++});
+diff --git a/packages/components/src/FeedbackTrendChart/index.tsx b/packages/components/src/FeedbackTrendChart/index.tsx
+new file mode 100644
+index 0000000..3fe9ff9
+--- /dev/null
++++ b/packages/components/src/FeedbackTrendChart/index.tsx
+@@ -0,0 +1,14 @@
++import type { FC } from "react";
++import { FeedbackChart } from "../FeedbackChart";
++import type { IFeedbackTrendItem } from "../FeedbackChart";
++
++export interface IFeedbackTrendChartProps {
++	data: IFeedbackTrendItem[];
++	className?: string;
++}
++
++export const FeedbackTrendChart: FC<IFeedbackTrendChartProps> = (props) => (
++	<FeedbackChart type="trend" {...props} />
++);
++
++export default FeedbackTrendChart;
+diff --git a/packages/components/src/RoleFeedbackChart/index.spec.tsx b/packages/components/src/RoleFeedbackChart/index.spec.tsx
+new file mode 100644
+index 0000000..5c21526
+--- /dev/null
++++ b/packages/components/src/RoleFeedbackChart/index.spec.tsx
+@@ -0,0 +1,54 @@
++import { render, screen } from "@testing-library/react";
++import "@testing-library/jest-dom";
++import { RoleFeedbackChart } from "./index";
++
++jest.mock("../FeedbackChart", () => ({
++	FeedbackChart: ({
++		type,
++		data,
++		className,
++	}: {
++		type: string;
++		data: unknown[];
++		className?: string;
++	}) => (
++		<div
++			data-testid="feedback-chart"
++			data-type={type}
++			data-count={data.length}
++			className={className}
++		/>
++	),
++}));
++
++describe("RoleFeedbackChart", () => {
++	it("renders the role chart with its data and class name", () => {
++		render(
++			<RoleFeedbackChart
++				data={[
++					{
++						role: "BU Marketing",
++						totalGenerations: 10,
++						thumbsUpCount: 7,
++						thumbsDownCount: 3,
++						ratedCount: 10,
++						noFeedbackCount: 0,
++						positiveFeedbackRate: 70,
++						feedbackCoverage: 100,
++					},
++				]}
++				className="role-chart"
++			/>
++		);
++
++		expect(screen.getByTestId("feedback-chart")).toHaveAttribute(
++			"data-type",
++			"role"
++		);
++		expect(screen.getByTestId("feedback-chart")).toHaveAttribute(
++			"data-count",
++			"1"
++		);
++		expect(screen.getByTestId("feedback-chart")).toHaveClass("role-chart");
++	});
++});
+diff --git a/packages/components/src/RoleFeedbackChart/index.tsx b/packages/components/src/RoleFeedbackChart/index.tsx
+new file mode 100644
+index 0000000..e843be9
+--- /dev/null
++++ b/packages/components/src/RoleFeedbackChart/index.tsx
+@@ -0,0 +1,14 @@
++import type { FC } from "react";
++import { FeedbackChart } from "../FeedbackChart";
++import type { IRoleFeedbackItem } from "../FeedbackChart";
++
++export interface IRoleFeedbackChartProps {
++	data: IRoleFeedbackItem[];
++	className?: string;
++}
++
++export const RoleFeedbackChart: FC<IRoleFeedbackChartProps> = (props) => (
++	<FeedbackChart type="role" {...props} />
++);
++
++export default RoleFeedbackChart;
+diff --git a/packages/components/src/index.ts b/packages/components/src/index.ts
+index 0757253..d0e77d4 100644
+--- a/packages/components/src/index.ts
++++ b/packages/components/src/index.ts
+@@ -291,21 +291,8 @@ import UploadSvgIcon from "./Icons/UploadSvgIcon";
+ import DocFileSvgIcon from "./Icons/DocFileSvgIcon";
+ import RefreshSvgIcon from "./Icons/RefreshSvgIcon";
+ import { FeedbackChart } from "./FeedbackChart";
+-
+-interface FeedbackChartWrapperProps {
+-	data: import("./FeedbackChart").IRoleFeedbackItem[];
+-	className?: string;
+-}
+-
+-interface FeedbackTrendChartWrapperProps {
+-	data: import("./FeedbackChart").IFeedbackTrendItem[];
+-	className?: string;
+-}
+-
+-const RoleFeedbackChart: React.FC<FeedbackChartWrapperProps> = (props) =>
+-	React.createElement(FeedbackChart, { type: "role", ...props });
+-const FeedbackTrendChart: React.FC<FeedbackTrendChartWrapperProps> = (props) =>
+-	React.createElement(FeedbackChart, { type: "trend", ...props });
++import { RoleFeedbackChart } from "./RoleFeedbackChart";
++import { FeedbackTrendChart } from "./FeedbackTrendChart";
+ 
+ export {
+ 	AnalyticsProvider,
+diff --git a/packages/services/src/index.ts b/packages/services/src/index.ts
+index 09ebdba..4d10090 100644
+--- a/packages/services/src/index.ts
++++ b/packages/services/src/index.ts
+@@ -12,7 +12,6 @@ import { GTMTrackingService } from "./GTMTrackingService";
+ import { AnnouncementService } from "./AnnouncementService";
+ import { AnalyticsService } from "./AnalyticsService";
+ import { PowerBIService } from "./PowerBIService";
+-import { InsightService, InsightTimeoutError } from "./InsightService";
+ import { PanelService } from "./CustomPageService/panel";
+ import type { IConfig, IConfiguration } from "./ConfigService/types";
+ 
+@@ -44,6 +43,4 @@ export {
+ 	AnnouncementService,
+ 	AnalyticsService,
+ 	PowerBIService,
+-	InsightService,
+-	InsightTimeoutError,
+ };
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+index afd5c0a..b003f93 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+@@ -1,56 +1,45 @@
+ import { render, screen, waitFor, fireEvent } from "@testing-library/react";
++import type { ComponentProps, PropsWithChildren } from "react";
++import type {
++	FeedbackChart as FeedbackChartComponent,
++	GenericButtonV2 as GenericButtonV2Component,
++	GenericSpin as GenericSpinComponent,
++	Text as TextComponent,
++} from "@angen_frontend/components";
+ import { OverviewTab } from "./index";
+ import { InsightService } from "@angen_frontend/services";
+ 
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+-	Text: ({ entry, children }: any) => {
+-		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+-		const key = entry ? Object.keys(entry)[0] : "";
+-		if (key) {
+-			const en = require("../../../../../../types/src/translations/en.json");
+-			const val = key
+-				.split(".")
+-				.reduce((acc: any, part: string) => acc?.[part], en);
+-			if (typeof val === "string") return <span>{val}</span>;
+-			return <span>{key}</span>;
+-		}
+-		return <span>{children}</span>;
++	Text: ({ entry }: ComponentProps<typeof TextComponent>) => {
++		const key = Object.keys(entry)[0];
++		return (
++			<span>{key === "cothinker.common.retryBtn" ? "Retry" : key}</span>
++		);
+ 	},
+-	GenericSpin: ({ children }: any) => (
++	GenericSpin: ({
++		children,
++	}: PropsWithChildren<ComponentProps<typeof GenericSpinComponent>>) => (
+ 		<div data-testid="mock-generic-spin">{children}</div>
+ 	),
+-	GenericButton: ({ children, onClick, ...props }: any) => (
+-		<button type="button" onClick={onClick} {...props}>
+-			{children}
+-		</button>
+-	),
+-	GenericButtonV2: ({ children, onClick, ...props }: any) => (
+-		<button type="button" onClick={onClick} {...props}>
++	GenericButtonV2: ({
++		children,
++		onClick,
++		disabled,
++	}: ComponentProps<typeof GenericButtonV2Component>) => (
++		<button type="button" onClick={onClick} disabled={disabled}>
+ 			{children}
+ 		</button>
+ 	),
+-	DataAnalysisSvgIcon: () => <span />,
+-	CoThinkerCircleCheckSvgIcon: () => <span />,
+-	CircleCloseSvgIcon: () => <span />,
+-	CoinSvgIcon: () => <span />,
+-	FeedbackChart: ({ type }: any) => (
++	FeedbackChart: ({
++		type,
++	}: ComponentProps<typeof FeedbackChartComponent>) => (
+ 		<div data-testid={`mock-feedback-${type}-chart`}>
+ 			{type === "role"
+ 				? "Positive Feedback Rate by Role (Last 30 Days)"
+ 				: "Positive Feedback Trend (Last 30 Days)"}
+ 		</div>
+ 	),
+-	RoleFeedbackChart: () => (
+-		<div data-testid="mock-role-feedback-chart">
+-			Positive Feedback Rate by Role (Last 30 Days)
+-		</div>
+-	),
+-	FeedbackTrendChart: () => (
+-		<div data-testid="mock-feedback-trend-chart">
+-			Positive Feedback Trend (Last 30 Days)
+-		</div>
+-	),
+ }));
+ 
+ jest.mock("@angen_frontend/services", () => ({
