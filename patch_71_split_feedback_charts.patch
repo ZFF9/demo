@@ -1,0 +1,1022 @@
+diff --git a/packages/components/src/FeedbackChart/index.spec.tsx b/packages/components/src/FeedbackChart/index.spec.tsx
+deleted file mode 100644
+index 58de554..0000000
+--- a/packages/components/src/FeedbackChart/index.spec.tsx
++++ /dev/null
+@@ -1,163 +0,0 @@
+-import { render, screen } from "@testing-library/react";
+-import "@testing-library/jest-dom";
+-import { FeedbackChart } from "./index";
+-
+-const mockSetOption = jest.fn();
+-const mockResize = jest.fn();
+-const mockDispose = jest.fn();
+-
+-jest.mock("echarts", () => ({
+-	init: () => ({
+-		setOption: mockSetOption,
+-		resize: mockResize,
+-		dispose: mockDispose,
+-	}),
+-	graphic: {
+-		LinearGradient: jest.fn(),
+-	},
+-}));
+-
+-describe("FeedbackChart", () => {
+-	beforeAll(() => {
+-		class MockResizeObserver implements ResizeObserver {
+-			private readonly callback: ResizeObserverCallback;
+-			private readonly observedElements = new Set<Element>();
+-			constructor(callback: ResizeObserverCallback) {
+-				this.callback = callback;
+-			}
+-			observe(target: Element) {
+-				this.observedElements.add(target);
+-				this.callback([], this);
+-			}
+-			unobserve(target: Element): void {
+-				this.observedElements.delete(target);
+-			}
+-			disconnect(): void {
+-				this.observedElements.clear();
+-			}
+-		}
+-		global.ResizeObserver = MockResizeObserver;
+-	});
+-
+-	beforeEach(() => {
+-		jest.clearAllMocks();
+-	});
+-
+-	it("renders role breakdown chart correctly with tooltip and legend", () => {
+-		const mockRoleData = [
+-			{
+-				role: "BU Marketing",
+-				totalGenerations: 100,
+-				thumbsUpCount: 80,
+-				thumbsDownCount: 20,
+-				ratedCount: 100,
+-				noFeedbackCount: 0,
+-				positiveFeedbackRate: 80,
+-				feedbackCoverage: 100,
+-			},
+-			{
+-				role: "Sales Manager",
+-				totalGenerations: 50,
+-				thumbsUpCount: 35,
+-				thumbsDownCount: 15,
+-				ratedCount: 50,
+-				noFeedbackCount: 0,
+-				positiveFeedbackRate: 70,
+-				feedbackCoverage: 100,
+-			},
+-			{
+-				role: "Sales Representative",
+-				totalGenerations: 40,
+-				thumbsUpCount: 20,
+-				thumbsDownCount: 20,
+-				ratedCount: 40,
+-				noFeedbackCount: 0,
+-				positiveFeedbackRate: 50,
+-				feedbackCoverage: 100,
+-			},
+-			{
+-				role: "Unrated Role",
+-				totalGenerations: 0,
+-				thumbsUpCount: 0,
+-				thumbsDownCount: 0,
+-				ratedCount: 0,
+-				noFeedbackCount: 0,
+-				positiveFeedbackRate: null,
+-				feedbackCoverage: null,
+-			},
+-		];
+-
+-		const { rerender, unmount } = render(
+-			<FeedbackChart type="role" data={mockRoleData} />
+-		);
+-
+-		expect(
+-			screen.getByText("Positive Feedback Rate by Role (Last 30 Days)")
+-		).toBeInTheDocument();
+-		expect(
+-			screen.getByText("Positive Feedback Rate (%)")
+-		).toBeInTheDocument();
+-		expect(screen.getByText(/Optimal/i)).toBeInTheDocument();
+-
+-		const optionArg = mockSetOption.mock.calls[0][0];
+-		expect(optionArg.tooltip.formatter([{ dataIndex: 0 }])).toContain(
+-			"BU Marketing"
+-		);
+-		expect(optionArg.tooltip.formatter({ dataIndex: 3 })).toContain(
+-			"No generations"
+-		);
+-		expect(optionArg.tooltip.formatter({ dataIndex: 99 })).toBe("");
+-		expect(optionArg.series[0].label.formatter({ dataIndex: 0 })).toBe(
+-			"80.0%"
+-		);
+-
+-		rerender(<FeedbackChart type="role" data={mockRoleData.slice(0, 1)} />);
+-		unmount();
+-		expect(mockDispose).toHaveBeenCalled();
+-	});
+-
+-	it("renders trend chart correctly with tooltip and date formatter", () => {
+-		const mockTrendData = [
+-			{
+-				date: "2026-10-22",
+-				totalGenerations: 50,
+-				thumbsUpCount: 40,
+-				thumbsDownCount: 10,
+-				ratedCount: 50,
+-				noFeedbackCount: 0,
+-				positiveFeedbackRate: 80,
+-				feedbackCoverage: 100,
+-			},
+-			{
+-				date: "2026-10-23",
+-				totalGenerations: 0,
+-				thumbsUpCount: 0,
+-				thumbsDownCount: 0,
+-				ratedCount: 0,
+-				noFeedbackCount: 0,
+-				positiveFeedbackRate: null,
+-				feedbackCoverage: null,
+-			},
+-		];
+-
+-		render(<FeedbackChart type="trend" data={mockTrendData} />);
+-
+-		expect(
+-			screen.getByText("Positive Feedback Trend (Last 30 Days)")
+-		).toBeInTheDocument();
+-		expect(
+-			screen.getByText("Positive Feedback Rate (%)")
+-		).toBeInTheDocument();
+-
+-		const optionArg = mockSetOption.mock.calls[0][0];
+-		expect(optionArg.tooltip.formatter([{ dataIndex: 0 }])).toContain(
+-			"2026-10-22"
+-		);
+-		expect(optionArg.tooltip.formatter({ dataIndex: 1 })).toContain(
+-			"No generations"
+-		);
+-		expect(optionArg.tooltip.formatter({ dataIndex: 99 })).toBe("");
+-		expect(optionArg.xAxis.axisLabel.formatter("2026-10-22")).toBe("10/22");
+-		expect(optionArg.xAxis.axisLabel.formatter("Oct 22")).toBe("Oct 22");
+-	});
+-});
+diff --git a/packages/components/src/FeedbackChart/index.tsx b/packages/components/src/FeedbackChart/index.tsx
+deleted file mode 100644
+index ad85214..0000000
+--- a/packages/components/src/FeedbackChart/index.tsx
++++ /dev/null
+@@ -1,268 +0,0 @@
+-import { useRef, useMemo, useEffect } from "react";
+-import type { FC } from "react";
+-import { init as initChart } from "echarts";
+-import type { EChartsOption } from "echarts";
+-
+-export interface IRoleFeedbackItem {
+-	role: string;
+-	totalGenerations: number;
+-	thumbsUpCount: number;
+-	thumbsDownCount: number;
+-	ratedCount: number;
+-	noFeedbackCount: number;
+-	positiveFeedbackRate: number | null;
+-	feedbackCoverage: number | null;
+-}
+-
+-export interface IFeedbackTrendItem {
+-	date: string;
+-	totalGenerations: number;
+-	thumbsUpCount: number;
+-	thumbsDownCount: number;
+-	ratedCount: number;
+-	noFeedbackCount: number;
+-	positiveFeedbackRate: number | null;
+-	feedbackCoverage: number | null;
+-}
+-
+-export type IFeedbackChartProps =
+-	| {
+-			type: "role";
+-			data: IRoleFeedbackItem[];
+-			className?: string;
+-	  }
+-	| {
+-			type: "trend";
+-			data: IFeedbackTrendItem[];
+-			className?: string;
+-	  };
+-
+-const FEEDBACK_RATE_BANDS = [
+-	{ label: "Optimal", range: "80%-100%", color: "#059669" },
+-	{ label: "Review", range: "60%-79%", color: "#D97706" },
+-	{ label: "Attention", range: "<60%", color: "#DC2626" },
+-];
+-const FEEDBACK_RATE_OPTIMAL_MIN = 80;
+-const FEEDBACK_RATE_REVIEW_MIN = 60;
+-const DATE_PART_COUNT = 3;
+-const CHART_GRID = { left: 52, right: 24, top: 36, bottom: 40 };
+-const AXIS_LABEL_COLOR = "#64748b";
+-const Y_AXIS = {
+-	type: "value" as const,
+-	min: 0,
+-	max: 100,
+-	interval: 20,
+-	axisLabel: {
+-		formatter: "{value}%",
+-		color: AXIS_LABEL_COLOR,
+-		fontSize: 12,
+-	},
+-	splitLine: { lineStyle: { color: "#f1f5f9" } },
+-};
+-const AXIS_LINE = { lineStyle: { color: "#e2e8f0" } };
+-
+-const getRoleBarColor = (rate: number | null | undefined): string => {
+-	if (rate === null || rate === undefined) return "#94A3B8";
+-	if (rate >= FEEDBACK_RATE_OPTIMAL_MIN) return "#059669";
+-	if (rate >= FEEDBACK_RATE_REVIEW_MIN) return "#D97706";
+-	return "#DC2626";
+-};
+-
+-const formatPercent = (val: number | null | undefined, fallback = "--") => {
+-	if (val === null || val === undefined) return fallback;
+-	return `${val.toFixed(1)}%`;
+-};
+-
+-const formatTooltipContent = (
+-	title: string,
+-	item: IRoleFeedbackItem | IFeedbackTrendItem
+-): string => {
+-	const rateStr = formatPercent(item.positiveFeedbackRate);
+-	const covStr = formatPercent(item.feedbackCoverage, "No generations");
+-	return [
+-		`<strong>${title}</strong>`,
+-		`Positive feedback rate: <strong>${rateStr}</strong>`,
+-		`Positive: ${item.thumbsUpCount}`,
+-		`Negative: ${item.thumbsDownCount}`,
+-		`No feedback: ${item.noFeedbackCount}`,
+-		`Rated: ${item.ratedCount} of ${item.totalGenerations} generations`,
+-		`Feedback coverage: ${covStr}`,
+-	].join("<br/>");
+-};
+-
+-const getDataIndex = (params: unknown): number => {
+-	const target = Array.isArray(params) ? params[0] : params;
+-	if (
+-		typeof target === "object" &&
+-		target !== null &&
+-		"dataIndex" in target &&
+-		typeof target.dataIndex === "number"
+-	) {
+-		return target.dataIndex;
+-	}
+-	return -1;
+-};
+-
+-function createTooltipFormatter<
+-	T extends IRoleFeedbackItem | IFeedbackTrendItem
+->(data: T[], getTitle: (item: T) => string) {
+-	return (params: unknown): string => {
+-		const item = data[getDataIndex(params)];
+-		return item ? formatTooltipContent(getTitle(item), item) : "";
+-	};
+-}
+-
+-const createRoleChartOption = (data: IRoleFeedbackItem[]): EChartsOption => ({
+-	tooltip: {
+-		trigger: "axis",
+-		confine: true,
+-		axisPointer: { type: "shadow" },
+-		formatter: createTooltipFormatter(data, (item) => item.role),
+-	},
+-	grid: CHART_GRID,
+-	xAxis: {
+-		type: "category",
+-		data: data.map((item) => item.role),
+-		axisLabel: { interval: 0, fontSize: 12, color: AXIS_LABEL_COLOR },
+-		axisLine: AXIS_LINE,
+-	},
+-	yAxis: Y_AXIS,
+-	series: [
+-		{
+-			type: "bar",
+-			barWidth: "36%",
+-			data: data.map((item) => ({
+-				value: item.positiveFeedbackRate ?? 0,
+-				itemStyle: {
+-					color: getRoleBarColor(item.positiveFeedbackRate),
+-					borderRadius: [4, 4, 0, 0],
+-				},
+-			})),
+-			label: {
+-				show: true,
+-				position: "top",
+-				formatter: (params: unknown) =>
+-					formatPercent(
+-						data[getDataIndex(params)]?.positiveFeedbackRate
+-					),
+-				fontSize: 12,
+-				fontWeight: 600,
+-				color: "#334155",
+-			},
+-		},
+-	],
+-});
+-
+-const formatTrendDate = (value: string): string => {
+-	const parts = value.split("-");
+-	return parts.length === DATE_PART_COUNT
+-		? `${Number(parts[1])}/${Number(parts[2])}`
+-		: value;
+-};
+-
+-const createTrendChartOption = (data: IFeedbackTrendItem[]): EChartsOption => ({
+-	tooltip: {
+-		trigger: "axis",
+-		confine: true,
+-		formatter: createTooltipFormatter(data, (item) => item.date),
+-	},
+-	grid: CHART_GRID,
+-	xAxis: {
+-		type: "category",
+-		boundaryGap: false,
+-		data: data.map((item) => item.date),
+-		axisLabel: {
+-			color: AXIS_LABEL_COLOR,
+-			fontSize: 12,
+-			formatter: formatTrendDate,
+-		},
+-		axisLine: AXIS_LINE,
+-	},
+-	yAxis: Y_AXIS,
+-	series: [
+-		{
+-			type: "line",
+-			data: data.map((item) => item.positiveFeedbackRate),
+-			smooth: false,
+-			symbol: "circle",
+-			symbolSize: 6,
+-			lineStyle: { color: "#CC0000", width: 2.5 },
+-			itemStyle: { color: "#CC0000" },
+-			areaStyle: {
+-				color: {
+-					type: "linear",
+-					x: 0,
+-					y: 0,
+-					x2: 0,
+-					y2: 1,
+-					colorStops: [
+-						{ offset: 0, color: "rgba(204, 0, 0, 0.22)" },
+-						{ offset: 1, color: "rgba(204, 0, 0, 0.01)" },
+-					],
+-					global: false,
+-				},
+-			},
+-		},
+-	],
+-});
+-
+-export const FeedbackChart: FC<IFeedbackChartProps> = (props) => {
+-	const chartRef = useRef<HTMLDivElement>(null);
+-	const isRole = props.type === "role";
+-	const { data } = props;
+-
+-	const option = useMemo(() => {
+-		if (props.type === "role") return createRoleChartOption(props.data);
+-		return createTrendChartOption(props.data);
+-	}, [props.type, data]);
+-
+-	useEffect(() => {
+-		if (!chartRef.current) return;
+-		const chartInstance = initChart(chartRef.current, undefined, {
+-			renderer: "svg",
+-		});
+-		chartInstance.setOption(option);
+-		const observer = new ResizeObserver(() => {
+-			chartInstance.resize();
+-		});
+-		observer.observe(chartRef.current);
+-		return () => {
+-			observer.disconnect();
+-			chartInstance.dispose();
+-		};
+-	}, [option]);
+-
+-	const title = isRole
+-		? "Positive Feedback Rate by Role (Last 30 Days)"
+-		: "Positive Feedback Trend (Last 30 Days)";
+-
+-	return (
+-		<div className={`overviewChartCard ${props.className || ""}`}>
+-			<div className="chartCardHeader">
+-				<div className="chartCardTitle">{title}</div>
+-			</div>
+-			<div className="chartCardBody">
+-				<div className="chartAxisLabel">Positive Feedback Rate (%)</div>
+-				<div ref={chartRef} className="echartsContainer" />
+-				{isRole && (
+-					<div className="feedbackLegend">
+-						{FEEDBACK_RATE_BANDS.map((band) => (
+-							<span
+-								key={band.label}
+-								className="feedbackLegendItem"
+-							>
+-								<span
+-									className="feedbackLegendSwatch"
+-									style={{ backgroundColor: band.color }}
+-								/>
+-								{band.label} ({band.range})
+-							</span>
+-						))}
+-					</div>
+-				)}
+-			</div>
+-		</div>
+-	);
+-};
+-
+-export default FeedbackChart;
+diff --git a/packages/components/src/FeedbackTrendChart/index.spec.tsx b/packages/components/src/FeedbackTrendChart/index.spec.tsx
+index 8442153..3a529d7 100644
+--- a/packages/components/src/FeedbackTrendChart/index.spec.tsx
++++ b/packages/components/src/FeedbackTrendChart/index.spec.tsx
+@@ -2,27 +2,27 @@ import { render, screen } from "@testing-library/react";
+ import "@testing-library/jest-dom";
+ import { FeedbackTrendChart } from "./index";
+ 
+-jest.mock("../FeedbackChart", () => ({
+-	FeedbackChart: ({
+-		type,
+-		data,
+-		className,
+-	}: {
+-		type: string;
+-		data: unknown[];
+-		className?: string;
+-	}) => (
+-		<div
+-			data-testid="feedback-chart"
+-			data-type={type}
+-			data-count={data.length}
+-			className={className}
+-		/>
+-	),
++const mockSetOption = jest.fn();
++
++jest.mock("echarts", () => ({
++	init: () => ({
++		setOption: mockSetOption,
++		resize: jest.fn(),
++		dispose: jest.fn(),
++	}),
+ }));
+ 
++beforeAll(() => {
++	class MockResizeObserver implements ResizeObserver {
++		observe(): void {}
++		unobserve(): void {}
++		disconnect(): void {}
++	}
++	global.ResizeObserver = MockResizeObserver;
++});
++
+ describe("FeedbackTrendChart", () => {
+-	it("renders the trend chart with its data and class name", () => {
++	it("renders the trend chart configuration", () => {
+ 		render(
+ 			<FeedbackTrendChart
+ 				data={[
+@@ -37,18 +37,18 @@ describe("FeedbackTrendChart", () => {
+ 						feedbackCoverage: 100,
+ 					},
+ 				]}
+-				className="trend-chart"
+ 			/>
+ 		);
+ 
+-		expect(screen.getByTestId("feedback-chart")).toHaveAttribute(
+-			"data-type",
+-			"trend"
+-		);
+-		expect(screen.getByTestId("feedback-chart")).toHaveAttribute(
+-			"data-count",
+-			"1"
++		expect(
++			screen.getByText("Positive Feedback Trend (Last 30 Days)")
++		).toBeInTheDocument();
++		const option = mockSetOption.mock.calls[0][0];
++		expect(option.xAxis.data).toEqual(["2026-10-22"]);
++		expect(option.xAxis.axisLabel.formatter("2026-10-22")).toBe("10/22");
++		expect(option.series[0].data).toEqual([70]);
++		expect(option.tooltip.formatter({ dataIndex: 0 })).toContain(
++			"2026-10-22"
+ 		);
+-		expect(screen.getByTestId("feedback-chart")).toHaveClass("trend-chart");
+ 	});
+ });
+diff --git a/packages/components/src/FeedbackTrendChart/index.tsx b/packages/components/src/FeedbackTrendChart/index.tsx
+index 3fe9ff9..56a033a 100644
+--- a/packages/components/src/FeedbackTrendChart/index.tsx
++++ b/packages/components/src/FeedbackTrendChart/index.tsx
+@@ -1,14 +1,155 @@
++import { useEffect, useMemo, useRef } from "react";
+ import type { FC } from "react";
+-import { FeedbackChart } from "../FeedbackChart";
+-import type { IFeedbackTrendItem } from "../FeedbackChart";
++import { init as initChart } from "echarts";
++import type { EChartsOption } from "echarts";
++
++export interface IFeedbackTrendItem {
++	date: string;
++	totalGenerations: number;
++	thumbsUpCount: number;
++	thumbsDownCount: number;
++	ratedCount: number;
++	noFeedbackCount: number;
++	positiveFeedbackRate: number | null;
++	feedbackCoverage: number | null;
++}
+ 
+ export interface IFeedbackTrendChartProps {
+ 	data: IFeedbackTrendItem[];
+ 	className?: string;
+ }
+ 
+-export const FeedbackTrendChart: FC<IFeedbackTrendChartProps> = (props) => (
+-	<FeedbackChart type="trend" {...props} />
+-);
++const GRID = { left: 52, right: 24, top: 36, bottom: 40 };
++const AXIS_LABEL_COLOR = "#64748b";
++const AXIS_LINE = { lineStyle: { color: "#e2e8f0" } };
++const Y_AXIS = {
++	type: "value" as const,
++	min: 0,
++	max: 100,
++	interval: 20,
++	axisLabel: { formatter: "{value}%", color: AXIS_LABEL_COLOR, fontSize: 12 },
++	splitLine: { lineStyle: { color: "#f1f5f9" } },
++};
++
++const formatPercent = (value: number | null | undefined, fallback = "--") =>
++	value === null || value === undefined ? fallback : `${value.toFixed(1)}%`;
++
++const getDataIndex = (params: unknown): number => {
++	const target = Array.isArray(params) ? params[0] : params;
++	return typeof target === "object" &&
++		target !== null &&
++		"dataIndex" in target &&
++		typeof target.dataIndex === "number"
++		? target.dataIndex
++		: -1;
++};
++
++const formatDate = (value: string): string => {
++	const parts = value.split("-");
++	return parts.length === 3
++		? `${Number(parts[1])}/${Number(parts[2])}`
++		: value;
++};
++
++const createTooltip = (data: IFeedbackTrendItem[]) => (params: unknown) => {
++	const item = data[getDataIndex(params)];
++	if (!item) return "";
++	return [
++		`<strong>${item.date}</strong>`,
++		`Positive feedback rate: <strong>${formatPercent(
++			item.positiveFeedbackRate
++		)}</strong>`,
++		`Positive: ${item.thumbsUpCount}`,
++		`Negative: ${item.thumbsDownCount}`,
++		`No feedback: ${item.noFeedbackCount}`,
++		`Rated: ${item.ratedCount} of ${item.totalGenerations} generations`,
++		`Feedback coverage: ${formatPercent(
++			item.feedbackCoverage,
++			"No generations"
++		)}`,
++	].join("<br/>");
++};
++
++const createOption = (data: IFeedbackTrendItem[]): EChartsOption => ({
++	tooltip: {
++		trigger: "axis",
++		confine: true,
++		formatter: createTooltip(data),
++	},
++	grid: GRID,
++	xAxis: {
++		type: "category",
++		boundaryGap: false,
++		data: data.map((item) => item.date),
++		axisLabel: {
++			color: AXIS_LABEL_COLOR,
++			fontSize: 12,
++			formatter: formatDate,
++		},
++		axisLine: AXIS_LINE,
++	},
++	yAxis: Y_AXIS,
++	series: [
++		{
++			type: "line",
++			data: data.map((item) => item.positiveFeedbackRate),
++			smooth: false,
++			symbol: "circle",
++			symbolSize: 6,
++			lineStyle: { color: "#CC0000", width: 2.5 },
++			itemStyle: { color: "#CC0000" },
++			areaStyle: {
++				color: {
++					type: "linear",
++					x: 0,
++					y: 0,
++					x2: 0,
++					y2: 1,
++					colorStops: [
++						{ offset: 0, color: "rgba(204, 0, 0, 0.22)" },
++						{ offset: 1, color: "rgba(204, 0, 0, 0.01)" },
++					],
++					global: false,
++				},
++			},
++		},
++	],
++});
++
++export const FeedbackTrendChart: FC<IFeedbackTrendChartProps> = ({
++	data,
++	className,
++}) => {
++	const chartRef = useRef<HTMLDivElement>(null);
++	const option = useMemo(() => createOption(data), [data]);
++
++	useEffect(() => {
++		if (!chartRef.current) return;
++		const chart = initChart(chartRef.current, undefined, {
++			renderer: "svg",
++		});
++		chart.setOption(option);
++		const observer = new ResizeObserver(() => chart.resize());
++		observer.observe(chartRef.current);
++		return () => {
++			observer.disconnect();
++			chart.dispose();
++		};
++	}, [option]);
++
++	return (
++		<div className={`overviewChartCard ${className || ""}`}>
++			<div className="chartCardHeader">
++				<div className="chartCardTitle">
++					Positive Feedback Trend (Last 30 Days)
++				</div>
++			</div>
++			<div className="chartCardBody">
++				<div className="chartAxisLabel">Positive Feedback Rate (%)</div>
++				<div ref={chartRef} className="echartsContainer" />
++			</div>
++		</div>
++	);
++};
+ 
+ export default FeedbackTrendChart;
+diff --git a/packages/components/src/RoleFeedbackChart/index.spec.tsx b/packages/components/src/RoleFeedbackChart/index.spec.tsx
+index 5c21526..2d58840 100644
+--- a/packages/components/src/RoleFeedbackChart/index.spec.tsx
++++ b/packages/components/src/RoleFeedbackChart/index.spec.tsx
+@@ -2,27 +2,27 @@ import { render, screen } from "@testing-library/react";
+ import "@testing-library/jest-dom";
+ import { RoleFeedbackChart } from "./index";
+ 
+-jest.mock("../FeedbackChart", () => ({
+-	FeedbackChart: ({
+-		type,
+-		data,
+-		className,
+-	}: {
+-		type: string;
+-		data: unknown[];
+-		className?: string;
+-	}) => (
+-		<div
+-			data-testid="feedback-chart"
+-			data-type={type}
+-			data-count={data.length}
+-			className={className}
+-		/>
+-	),
++const mockSetOption = jest.fn();
++
++jest.mock("echarts", () => ({
++	init: () => ({
++		setOption: mockSetOption,
++		resize: jest.fn(),
++		dispose: jest.fn(),
++	}),
+ }));
+ 
++beforeAll(() => {
++	class MockResizeObserver implements ResizeObserver {
++		observe(): void {}
++		unobserve(): void {}
++		disconnect(): void {}
++	}
++	global.ResizeObserver = MockResizeObserver;
++});
++
+ describe("RoleFeedbackChart", () => {
+-	it("renders the role chart with its data and class name", () => {
++	it("renders the role chart configuration", () => {
+ 		render(
+ 			<RoleFeedbackChart
+ 				data={[
+@@ -37,18 +37,18 @@ describe("RoleFeedbackChart", () => {
+ 						feedbackCoverage: 100,
+ 					},
+ 				]}
+-				className="role-chart"
+ 			/>
+ 		);
+ 
+-		expect(screen.getByTestId("feedback-chart")).toHaveAttribute(
+-			"data-type",
+-			"role"
+-		);
+-		expect(screen.getByTestId("feedback-chart")).toHaveAttribute(
+-			"data-count",
+-			"1"
++		expect(
++			screen.getByText("Positive Feedback Rate by Role (Last 30 Days)")
++		).toBeInTheDocument();
++		expect(screen.getByText("Optimal (80%-100%)")).toBeInTheDocument();
++		const option = mockSetOption.mock.calls[0][0];
++		expect(option.xAxis.data).toEqual(["BU Marketing"]);
++		expect(option.series[0].data[0].value).toBe(70);
++		expect(option.tooltip.formatter({ dataIndex: 0 })).toContain(
++			"BU Marketing"
+ 		);
+-		expect(screen.getByTestId("feedback-chart")).toHaveClass("role-chart");
+ 	});
+ });
+diff --git a/packages/components/src/RoleFeedbackChart/index.tsx b/packages/components/src/RoleFeedbackChart/index.tsx
+index e843be9..29b0e4a 100644
+--- a/packages/components/src/RoleFeedbackChart/index.tsx
++++ b/packages/components/src/RoleFeedbackChart/index.tsx
+@@ -1,14 +1,166 @@
++import { useEffect, useMemo, useRef } from "react";
+ import type { FC } from "react";
+-import { FeedbackChart } from "../FeedbackChart";
+-import type { IRoleFeedbackItem } from "../FeedbackChart";
++import { init as initChart } from "echarts";
++import type { EChartsOption } from "echarts";
++
++export interface IRoleFeedbackItem {
++	role: string;
++	totalGenerations: number;
++	thumbsUpCount: number;
++	thumbsDownCount: number;
++	ratedCount: number;
++	noFeedbackCount: number;
++	positiveFeedbackRate: number | null;
++	feedbackCoverage: number | null;
++}
+ 
+ export interface IRoleFeedbackChartProps {
+ 	data: IRoleFeedbackItem[];
+ 	className?: string;
+ }
+ 
+-export const RoleFeedbackChart: FC<IRoleFeedbackChartProps> = (props) => (
+-	<FeedbackChart type="role" {...props} />
+-);
++const RATE_BANDS = [
++	{ label: "Optimal", range: "80%-100%", color: "#059669" },
++	{ label: "Review", range: "60%-79%", color: "#D97706" },
++	{ label: "Attention", range: "<60%", color: "#DC2626" },
++];
++const GRID = { left: 52, right: 24, top: 36, bottom: 40 };
++const AXIS_LABEL_COLOR = "#64748b";
++const AXIS_LINE = { lineStyle: { color: "#e2e8f0" } };
++const Y_AXIS = {
++	type: "value" as const,
++	min: 0,
++	max: 100,
++	interval: 20,
++	axisLabel: { formatter: "{value}%", color: AXIS_LABEL_COLOR, fontSize: 12 },
++	splitLine: { lineStyle: { color: "#f1f5f9" } },
++};
++
++const formatPercent = (value: number | null | undefined, fallback = "--") =>
++	value === null || value === undefined ? fallback : `${value.toFixed(1)}%`;
++
++const getDataIndex = (params: unknown): number => {
++	const target = Array.isArray(params) ? params[0] : params;
++	return typeof target === "object" &&
++		target !== null &&
++		"dataIndex" in target &&
++		typeof target.dataIndex === "number"
++		? target.dataIndex
++		: -1;
++};
++
++const getBarColor = (rate: number | null): string => {
++	if (rate === null) return "#94A3B8";
++	if (rate >= 80) return "#059669";
++	if (rate >= 60) return "#D97706";
++	return "#DC2626";
++};
++
++const createTooltip = (data: IRoleFeedbackItem[]) => (params: unknown) => {
++	const item = data[getDataIndex(params)];
++	if (!item) return "";
++	return [
++		`<strong>${item.role}</strong>`,
++		`Positive feedback rate: <strong>${formatPercent(
++			item.positiveFeedbackRate
++		)}</strong>`,
++		`Positive: ${item.thumbsUpCount}`,
++		`Negative: ${item.thumbsDownCount}`,
++		`No feedback: ${item.noFeedbackCount}`,
++		`Rated: ${item.ratedCount} of ${item.totalGenerations} generations`,
++		`Feedback coverage: ${formatPercent(
++			item.feedbackCoverage,
++			"No generations"
++		)}`,
++	].join("<br/>");
++};
++
++const createOption = (data: IRoleFeedbackItem[]): EChartsOption => ({
++	tooltip: {
++		trigger: "axis",
++		confine: true,
++		axisPointer: { type: "shadow" },
++		formatter: createTooltip(data),
++	},
++	grid: GRID,
++	xAxis: {
++		type: "category",
++		data: data.map((item) => item.role),
++		axisLabel: { interval: 0, fontSize: 12, color: AXIS_LABEL_COLOR },
++		axisLine: AXIS_LINE,
++	},
++	yAxis: Y_AXIS,
++	series: [
++		{
++			type: "bar",
++			barWidth: "36%",
++			data: data.map((item) => ({
++				value: item.positiveFeedbackRate ?? 0,
++				itemStyle: {
++					color: getBarColor(item.positiveFeedbackRate),
++					borderRadius: [4, 4, 0, 0],
++				},
++			})),
++			label: {
++				show: true,
++				position: "top",
++				formatter: (params: unknown) =>
++					formatPercent(
++						data[getDataIndex(params)]?.positiveFeedbackRate
++					),
++				fontSize: 12,
++				fontWeight: 600,
++				color: "#334155",
++			},
++		},
++	],
++});
++
++export const RoleFeedbackChart: FC<IRoleFeedbackChartProps> = ({
++	data,
++	className,
++}) => {
++	const chartRef = useRef<HTMLDivElement>(null);
++	const option = useMemo(() => createOption(data), [data]);
++
++	useEffect(() => {
++		if (!chartRef.current) return;
++		const chart = initChart(chartRef.current, undefined, {
++			renderer: "svg",
++		});
++		chart.setOption(option);
++		const observer = new ResizeObserver(() => chart.resize());
++		observer.observe(chartRef.current);
++		return () => {
++			observer.disconnect();
++			chart.dispose();
++		};
++	}, [option]);
++
++	return (
++		<div className={`overviewChartCard ${className || ""}`}>
++			<div className="chartCardHeader">
++				<div className="chartCardTitle">
++					Positive Feedback Rate by Role (Last 30 Days)
++				</div>
++			</div>
++			<div className="chartCardBody">
++				<div className="chartAxisLabel">Positive Feedback Rate (%)</div>
++				<div ref={chartRef} className="echartsContainer" />
++				<div className="feedbackLegend">
++					{RATE_BANDS.map((band) => (
++						<span key={band.label} className="feedbackLegendItem">
++							<span
++								className="feedbackLegendSwatch"
++								style={{ backgroundColor: band.color }}
++							/>
++							{band.label} ({band.range})
++						</span>
++					))}
++				</div>
++			</div>
++		</div>
++	);
++};
+ 
+ export default RoleFeedbackChart;
+diff --git a/packages/components/src/index.ts b/packages/components/src/index.ts
+index d0e77d4..d5dfec2 100644
+--- a/packages/components/src/index.ts
++++ b/packages/components/src/index.ts
+@@ -290,7 +290,6 @@ import RestoreSvgIcon from "./Icons/RestoreSvgIcon";
+ import UploadSvgIcon from "./Icons/UploadSvgIcon";
+ import DocFileSvgIcon from "./Icons/DocFileSvgIcon";
+ import RefreshSvgIcon from "./Icons/RefreshSvgIcon";
+-import { FeedbackChart } from "./FeedbackChart";
+ import { RoleFeedbackChart } from "./RoleFeedbackChart";
+ import { FeedbackTrendChart } from "./FeedbackTrendChart";
+ 
+@@ -563,7 +562,6 @@ export {
+ 	UploadSvgIcon,
+ 	DocFileSvgIcon,
+ 	RefreshSvgIcon,
+-	FeedbackChart,
+ 	RoleFeedbackChart,
+ 	FeedbackTrendChart,
+ 	GenericDataTable,
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+index b003f93..123bc32 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+@@ -1,7 +1,6 @@
+ import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+ import type { ComponentProps, PropsWithChildren } from "react";
+ import type {
+-	FeedbackChart as FeedbackChartComponent,
+ 	GenericButtonV2 as GenericButtonV2Component,
+ 	GenericSpin as GenericSpinComponent,
+ 	Text as TextComponent,
+@@ -31,13 +30,14 @@ jest.mock("@angen_frontend/components", () => ({
+ 			{children}
+ 		</button>
+ 	),
+-	FeedbackChart: ({
+-		type,
+-	}: ComponentProps<typeof FeedbackChartComponent>) => (
+-		<div data-testid={`mock-feedback-${type}-chart`}>
+-			{type === "role"
+-				? "Positive Feedback Rate by Role (Last 30 Days)"
+-				: "Positive Feedback Trend (Last 30 Days)"}
++	RoleFeedbackChart: () => (
++		<div data-testid="mock-role-feedback-chart">
++			Positive Feedback Rate by Role (Last 30 Days)
++		</div>
++	),
++	FeedbackTrendChart: () => (
++		<div data-testid="mock-feedback-trend-chart">
++			Positive Feedback Trend (Last 30 Days)
+ 		</div>
+ 	),
+ }));
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx
+index f053e7e..ccf7d9f 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx
+@@ -1,7 +1,8 @@
+ import { FC, useState, useEffect, useCallback } from "react";
+ import { KpiCards } from "./KpiCards";
+ import {
+-	FeedbackChart,
++	RoleFeedbackChart,
++	FeedbackTrendChart,
+ 	GenericSpin,
+ 	GenericButtonV2,
+ 	Text,
+@@ -265,11 +266,8 @@ export const OverviewTab: FC<IProps> = ({ initialMetrics }) => {
+ 			<KpiCards metrics={metrics} />
+ 
+ 			<div className="overviewChartsGrid">
+-				<FeedbackChart
+-					type="role"
+-					data={metrics.roleFeedbackBreakdown}
+-				/>
+-				<FeedbackChart type="trend" data={metrics.feedbackTrend} />
++				<RoleFeedbackChart data={metrics.roleFeedbackBreakdown} />
++				<FeedbackTrendChart data={metrics.feedbackTrend} />
+ 			</div>
+ 
+ 			<p className="overviewChartNote">
