@@ -1,0 +1,24 @@
+diff --git a/packages/services/src/index.ts b/packages/services/src/index.ts
+index a97a385..6de882f 100644
+--- a/packages/services/src/index.ts
++++ b/packages/services/src/index.ts
+@@ -16,7 +16,18 @@ import { PanelService } from "./CustomPageService/panel";
+ import type { IConfig, IConfiguration } from "./ConfigService/types";
+ 
+ export type { IConfig, IConfiguration };
+-export type { FeedbackStatus } from "./InsightService";
++export type {
++	FeedbackStatus,
++	ILogAuditFilterParams,
++	IAuditGenerationItem,
++	IAuditGenerationListResponse,
++	IGenerationDocChunk,
++	IGenerationOverview,
++	IQueryContext,
++	IGenerationRequestPayload,
++	IGenerationFeedbackDetail,
++	IAuditGenerationDetail,
++} from "./InsightService";
+ export {
+ 	InsightService,
+ 	InsightTimeoutError,
