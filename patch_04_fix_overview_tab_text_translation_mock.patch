@@ -1,0 +1,20 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+index cc1f3eb..16c6591 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+@@ -12,9 +12,12 @@ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	Text: ({ entry }: ComponentProps<typeof TextComponent>) => {
+ 		const key = Object.keys(entry)[0];
+-		return (
+-			<span>{key === "cothinker.common.retryBtn" ? "Retry" : key}</span>
+-		);
++		if (key === "cothinker.common.retryBtn") return <span>Retry</span>;
++		const en = require("../../../../../../types/src/translations/en.json");
++		const value = key
++			.split(".")
++			.reduce((result: any, part: string) => result?.[part], en);
++		return <span>{typeof value === "string" ? value : key}</span>;
+ 	},
+ 	DataAnalysisSvgIcon: () => <span />,
+ 	CoThinkerCircleCheckSvgIcon: () => <span />,
