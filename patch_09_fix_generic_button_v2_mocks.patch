@@ -1,0 +1,569 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+index b3bffdb..3aa35f8 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+@@ -9,12 +9,19 @@ import type {
+ import { KnowledgeDocumentDetail } from "./index";
+ import { IKnowledgeDocument } from "../index";
+ 
+-type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++type MockTextProps = Omit<
++	ComponentProps<typeof TextComponent>,
++	"entry" | "children"
++> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
+ 	children?: ReactNode;
+ };
++type MockGenericButtonV2Props = Pick<
++	ComponentProps<typeof GenericButtonV2Component>,
++	"onClick" | "disabled" | "className" | "aria-label"
++> & { children?: ReactNode };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+ 	onClick?: () => void;
+@@ -45,9 +52,17 @@ jest.mock("@angen_frontend/components", () => ({
+ 	GenericButtonV2: ({
+ 		children,
+ 		onClick,
+-		...props
+-	}: ComponentProps<typeof GenericButtonV2Component>) => (
+-		<button type="button" onClick={onClick} {...props}>
++		disabled,
++		className,
++		"aria-label": ariaLabel,
++	}: MockGenericButtonV2Props) => (
++		<button
++			type="button"
++			onClick={onClick}
++			disabled={disabled}
++			className={className}
++			aria-label={ariaLabel}
++		>
+ 			{children}
+ 		</button>
+ 	),
+@@ -57,7 +72,9 @@ jest.mock("@angen_frontend/components", () => ({
+ 		footer,
+ 		children,
+ 		onClose,
+-	}: ComponentProps<typeof GenericSideDrawerComponent>) => {
++	}: Omit<ComponentProps<typeof GenericSideDrawerComponent>, "children"> & {
++		children?: ReactNode;
++	}) => {
+ 		if (!visible) return null;
+ 		return (
+ 			<div data-testid="generic-side-drawer">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+index b4bbf3f..be66904 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+@@ -10,12 +10,19 @@ import type {
+ import { KnowledgeDocumentEditor } from "./index";
+ import { IKnowledgeDocument } from "../index";
+ 
+-type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++type MockTextProps = Omit<
++	ComponentProps<typeof TextComponent>,
++	"entry" | "children"
++> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
+ 	children?: ReactNode;
+ };
++type MockGenericButtonV2Props = Pick<
++	ComponentProps<typeof GenericButtonV2Component>,
++	"onClick" | "disabled" | "className" | "aria-label"
++> & { children?: ReactNode };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+ 	onClick?: () => void;
+@@ -92,9 +99,17 @@ jest.mock("@angen_frontend/components", () => ({
+ 	GenericButtonV2: ({
+ 		children,
+ 		onClick,
+-		...props
+-	}: ComponentProps<typeof GenericButtonV2Component>) => (
+-		<button type="button" onClick={onClick} {...props}>
++		disabled,
++		className,
++		"aria-label": ariaLabel,
++	}: MockGenericButtonV2Props) => (
++		<button
++			type="button"
++			onClick={onClick}
++			disabled={disabled}
++			className={className}
++			aria-label={ariaLabel}
++		>
+ 			{children}
+ 		</button>
+ 	),
+@@ -104,7 +119,9 @@ jest.mock("@angen_frontend/components", () => ({
+ 		footer,
+ 		children,
+ 		onClose,
+-	}: ComponentProps<typeof GenericModalV2Component>) => {
++	}: Omit<ComponentProps<typeof GenericModalV2Component>, "children"> & {
++		children?: ReactNode;
++	}) => {
+ 		if (!isOpen) return null;
+ 		return (
+ 			<div data-testid="generic-modal">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+index cbda7ae..6085f4d 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+@@ -9,12 +9,19 @@ import type {
+ import { KnowledgeDocumentTable } from "./index";
+ import { IKnowledgeDocument } from "../index";
+ 
+-type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++type MockTextProps = Omit<
++	ComponentProps<typeof TextComponent>,
++	"entry" | "children"
++> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
+ 	children?: ReactNode;
+ };
++type MockGenericButtonV2Props = Pick<
++	ComponentProps<typeof GenericButtonV2Component>,
++	"onClick" | "disabled" | "className" | "aria-label"
++> & { children?: ReactNode };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+ 	onClick?: () => void;
+@@ -58,9 +65,17 @@ jest.mock("@angen_frontend/components", () => ({
+ 	GenericButtonV2: ({
+ 		children,
+ 		onClick,
+-		...props
+-	}: ComponentProps<typeof GenericButtonV2Component>) => (
+-		<button type="button" onClick={onClick} {...props}>
++		disabled,
++		className,
++		"aria-label": ariaLabel,
++	}: MockGenericButtonV2Props) => (
++		<button
++			type="button"
++			onClick={onClick}
++			disabled={disabled}
++			className={className}
++			aria-label={ariaLabel}
++		>
+ 			{children}
+ 		</button>
+ 	),
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx
+index 9b51de5..0e8bfe9 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx
+@@ -4,7 +4,10 @@ import type { ComponentProps, ReactNode } from "react";
+ import type { Text as TextComponent } from "@angen_frontend/components";
+ import { KeyTakeawayCard } from "./index";
+ 
+-type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++type MockTextProps = Omit<
++	ComponentProps<typeof TextComponent>,
++	"entry" | "children"
++> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+index 6590126..9c61ae2 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+@@ -9,12 +9,19 @@ import type {
+ import { LogDetailDrawer } from "./index";
+ import { IAuditGenerationDetail } from "../index";
+ 
+-type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++type MockTextProps = Omit<
++	ComponentProps<typeof TextComponent>,
++	"entry" | "children"
++> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
+ 	children?: ReactNode;
+ };
++type MockGenericButtonV2Props = Pick<
++	ComponentProps<typeof GenericButtonV2Component>,
++	"onClick" | "disabled" | "className" | "aria-label"
++> & { children?: ReactNode };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+ 	onClick?: () => void;
+@@ -58,9 +65,17 @@ jest.mock("@angen_frontend/components", () => ({
+ 	GenericButtonV2: ({
+ 		children,
+ 		onClick,
+-		...props
+-	}: ComponentProps<typeof GenericButtonV2Component>) => (
+-		<button type="button" onClick={onClick} {...props}>
++		disabled,
++		className,
++		"aria-label": ariaLabel,
++	}: MockGenericButtonV2Props) => (
++		<button
++			type="button"
++			onClick={onClick}
++			disabled={disabled}
++			className={className}
++			aria-label={ariaLabel}
++		>
+ 			{children}
+ 		</button>
+ 	),
+@@ -70,7 +85,9 @@ jest.mock("@angen_frontend/components", () => ({
+ 		loading,
+ 		title,
+ 		children,
+-	}: ComponentProps<typeof GenericSideDrawerComponent>) => {
++	}: Omit<ComponentProps<typeof GenericSideDrawerComponent>, "children"> & {
++		children?: ReactNode;
++	}) => {
+ 		if (!visible) return null;
+ 		return (
+ 			<div data-testid="generic-side-drawer">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+index 5cb128a..53e3a5d 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+@@ -11,12 +11,19 @@ import { LogAuditTab } from "./index";
+ import { InsightService } from "@angen_frontend/services";
+ import { IAuditGenerationDetail } from "./index";
+ 
+-type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++type MockTextProps = Omit<
++	ComponentProps<typeof TextComponent>,
++	"entry" | "children"
++> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
+ 	children?: ReactNode;
+ };
++type MockGenericButtonV2Props = Pick<
++	ComponentProps<typeof GenericButtonV2Component>,
++	"onClick" | "disabled" | "className" | "aria-label"
++> & { children?: ReactNode };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+ 	onClick?: () => void;
+@@ -132,9 +139,17 @@ jest.mock("@angen_frontend/components", () => ({
+ 	GenericButtonV2: ({
+ 		children,
+ 		onClick,
+-		...props
+-	}: ComponentProps<typeof GenericButtonV2Component>) => (
+-		<button type="button" onClick={onClick} {...props}>
++		disabled,
++		className,
++		"aria-label": ariaLabel,
++	}: MockGenericButtonV2Props) => (
++		<button
++			type="button"
++			onClick={onClick}
++			disabled={disabled}
++			className={className}
++			aria-label={ariaLabel}
++		>
+ 			{children}
+ 		</button>
+ 	),
+@@ -149,7 +164,9 @@ jest.mock("@angen_frontend/components", () => ({
+ 		loading,
+ 		title,
+ 		children,
+-	}: ComponentProps<typeof GenericSideDrawerComponent>) => {
++	}: Omit<ComponentProps<typeof GenericSideDrawerComponent>, "children"> & {
++		children?: ReactNode;
++	}) => {
+ 		if (!visible) return null;
+ 		return (
+ 			<div data-testid="generic-side-drawer">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx
+index bdde503..f52763b 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx
+@@ -4,7 +4,10 @@ import type { ComponentProps, ReactNode } from "react";
+ import type { Text as TextComponent } from "@angen_frontend/components";
+ import { KpiCards } from "./index";
+ 
+-type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++type MockTextProps = Omit<
++	ComponentProps<typeof TextComponent>,
++	"entry" | "children"
++> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
+index e87c1a5..2a94025 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
+@@ -8,12 +8,19 @@ import type {
+ import { ConfigurationPanel } from "./index";
+ import { IPromptVersion } from "../index";
+ 
+-type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++type MockTextProps = Omit<
++	ComponentProps<typeof TextComponent>,
++	"entry" | "children"
++> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
+ 	children?: ReactNode;
+ };
++type MockGenericButtonV2Props = Pick<
++	ComponentProps<typeof GenericButtonV2Component>,
++	"onClick" | "disabled" | "className" | "aria-label"
++> & { children?: ReactNode };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+ 	onClick?: () => void;
+@@ -54,9 +61,17 @@ jest.mock("@angen_frontend/components", () => ({
+ 	GenericButtonV2: ({
+ 		children,
+ 		onClick,
+-		...props
+-	}: ComponentProps<typeof GenericButtonV2Component>) => (
+-		<button type="button" onClick={onClick} {...props}>
++		disabled,
++		className,
++		"aria-label": ariaLabel,
++	}: MockGenericButtonV2Props) => (
++		<button
++			type="button"
++			onClick={onClick}
++			disabled={disabled}
++			className={className}
++			aria-label={ariaLabel}
++		>
+ 			{children}
+ 		</button>
+ 	),
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+index 48ad3fd..37a71e3 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+@@ -9,12 +9,19 @@ import type {
+ import { MetricDefinitionsPanel } from "./index";
+ import { IMetricDefinition } from "../index";
+ 
+-type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++type MockTextProps = Omit<
++	ComponentProps<typeof TextComponent>,
++	"entry" | "children"
++> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
+ 	children?: ReactNode;
+ };
++type MockGenericButtonV2Props = Pick<
++	ComponentProps<typeof GenericButtonV2Component>,
++	"onClick" | "disabled" | "className" | "aria-label"
++> & { children?: ReactNode };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+ 	onClick?: () => void;
+@@ -57,9 +64,17 @@ jest.mock("@angen_frontend/components", () => ({
+ 	GenericButtonV2: ({
+ 		children,
+ 		onClick,
+-		...props
+-	}: ComponentProps<typeof GenericButtonV2Component>) => (
+-		<button type="button" onClick={onClick} {...props}>
++		disabled,
++		className,
++		"aria-label": ariaLabel,
++	}: MockGenericButtonV2Props) => (
++		<button
++			type="button"
++			onClick={onClick}
++			disabled={disabled}
++			className={className}
++			aria-label={ariaLabel}
++		>
+ 			{children}
+ 		</button>
+ 	),
+@@ -69,7 +84,9 @@ jest.mock("@angen_frontend/components", () => ({
+ 		footer,
+ 		children,
+ 		onClose,
+-	}: ComponentProps<typeof GenericModalV2Component>) => {
++	}: Omit<ComponentProps<typeof GenericModalV2Component>, "children"> & {
++		children?: ReactNode;
++	}) => {
+ 		if (!isOpen) return null;
+ 		return (
+ 			<div data-testid="generic-modal">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
+index ad9ed14..b208c72 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
+@@ -9,12 +9,19 @@ import type {
+ import { PromptEditorDrawer } from "./index";
+ import { IPromptConfig } from "../index";
+ 
+-type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++type MockTextProps = Omit<
++	ComponentProps<typeof TextComponent>,
++	"entry" | "children"
++> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
+ 	children?: ReactNode;
+ };
++type MockGenericButtonV2Props = Pick<
++	ComponentProps<typeof GenericButtonV2Component>,
++	"onClick" | "disabled" | "className" | "aria-label"
++> & { children?: ReactNode };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+ 	onClick?: () => void;
+@@ -53,9 +60,17 @@ jest.mock("@angen_frontend/components", () => ({
+ 	GenericButtonV2: ({
+ 		children,
+ 		onClick,
+-		...props
+-	}: ComponentProps<typeof GenericButtonV2Component>) => (
+-		<button type="button" onClick={onClick} {...props}>
++		disabled,
++		className,
++		"aria-label": ariaLabel,
++	}: MockGenericButtonV2Props) => (
++		<button
++			type="button"
++			onClick={onClick}
++			disabled={disabled}
++			className={className}
++			aria-label={ariaLabel}
++		>
+ 			{children}
+ 		</button>
+ 	),
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+index 18409fb..0e81ee4 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+@@ -8,12 +8,19 @@ import type {
+ import { VersionHistoryPanel } from "./index";
+ import { IPromptVersion } from "../index";
+ 
+-type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++type MockTextProps = Omit<
++	ComponentProps<typeof TextComponent>,
++	"entry" | "children"
++> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
+ 	children?: ReactNode;
+ };
++type MockGenericButtonV2Props = Pick<
++	ComponentProps<typeof GenericButtonV2Component>,
++	"onClick" | "disabled" | "className" | "aria-label"
++> & { children?: ReactNode };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+ 	onClick?: () => void;
+@@ -55,9 +62,17 @@ jest.mock("@angen_frontend/components", () => ({
+ 	GenericButtonV2: ({
+ 		children,
+ 		onClick,
+-		...props
+-	}: ComponentProps<typeof GenericButtonV2Component>) => (
+-		<button type="button" onClick={onClick} {...props}>
++		disabled,
++		className,
++		"aria-label": ariaLabel,
++	}: MockGenericButtonV2Props) => (
++		<button
++			type="button"
++			onClick={onClick}
++			disabled={disabled}
++			className={className}
++			aria-label={ariaLabel}
++		>
+ 			{children}
+ 		</button>
+ 	),
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+index cf22b00..e4adf62 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+@@ -9,12 +9,19 @@ import type {
+ } from "@angen_frontend/components";
+ import { PromptManagementTab } from "./index";
+ 
+-type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++type MockTextProps = Omit<
++	ComponentProps<typeof TextComponent>,
++	"entry" | "children"
++> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
+ 	children?: ReactNode;
+ };
++type MockGenericButtonV2Props = Pick<
++	ComponentProps<typeof GenericButtonV2Component>,
++	"onClick" | "disabled" | "className" | "aria-label"
++> & { children?: ReactNode };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+ 	onClick?: () => void;
+@@ -105,9 +112,17 @@ jest.mock("@angen_frontend/components", () => ({
+ 	GenericButtonV2: ({
+ 		children,
+ 		onClick,
+-		...props
+-	}: ComponentProps<typeof GenericButtonV2Component>) => (
+-		<button type="button" onClick={onClick} {...props}>
++		disabled,
++		className,
++		"aria-label": ariaLabel,
++	}: MockGenericButtonV2Props) => (
++		<button
++			type="button"
++			onClick={onClick}
++			disabled={disabled}
++			className={className}
++			aria-label={ariaLabel}
++		>
+ 			{children}
+ 		</button>
+ 	),
+@@ -117,7 +132,9 @@ jest.mock("@angen_frontend/components", () => ({
+ 		footer,
+ 		children,
+ 		onClose,
+-	}: ComponentProps<typeof GenericModalV2Component>) => {
++	}: Omit<ComponentProps<typeof GenericModalV2Component>, "children"> & {
++		children?: ReactNode;
++	}) => {
+ 		if (!isOpen) return null;
+ 		return (
+ 			<div data-testid="generic-modal">
+@@ -133,7 +150,9 @@ jest.mock("@angen_frontend/components", () => ({
+ 	GenericSideDrawer: ({
+ 		visible,
+ 		children,
+-	}: ComponentProps<typeof GenericSideDrawerComponent>) => {
++	}: Omit<ComponentProps<typeof GenericSideDrawerComponent>, "children"> & {
++		children?: ReactNode;
++	}) => {
+ 		if (!visible) return null;
+ 		return <div data-testid="generic-side-drawer">{children}</div>;
+ 	},
