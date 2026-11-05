@@ -1,0 +1,1281 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+index 19dc472..265d66a 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+@@ -1,29 +1,51 @@
+ import { render, screen } from "@testing-library/react";
+ import "@testing-library/jest-dom";
++import type { ComponentProps } from "react";
++import type {
++	GenericButtonV2 as GenericButtonV2Component,
++	GenericSideDrawer as GenericSideDrawerComponent,
++	Text as TextComponent,
++} from "@angen_frontend/components";
+ import { KnowledgeDocumentDetail } from "./index";
+ import { IKnowledgeDocument } from "../index";
+ 
++type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++	entry?: ComponentProps<typeof TextComponent>["entry"] & {
++		defaultMessage?: string;
++	};
++};
++type MockButtonProps = {
++	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
++	onClick?: () => void;
++	disabled?: boolean;
++};
++
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+-	Text: ({ entry, children }: unknown) => {
++	Text: ({ entry, children }: MockTextProps) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+-			const val = key
+-				.split(".")
+-				.reduce((acc: unknown, part: string) => acc?.[part], en);
++			const val = key.split(".").reduce<unknown>((acc, part) => {
++				if (!acc || typeof acc !== "object") return undefined;
++				return (acc as Record<string, unknown>)[part];
++			}, en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: unknown) => (
++	GenericButton: ({ children, onClick, ...props }: MockButtonProps) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
++	GenericButtonV2: ({
++		children,
++		onClick,
++		...props
++	}: ComponentProps<typeof GenericButtonV2Component>) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+@@ -34,7 +56,7 @@ jest.mock("@angen_frontend/components", () => ({
+ 		footer,
+ 		children,
+ 		onClose,
+-	}: unknown) => {
++	}: ComponentProps<typeof GenericSideDrawerComponent>) => {
+ 		if (!visible) return null;
+ 		return (
+ 			<div data-testid="generic-side-drawer">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+index f688f4b..a4e03d8 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+@@ -1,22 +1,61 @@
+ import { render, screen, fireEvent } from "@testing-library/react";
+ import "@testing-library/jest-dom";
++import type { ComponentProps, ReactNode } from "react";
++import type {
++	GenericButtonV2 as GenericButtonV2Component,
++	GenericModalV2 as GenericModalV2Component,
++	GenericUploadDragger as GenericUploadDraggerComponent,
++	Text as TextComponent,
++} from "@angen_frontend/components";
+ import { KnowledgeDocumentEditor } from "./index";
+ import { IKnowledgeDocument } from "../index";
+ 
++type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++	entry?: ComponentProps<typeof TextComponent>["entry"] & {
++		defaultMessage?: string;
++	};
++};
++type MockButtonProps = {
++	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
++	onClick?: () => void;
++	disabled?: boolean;
++};
++type MockSelectProps = {
++	value?: string;
++	onChange?: (value: string) => void;
++	children?: ReactNode;
++	options?: Array<{ value: string; label: string }>;
++	id?: string;
++	className?: string;
++};
++type MockUploadProps = {
++	file: ComponentProps<typeof GenericUploadDraggerComponent>["file"];
++	onFileSelect: ComponentProps<
++		typeof GenericUploadDraggerComponent
++	>["onFileSelect"];
++};
++
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	UploadSvgIcon: () => <span data-testid="upload-icon" />,
+ 	Select: Object.assign(
+-		({ value, onChange, children, options, id, className }: unknown) => (
++		({
++			value,
++			onChange,
++			children,
++			options,
++			id,
++			className,
++		}: MockSelectProps) => (
+ 			<select
+ 				id={id}
+ 				className={className}
+ 				value={value}
+ 				data-testid={id}
+-				onChange={(e: unknown) => onChange?.(e.target.value)}
++				onChange={(e) => onChange?.(e.target.value)}
+ 			>
+ 				{options
+-					? options.map((opt: unknown) => (
++					? options.map((opt) => (
+ 							<option key={opt.value} value={opt.value}>
+ 								{opt.label}
+ 							</option>
+@@ -25,43 +64,47 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</select>
+ 		),
+ 		{
+-			Option: ({ value, children }: unknown) => (
++			Option: ({ value, children }: MockSelectProps) => (
+ 				<option value={value}>{children}</option>
+ 			),
+ 		}
+ 	),
+-	Text: ({ entry, children }: unknown) => {
++	Text: ({ entry, children }: MockTextProps) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+-			const val = key
+-				.split(".")
+-				.reduce((acc: unknown, part: string) => acc?.[part], en);
++			const val = key.split(".").reduce<unknown>((acc, part) => {
++				if (!acc || typeof acc !== "object") return undefined;
++				return (acc as Record<string, unknown>)[part];
++			}, en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: unknown) => (
++	GenericButton: ({ children, onClick, ...props }: MockButtonProps) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
++	GenericButtonV2: ({
++		children,
++		onClick,
++		...props
++	}: ComponentProps<typeof GenericButtonV2Component>) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+ 	GenericModalV2: ({
+-		visible,
+ 		isOpen,
+ 		title,
+ 		footer,
+ 		children,
+ 		onClose,
+-	}: unknown) => {
+-		if (!visible && !isOpen) return null;
++	}: ComponentProps<typeof GenericModalV2Component>) => {
++		if (!isOpen) return null;
+ 		return (
+ 			<div data-testid="generic-modal">
+ 				<span>{title}</span>
+@@ -73,16 +116,16 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</div>
+ 		);
+ 	},
+-	GenericUploadDragger: ({ file, onFileSelect }: unknown) => (
++	GenericUploadDragger: ({ file, onFileSelect }: MockUploadProps) => (
+ 		<div data-testid="generic-upload-dragger">
+ 			{file && <span>{file.name}</span>}
+ 			<div
+ 				className="drop-zone"
+-				onDragOver={(e: unknown) => e.preventDefault()}
+-				onDrop={(e: unknown) => {
++				onDragOver={(e) => e.preventDefault()}
++				onDrop={(e) => {
+ 					e.preventDefault();
+ 					if (e.dataTransfer?.files?.[0]) {
+-						onFileSelect(e.dataTransfer.files[0]);
++						onFileSelect?.(e.dataTransfer.files[0]);
+ 					}
+ 				}}
+ 			>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+index 04c0b26..bc777f4 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+@@ -1,40 +1,82 @@
+ import { render, screen, fireEvent } from "@testing-library/react";
+ import "@testing-library/jest-dom";
++import type { ComponentProps, ReactNode } from "react";
++import type {
++	GenericButtonV2 as GenericButtonV2Component,
++	GenericStatusTag as GenericStatusTagComponent,
++	Text as TextComponent,
++} from "@angen_frontend/components";
+ import { KnowledgeDocumentTable } from "./index";
+ import { IKnowledgeDocument } from "../index";
+ 
++type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++	entry?: ComponentProps<typeof TextComponent>["entry"] & {
++		defaultMessage?: string;
++	};
++};
++type MockButtonProps = {
++	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
++	onClick?: () => void;
++	disabled?: boolean;
++};
++type MockRow = Record<string, unknown>;
++type MockColumn = {
++	key?: string;
++	title?: ReactNode;
++	dataIndex?: string;
++	render?: (value: unknown, row: MockRow, index: number) => ReactNode;
++};
++type MockDataTableProps = {
++	columns?: MockColumn[];
++	dataSource?: MockRow[];
++	emptyText?: ReactNode;
++};
++
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	DocFileSvgIcon: () => <span />,
+-	Text: ({ entry, children }: unknown) => {
++	Text: ({ entry, children }: MockTextProps) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+-			const val = key
+-				.split(".")
+-				.reduce((acc: unknown, part: string) => acc?.[part], en);
++			const val = key.split(".").reduce<unknown>((acc, part) => {
++				if (!acc || typeof acc !== "object") return undefined;
++				return (acc as Record<string, unknown>)[part];
++			}, en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: unknown) => (
++	GenericButton: ({ children, onClick, ...props }: MockButtonProps) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
++	GenericButtonV2: ({
++		children,
++		onClick,
++		...props
++	}: ComponentProps<typeof GenericButtonV2Component>) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericStatusTag: ({ label }: unknown) => <span>{label}</span>,
+-	GenericDataTable: ({ columns, dataSource, emptyText }: unknown) => (
++	GenericStatusTag: ({
++		label,
++	}: ComponentProps<typeof GenericStatusTagComponent>) => (
++		<span>{label}</span>
++	),
++	GenericDataTable: ({
++		columns,
++		dataSource,
++		emptyText,
++	}: MockDataTableProps) => (
+ 		<table>
+ 			<thead>
+ 				<tr>
+-					{columns?.map((c: unknown, idx: number) => (
++					{columns?.map((c: MockColumn, idx: number) => (
+ 						<th key={c.key || idx}>{c.title}</th>
+ 					))}
+ 				</tr>
+@@ -47,9 +89,9 @@ jest.mock("@angen_frontend/components", () => ({
+ 						</td>
+ 					</tr>
+ 				) : (
+-					dataSource.map((row: unknown, rIdx: number) => (
+-						<tr key={row.id || rIdx}>
+-							{columns?.map((c: unknown, cIdx: number) => (
++					dataSource.map((row, rIdx: number) => (
++						<tr key={String(row.id || rIdx)}>
++							{columns?.map((c: MockColumn, cIdx: number) => (
+ 								<td key={c.key || cIdx}>
+ 									{c.render
+ 										? c.render(
+@@ -59,7 +101,9 @@ jest.mock("@angen_frontend/components", () => ({
+ 												row,
+ 												rIdx
+ 										  )
+-										: row[c.dataIndex]}
++										: c.dataIndex
++										? String(row[c.dataIndex] ?? "")
++										: null}
+ 								</td>
+ 							))}
+ 						</tr>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx
+index 2625aa1..619ef05 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx
+@@ -1,17 +1,26 @@
+ import { render, screen } from "@testing-library/react";
+ import "@testing-library/jest-dom";
++import type { ComponentProps } from "react";
++import type { Text as TextComponent } from "@angen_frontend/components";
+ import { KeyTakeawayCard } from "./index";
+ 
++type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++	entry?: ComponentProps<typeof TextComponent>["entry"] & {
++		defaultMessage?: string;
++	};
++};
++
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+-	Text: ({ entry, children }: unknown) => {
++	Text: ({ entry, children }: MockTextProps) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+-			const val = key
+-				.split(".")
+-				.reduce((acc: unknown, part: string) => acc?.[part], en);
++			const val = key.split(".").reduce<unknown>((acc, part) => {
++				if (!acc || typeof acc !== "object") return undefined;
++				return (acc as Record<string, unknown>)[part];
++			}, en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+index cc14bf2..5caf7f6 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+@@ -1,8 +1,25 @@
+ import { render, screen, fireEvent, act } from "@testing-library/react";
+ import "@testing-library/jest-dom";
++import type { ComponentProps } from "react";
++import type {
++	GenericButtonV2 as GenericButtonV2Component,
++	GenericSideDrawer as GenericSideDrawerComponent,
++	Text as TextComponent,
++} from "@angen_frontend/components";
+ import { LogDetailDrawer } from "./index";
+ import { IAuditGenerationDetail } from "../index";
+ 
++type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++	entry?: ComponentProps<typeof TextComponent>["entry"] & {
++		defaultMessage?: string;
++	};
++};
++type MockButtonProps = {
++	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
++	onClick?: () => void;
++	disabled?: boolean;
++};
++
+ jest.mock("@angen_frontend/services", () => ({
+ 	InsightService: {},
+ }));
+@@ -18,25 +35,30 @@ jest.mock("@angen_frontend/components", () => ({
+ 		info: jest.fn(),
+ 		error: jest.fn(),
+ 	},
+-	Text: ({ entry, children }: unknown) => {
++	Text: ({ entry, children }: MockTextProps) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+-			const val = key
+-				.split(".")
+-				.reduce((acc: unknown, part: string) => acc?.[part], en);
++			const val = key.split(".").reduce<unknown>((acc, part) => {
++				if (!acc || typeof acc !== "object") return undefined;
++				return (acc as Record<string, unknown>)[part];
++			}, en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: unknown) => (
++	GenericButton: ({ children, onClick, ...props }: MockButtonProps) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
++	GenericButtonV2: ({
++		children,
++		onClick,
++		...props
++	}: ComponentProps<typeof GenericButtonV2Component>) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+@@ -47,7 +69,7 @@ jest.mock("@angen_frontend/components", () => ({
+ 		loading,
+ 		title,
+ 		children,
+-	}: unknown) => {
++	}: ComponentProps<typeof GenericSideDrawerComponent>) => {
+ 		if (!visible) return null;
+ 		return (
+ 			<div data-testid="generic-side-drawer">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+index 65a1bdc..db1adf0 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+@@ -1,8 +1,52 @@
+ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
++import type { ComponentProps, ReactNode } from "react";
++import type {
++	GenericButtonV2 as GenericButtonV2Component,
++	GenericMultiSelect as GenericMultiSelectComponent,
++	GenericSideDrawer as GenericSideDrawerComponent,
++	GenericStatusTag as GenericStatusTagComponent,
++	Text as TextComponent,
++} from "@angen_frontend/components";
+ import { LogAuditTab } from "./index";
+ import { InsightService } from "@angen_frontend/services";
+ import { IAuditGenerationDetail } from "./index";
+ 
++type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++	entry?: ComponentProps<typeof TextComponent>["entry"] & {
++		defaultMessage?: string;
++	};
++};
++type MockButtonProps = {
++	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
++	onClick?: () => void;
++	disabled?: boolean;
++};
++type MockDateRangeProps = {
++	startDate?: string;
++	endDate?: string;
++	onChange?: (startDate: string, endDate: string) => void;
++	startPlaceholder?: string;
++	endPlaceholder?: string;
++};
++type MockRow = Record<string, unknown>;
++type MockColumn = {
++	key?: string;
++	title?: ReactNode;
++	dataIndex?: string;
++	render?: (value: unknown, row: MockRow, index: number) => ReactNode;
++};
++type MockDataTableProps = {
++	columns?: MockColumn[];
++	dataSource?: MockRow[];
++	loading?: boolean;
++	pagination?: {
++		showTotal?: (total: number) => ReactNode;
++		total: number;
++	};
++	emptyText?: ReactNode;
++	onRow?: (row: MockRow) => ComponentProps<"tr">;
++};
++
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	SearchSvgIcon: () => <span />,
+@@ -19,14 +63,15 @@ jest.mock("@angen_frontend/components", () => ({
+ 		warning: jest.fn(),
+ 		info: jest.fn(),
+ 	},
+-	Text: ({ entry, children }: unknown) => {
++	Text: ({ entry, children }: MockTextProps) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../types/src/translations/en.json");
+-			const val = key
+-				.split(".")
+-				.reduce((acc: unknown, part: string) => acc?.[part], en);
++			const val = key.split(".").reduce<unknown>((acc, part) => {
++				if (!acc || typeof acc !== "object") return undefined;
++				return (acc as Record<string, unknown>)[part];
++			}, en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+@@ -38,7 +83,7 @@ jest.mock("@angen_frontend/components", () => ({
+ 		onChange,
+ 		startPlaceholder = "Start date",
+ 		endPlaceholder = "End date",
+-	}: unknown) => (
++	}: MockDateRangeProps) => (
+ 		<div data-testid="mock-date-range-picker">
+ 			<input
+ 				aria-label={startPlaceholder}
+@@ -57,11 +102,11 @@ jest.mock("@angen_frontend/components", () => ({
+ 		options = [],
+ 		onChange,
+ 		placeholder,
+-	}: unknown) => (
++	}: ComponentProps<typeof GenericMultiSelectComponent>) => (
+ 		<div data-testid="mock-generic-multi-select">
+ 			<div>{placeholder}</div>
+ 			<div>
+-				{options.map((opt: unknown) => (
++				{options.map((opt) => (
+ 					<button
+ 						key={opt.value}
+ 						type="button"
+@@ -78,24 +123,32 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</div>
+ 		</div>
+ 	),
+-	GenericButton: ({ children, onClick, ...props }: unknown) => (
++	GenericButton: ({ children, onClick, ...props }: MockButtonProps) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
++	GenericButtonV2: ({
++		children,
++		onClick,
++		...props
++	}: ComponentProps<typeof GenericButtonV2Component>) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericStatusTag: ({ label }: unknown) => <span>{label}</span>,
++	GenericStatusTag: ({
++		label,
++	}: ComponentProps<typeof GenericStatusTagComponent>) => (
++		<span>{label}</span>
++	),
+ 	GenericSideDrawer: ({
+ 		visible,
+ 		onClose,
+ 		loading,
+ 		title,
+ 		children,
+-	}: unknown) => {
++	}: ComponentProps<typeof GenericSideDrawerComponent>) => {
+ 		if (!visible) return null;
+ 		return (
+ 			<div data-testid="generic-side-drawer">
+@@ -114,12 +167,12 @@ jest.mock("@angen_frontend/components", () => ({
+ 		pagination,
+ 		emptyText,
+ 		onRow,
+-	}: unknown) => (
++	}: MockDataTableProps) => (
+ 		<div data-testid="mock-generic-data-table">
+ 			<table>
+ 				<thead>
+ 					<tr>
+-						{columns?.map((c: unknown, idx: number) => (
++						{columns?.map((c: MockColumn, idx: number) => (
+ 							<th key={c.key || idx}>{c.title}</th>
+ 						))}
+ 					</tr>
+@@ -136,12 +189,15 @@ jest.mock("@angen_frontend/components", () => ({
+ 							</td>
+ 						</tr>
+ 					) : (
+-						dataSource.map((row: unknown, rIdx: number) => {
++						dataSource.map((row, rIdx: number) => {
+ 							const rowProps = onRow ? onRow(row) : {};
+ 							return (
+-								<tr key={row.resultId || rIdx} {...rowProps}>
++								<tr
++									key={String(row.resultId || rIdx)}
++									{...rowProps}
++								>
+ 									{columns?.map(
+-										(c: unknown, cIdx: number) => (
++										(c: MockColumn, cIdx: number) => (
+ 											<td key={c.key || cIdx}>
+ 												{c.render
+ 													? c.render(
+@@ -155,7 +211,10 @@ jest.mock("@angen_frontend/components", () => ({
+ 															rIdx
+ 													  )
+ 													: c.dataIndex
+-													? row[c.dataIndex]
++													? String(
++															row[c.dataIndex] ??
++																""
++													  )
+ 													: null}
+ 											</td>
+ 										)
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx
+index 2b32002..5ea05ea 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx
+@@ -1,21 +1,30 @@
+ import { render, screen } from "@testing-library/react";
+ import "@testing-library/jest-dom";
++import type { ComponentProps } from "react";
++import type { Text as TextComponent } from "@angen_frontend/components";
+ import { KpiCards } from "./index";
+ 
++type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++	entry?: ComponentProps<typeof TextComponent>["entry"] & {
++		defaultMessage?: string;
++	};
++};
++
+ jest.mock("@angen_frontend/services", () => ({
+ 	InsightService: {},
+ }));
+ 
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+-	Text: ({ entry, children }: unknown) => {
++	Text: ({ entry, children }: MockTextProps) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+-			const val = key
+-				.split(".")
+-				.reduce((acc: unknown, part: string) => acc?.[part], en);
++			const val = key.split(".").reduce<unknown>((acc, part) => {
++				if (!acc || typeof acc !== "object") return undefined;
++				return (acc as Record<string, unknown>)[part];
++			}, en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+index 6fe20be..e2f5c0a 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+@@ -14,9 +14,10 @@ jest.mock("@angen_frontend/components", () => ({
+ 		const key = Object.keys(entry)[0];
+ 		if (key === "cothinker.common.retryBtn") return <span>Retry</span>;
+ 		const en = require("../../../../../../types/src/translations/en.json");
+-		const value = key
+-			.split(".")
+-			.reduce((result: unknown, part: string) => result?.[part], en);
++		const value = key.split(".").reduce<unknown>((result, part) => {
++			if (!result || typeof result !== "object") return undefined;
++			return (result as Record<string, unknown>)[part];
++		}, en);
+ 		return <span>{typeof value === "string" ? value : key}</span>;
+ 	},
+ 	DataAnalysisSvgIcon: () => <span />,
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
+index d31f617..8d37754 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
+@@ -1,39 +1,70 @@
+ import { render, screen, fireEvent } from "@testing-library/react";
+ import "@testing-library/jest-dom";
++import type { ComponentProps, ReactNode } from "react";
++import type {
++	GenericButtonV2 as GenericButtonV2Component,
++	Text as TextComponent,
++} from "@angen_frontend/components";
+ import { ConfigurationPanel } from "./index";
+ import { IPromptVersion } from "../index";
+ 
++type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++	entry?: ComponentProps<typeof TextComponent>["entry"] & {
++		defaultMessage?: string;
++	};
++};
++type MockButtonProps = {
++	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
++	onClick?: () => void;
++	disabled?: boolean;
++};
++type MockRow = Record<string, unknown>;
++type MockColumn = {
++	key?: string;
++	dataIndex?: string;
++	render?: (value: unknown, row: MockRow, index: number) => ReactNode;
++};
++type MockDataTableProps = {
++	columns?: MockColumn[];
++	dataSource?: MockRow[];
++};
++
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+-	Text: ({ entry, children }: unknown) => {
++	Text: ({ entry, children }: MockTextProps) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+-			const val = key
+-				.split(".")
+-				.reduce((acc: unknown, part: string) => acc?.[part], en);
++			const val = key.split(".").reduce<unknown>((acc, part) => {
++				if (!acc || typeof acc !== "object") return undefined;
++				return (acc as Record<string, unknown>)[part];
++			}, en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: unknown) => (
++	GenericButton: ({ children, onClick, ...props }: MockButtonProps) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
++	GenericButtonV2: ({
++		children,
++		onClick,
++		...props
++	}: ComponentProps<typeof GenericButtonV2Component>) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericDataTable: ({ columns, dataSource }: unknown) => (
++	GenericDataTable: ({ columns, dataSource }: MockDataTableProps) => (
+ 		<table>
+ 			<tbody>
+-				{dataSource?.map((row: unknown, rIdx: number) => (
+-					<tr key={row.scope || rIdx}>
+-						{columns?.map((c: unknown, cIdx: number) => (
++				{dataSource?.map((row, rIdx: number) => (
++					<tr key={String(row.scope || rIdx)}>
++						{columns?.map((c: MockColumn, cIdx: number) => (
+ 							<td key={c.key || cIdx}>
+ 								{c.render
+ 									? c.render(
+@@ -43,7 +74,9 @@ jest.mock("@angen_frontend/components", () => ({
+ 											row,
+ 											rIdx
+ 									  )
+-									: row[c.dataIndex]}
++									: c.dataIndex
++									? String(row[c.dataIndex] ?? "")
++									: null}
+ 							</td>
+ 						))}
+ 					</tr>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+index 0db88a1..0d19cc5 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+@@ -1,43 +1,75 @@
+ import { render, screen, fireEvent } from "@testing-library/react";
+ import "@testing-library/jest-dom";
++import type { ComponentProps, ReactNode } from "react";
++import type {
++	GenericButtonV2 as GenericButtonV2Component,
++	GenericModalV2 as GenericModalV2Component,
++	Text as TextComponent,
++} from "@angen_frontend/components";
+ import { MetricDefinitionsPanel } from "./index";
+ import { IMetricDefinition } from "../index";
+ 
++type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++	entry?: ComponentProps<typeof TextComponent>["entry"] & {
++		defaultMessage?: string;
++	};
++};
++type MockButtonProps = {
++	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
++	onClick?: () => void;
++	disabled?: boolean;
++};
++type MockRow = Record<string, unknown>;
++type MockColumn = {
++	key?: string;
++	dataIndex?: string;
++	render?: (value: unknown, row: MockRow, index: number) => ReactNode;
++};
++type MockDataTableProps = {
++	columns?: MockColumn[];
++	dataSource?: MockRow[];
++};
++
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	CoThinkerPlusSvgIcon: () => <span data-testid="plus-icon" />,
+ 	SearchSvgIcon: () => <span data-testid="search-icon" />,
+-	Text: ({ entry, children }: unknown) => {
++	Text: ({ entry, children }: MockTextProps) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+-			const val = key
+-				.split(".")
+-				.reduce((acc: unknown, part: string) => acc?.[part], en);
++			const val = key.split(".").reduce<unknown>((acc, part) => {
++				if (!acc || typeof acc !== "object") return undefined;
++				return (acc as Record<string, unknown>)[part];
++			}, en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: unknown) => (
++	GenericButton: ({ children, onClick, ...props }: MockButtonProps) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
++	GenericButtonV2: ({
++		children,
++		onClick,
++		...props
++	}: ComponentProps<typeof GenericButtonV2Component>) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+ 	GenericModalV2: ({
+-		visible,
++		isOpen,
+ 		title,
+ 		footer,
+ 		children,
+ 		onClose,
+-	}: unknown) => {
+-		if (!visible) return null;
++	}: ComponentProps<typeof GenericModalV2Component>) => {
++		if (!isOpen) return null;
+ 		return (
+ 			<div data-testid="generic-modal">
+ 				<span>{title}</span>
+@@ -49,12 +81,12 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</div>
+ 		);
+ 	},
+-	GenericDataTable: ({ columns, dataSource }: unknown) => (
++	GenericDataTable: ({ columns, dataSource }: MockDataTableProps) => (
+ 		<table>
+ 			<tbody>
+-				{dataSource?.map((row: unknown, rIdx: number) => (
+-					<tr key={row.id || rIdx}>
+-						{columns?.map((c: unknown, cIdx: number) => (
++				{dataSource?.map((row, rIdx: number) => (
++					<tr key={String(row.id || rIdx)}>
++						{columns?.map((c: MockColumn, cIdx: number) => (
+ 							<td key={c.key || cIdx}>
+ 								{c.render
+ 									? c.render(
+@@ -64,7 +96,9 @@ jest.mock("@angen_frontend/components", () => ({
+ 											row,
+ 											rIdx
+ 									  )
+-									: row[c.dataIndex]}
++									: c.dataIndex
++									? String(row[c.dataIndex] ?? "")
++									: null}
+ 							</td>
+ 						))}
+ 					</tr>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
+index 22f9e95..45a37bd 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
+@@ -1,48 +1,88 @@
+ import { render, screen, fireEvent } from "@testing-library/react";
+ import "@testing-library/jest-dom";
++import type { ComponentProps, ReactNode } from "react";
++import type {
++	GenericButtonV2 as GenericButtonV2Component,
++	GenericSideDrawer as GenericSideDrawerComponent,
++	Text as TextComponent,
++} from "@angen_frontend/components";
+ import { PromptEditorDrawer } from "./index";
+ import { IPromptConfig } from "../index";
+ 
++type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++	entry?: ComponentProps<typeof TextComponent>["entry"] & {
++		defaultMessage?: string;
++	};
++};
++type MockButtonProps = {
++	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
++	onClick?: () => void;
++	disabled?: boolean;
++};
++type MockSelectProps = {
++	value?: string;
++	onChange?: (value: string) => void;
++	children?: ReactNode;
++	options?: Array<{ value: string; label: ReactNode }>;
++	id?: string;
++	className?: string;
++};
++
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+-	Text: ({ entry, children }: unknown) => {
++	Text: ({ entry, children }: MockTextProps) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+-			const val = key
+-				.split(".")
+-				.reduce((acc: unknown, part: string) => acc?.[part], en);
++			const val = key.split(".").reduce<unknown>((acc, part) => {
++				if (!acc || typeof acc !== "object") return undefined;
++				return (acc as Record<string, unknown>)[part];
++			}, en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: unknown) => (
++	GenericButton: ({ children, onClick, ...props }: MockButtonProps) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
++	GenericButtonV2: ({
++		children,
++		onClick,
++		...props
++	}: ComponentProps<typeof GenericButtonV2Component>) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericSideDrawer: ({ visible, children }: unknown) => {
++	GenericSideDrawer: ({
++		visible,
++		children,
++	}: ComponentProps<typeof GenericSideDrawerComponent>) => {
+ 		if (!visible) return null;
+ 		return <div data-testid="generic-side-drawer">{children}</div>;
+ 	},
+ 	Select: Object.assign(
+-		({ value, onChange, children, options, id, className }: unknown) => (
++		({
++			value,
++			onChange,
++			children,
++			options,
++			id,
++			className,
++		}: MockSelectProps) => (
+ 			<select
+ 				id={id}
+ 				className={className}
+ 				value={value}
+ 				data-testid={id}
+-				onChange={(e: unknown) => onChange?.(e.target.value)}
++				onChange={(e) => onChange?.(e.target.value)}
+ 			>
+ 				{options
+-					? options.map((opt: unknown) => (
++					? options.map((opt) => (
+ 							<option key={opt.value} value={opt.value}>
+ 								{opt.label}
+ 							</option>
+@@ -51,7 +91,7 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</select>
+ 		),
+ 		{
+-			Option: ({ value, children }: unknown) => (
++			Option: ({ value, children }: MockSelectProps) => (
+ 				<option value={value}>{children}</option>
+ 			),
+ 		}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+index 4d03ffa..d943b92 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+@@ -1,40 +1,71 @@
+ import { render, screen, fireEvent, act } from "@testing-library/react";
+ import "@testing-library/jest-dom";
++import type { ComponentProps, ReactNode } from "react";
++import type {
++	GenericButtonV2 as GenericButtonV2Component,
++	Text as TextComponent,
++} from "@angen_frontend/components";
+ import { VersionHistoryPanel } from "./index";
+ import { IPromptVersion } from "../index";
+ 
++type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++	entry?: ComponentProps<typeof TextComponent>["entry"] & {
++		defaultMessage?: string;
++	};
++};
++type MockButtonProps = {
++	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
++	onClick?: () => void;
++	disabled?: boolean;
++};
++type MockRow = Record<string, unknown>;
++type MockColumn = {
++	key?: string;
++	dataIndex?: string;
++	render?: (value: unknown, row: MockRow, index: number) => ReactNode;
++};
++type MockDataTableProps = {
++	columns?: MockColumn[];
++	dataSource?: MockRow[];
++};
++
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	CoThinkerDownloadSvgIcon: () => <span data-testid="download-icon" />,
+-	Text: ({ entry, children }: unknown) => {
++	Text: ({ entry, children }: MockTextProps) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+-			const val = key
+-				.split(".")
+-				.reduce((acc: unknown, part: string) => acc?.[part], en);
++			const val = key.split(".").reduce<unknown>((acc, part) => {
++				if (!acc || typeof acc !== "object") return undefined;
++				return (acc as Record<string, unknown>)[part];
++			}, en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: unknown) => (
++	GenericButton: ({ children, onClick, ...props }: MockButtonProps) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
++	GenericButtonV2: ({
++		children,
++		onClick,
++		...props
++	}: ComponentProps<typeof GenericButtonV2Component>) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericDataTable: ({ columns, dataSource }: unknown) => (
++	GenericDataTable: ({ columns, dataSource }: MockDataTableProps) => (
+ 		<table>
+ 			<tbody>
+-				{dataSource?.map((row: unknown, rIdx: number) => (
+-					<tr key={row.id || rIdx}>
+-						{columns?.map((c: unknown, cIdx: number) => (
++				{dataSource?.map((row, rIdx: number) => (
++					<tr key={String(row.id || rIdx)}>
++						{columns?.map((c: MockColumn, cIdx: number) => (
+ 							<td key={c.key || cIdx}>
+ 								{c.render
+ 									? c.render(
+@@ -44,7 +75,9 @@ jest.mock("@angen_frontend/components", () => ({
+ 											row,
+ 											rIdx
+ 									  )
+-									: row[c.dataIndex]}
++									: c.dataIndex
++									? String(row[c.dataIndex] ?? "")
++									: null}
+ 							</td>
+ 						))}
+ 					</tr>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+index 76c2fd3..73d361b 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+@@ -1,7 +1,43 @@
+ import { render, screen, fireEvent } from "@testing-library/react";
+ import "@testing-library/jest-dom";
++import type { ComponentProps, ReactNode } from "react";
++import type {
++	GenericButtonV2 as GenericButtonV2Component,
++	GenericModalV2 as GenericModalV2Component,
++	GenericSideDrawer as GenericSideDrawerComponent,
++	Text as TextComponent,
++} from "@angen_frontend/components";
+ import { PromptManagementTab } from "./index";
+ 
++type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
++	entry?: ComponentProps<typeof TextComponent>["entry"] & {
++		defaultMessage?: string;
++	};
++};
++type MockButtonProps = {
++	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
++	onClick?: () => void;
++	disabled?: boolean;
++};
++type MockSelectProps = {
++	value?: string;
++	onChange?: (value: string) => void;
++	children?: ReactNode;
++	options?: Array<{ value: string; label: ReactNode }>;
++	id?: string;
++	className?: string;
++};
++type MockRow = Record<string, unknown>;
++type MockColumn = {
++	key?: string;
++	dataIndex?: string;
++	render?: (value: unknown, row: MockRow, index: number) => ReactNode;
++};
++type MockDataTableProps = {
++	columns?: MockColumn[];
++	dataSource?: MockRow[];
++};
++
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	EditPenSvgIcon: () => <span data-testid="edit-pen-icon" />,
+@@ -16,16 +52,23 @@ jest.mock("@angen_frontend/components", () => ({
+ 		info: jest.fn(),
+ 	},
+ 	Select: Object.assign(
+-		({ value, onChange, children, options, id, className }: unknown) => (
++		({
++			value,
++			onChange,
++			children,
++			options,
++			id,
++			className,
++		}: MockSelectProps) => (
+ 			<select
+ 				id={id}
+ 				className={className}
+ 				value={value}
+ 				data-testid={id}
+-				onChange={(e: unknown) => onChange?.(e.target.value)}
++				onChange={(e) => onChange?.(e.target.value)}
+ 			>
+ 				{options
+-					? options.map((opt: unknown) => (
++					? options.map((opt) => (
+ 							<option key={opt.value} value={opt.value}>
+ 								{opt.label}
+ 							</option>
+@@ -34,42 +77,47 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</select>
+ 		),
+ 		{
+-			Option: ({ value, children }: unknown) => (
++			Option: ({ value, children }: MockSelectProps) => (
+ 				<option value={value}>{children}</option>
+ 			),
+ 		}
+ 	),
+-	Text: ({ entry, children }: unknown) => {
++	Text: ({ entry, children }: MockTextProps) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../types/src/translations/en.json");
+-			const val = key
+-				.split(".")
+-				.reduce((acc: unknown, part: string) => acc?.[part], en);
++			const val = key.split(".").reduce<unknown>((acc, part) => {
++				if (!acc || typeof acc !== "object") return undefined;
++				return (acc as Record<string, unknown>)[part];
++			}, en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: unknown) => (
++	GenericButton: ({ children, onClick, ...props }: MockButtonProps) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
++	GenericButtonV2: ({
++		children,
++		onClick,
++		...props
++	}: ComponentProps<typeof GenericButtonV2Component>) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+ 	GenericModalV2: ({
+-		visible,
++		isOpen,
+ 		title,
+ 		footer,
+ 		children,
+ 		onClose,
+-	}: unknown) => {
+-		if (!visible) return null;
++	}: ComponentProps<typeof GenericModalV2Component>) => {
++		if (!isOpen) return null;
+ 		return (
+ 			<div data-testid="generic-modal">
+ 				<span>{title}</span>
+@@ -81,16 +129,19 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</div>
+ 		);
+ 	},
+-	GenericSideDrawer: ({ visible, children }: unknown) => {
++	GenericSideDrawer: ({
++		visible,
++		children,
++	}: ComponentProps<typeof GenericSideDrawerComponent>) => {
+ 		if (!visible) return null;
+ 		return <div data-testid="generic-side-drawer">{children}</div>;
+ 	},
+-	GenericDataTable: ({ columns, dataSource }: unknown) => (
++	GenericDataTable: ({ columns, dataSource }: MockDataTableProps) => (
+ 		<table>
+ 			<tbody>
+-				{dataSource?.map((row: unknown, rIdx: number) => (
+-					<tr key={row.id || row.scope || rIdx}>
+-						{columns?.map((c: unknown, cIdx: number) => (
++				{dataSource?.map((row, rIdx: number) => (
++					<tr key={String(row.id || row.scope || rIdx)}>
++						{columns?.map((c: MockColumn, cIdx: number) => (
+ 							<td key={c.key || cIdx}>
+ 								{c.render
+ 									? c.render(
+@@ -100,7 +151,9 @@ jest.mock("@angen_frontend/components", () => ({
+ 											row,
+ 											rIdx
+ 									  )
+-									: row[c.dataIndex]}
++									: c.dataIndex
++									? String(row[c.dataIndex] ?? "")
++									: null}
+ 							</td>
+ 						))}
+ 					</tr>
