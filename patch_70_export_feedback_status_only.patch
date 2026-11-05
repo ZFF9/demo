@@ -1,8 +1,0 @@
-diff --git a/packages/services/src/index.ts b/packages/services/src/index.ts
---- a/packages/services/src/index.ts
-+++ b/packages/services/src/index.ts
-@@ -18,3 +18,4 @@
-
- export type { IConfig, IConfiguration };
-+export type { FeedbackStatus } from "./InsightService";
- export {
