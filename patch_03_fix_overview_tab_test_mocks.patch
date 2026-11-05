@@ -1,0 +1,15 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+index 123bc32..cc1f3eb 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+@@ -16,6 +16,10 @@ jest.mock("@angen_frontend/components", () => ({
+ 			<span>{key === "cothinker.common.retryBtn" ? "Retry" : key}</span>
+ 		);
+ 	},
++	DataAnalysisSvgIcon: () => <span />,
++	CoThinkerCircleCheckSvgIcon: () => <span />,
++	CircleCloseSvgIcon: () => <span />,
++	CoinSvgIcon: () => <span />,
+ 	GenericSpin: ({
+ 		children,
+ 	}: PropsWithChildren<ComponentProps<typeof GenericSpinComponent>>) => (
