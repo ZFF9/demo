@@ -1,0 +1,1896 @@
+diff --git a/packages/components/src/FeedbackTrendChart/index.spec.tsx b/packages/components/src/FeedbackTrendChart/index.spec.tsx
+index 3a529d7..8c78bc4 100644
+--- a/packages/components/src/FeedbackTrendChart/index.spec.tsx
++++ b/packages/components/src/FeedbackTrendChart/index.spec.tsx
+@@ -14,9 +14,19 @@ jest.mock("echarts", () => ({
+ 
+ beforeAll(() => {
+ 	class MockResizeObserver implements ResizeObserver {
+-		observe(): void {}
+-		unobserve(): void {}
+-		disconnect(): void {}
++		private readonly observedElements = new Set<Element>();
++
++		observe(target: Element): void {
++			this.observedElements.add(target);
++		}
++
++		unobserve(target: Element): void {
++			this.observedElements.delete(target);
++		}
++
++		disconnect(): void {
++			this.observedElements.clear();
++		}
+ 	}
+ 	global.ResizeObserver = MockResizeObserver;
+ });
+diff --git a/packages/components/src/RoleFeedbackChart/index.spec.tsx b/packages/components/src/RoleFeedbackChart/index.spec.tsx
+index 2d58840..9574fb0 100644
+--- a/packages/components/src/RoleFeedbackChart/index.spec.tsx
++++ b/packages/components/src/RoleFeedbackChart/index.spec.tsx
+@@ -14,9 +14,19 @@ jest.mock("echarts", () => ({
+ 
+ beforeAll(() => {
+ 	class MockResizeObserver implements ResizeObserver {
+-		observe(): void {}
+-		unobserve(): void {}
+-		disconnect(): void {}
++		private readonly observedElements = new Set<Element>();
++
++		observe(target: Element): void {
++			this.observedElements.add(target);
++		}
++
++		unobserve(target: Element): void {
++			this.observedElements.delete(target);
++		}
++
++		disconnect(): void {
++			this.observedElements.clear();
++		}
+ 	}
+ 	global.ResizeObserver = MockResizeObserver;
+ });
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+index 7be5252..19dc472 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+@@ -5,30 +5,36 @@ import { IKnowledgeDocument } from "../index";
+ 
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+-	Text: ({ entry, children }: any) => {
++	Text: ({ entry, children }: unknown) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+ 			const val = key
+ 				.split(".")
+-				.reduce((acc: any, part: string) => acc?.[part], en);
++				.reduce((acc: unknown, part: string) => acc?.[part], en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: any) => (
++	GenericButton: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericSideDrawer: ({ visible, title, footer, children, onClose }: any) => {
++	GenericSideDrawer: ({
++		visible,
++		title,
++		footer,
++		children,
++		onClose,
++	}: unknown) => {
+ 		if (!visible) return null;
+ 		return (
+ 			<div data-testid="generic-side-drawer">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+index 96fb01f..f688f4b 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+@@ -7,16 +7,16 @@ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	UploadSvgIcon: () => <span data-testid="upload-icon" />,
+ 	Select: Object.assign(
+-		({ value, onChange, children, options, id, className }: any) => (
++		({ value, onChange, children, options, id, className }: unknown) => (
+ 			<select
+ 				id={id}
+ 				className={className}
+ 				value={value}
+ 				data-testid={id}
+-				onChange={(e: any) => onChange?.(e.target.value)}
++				onChange={(e: unknown) => onChange?.(e.target.value)}
+ 			>
+ 				{options
+-					? options.map((opt: any) => (
++					? options.map((opt: unknown) => (
+ 							<option key={opt.value} value={opt.value}>
+ 								{opt.label}
+ 							</option>
+@@ -25,30 +25,30 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</select>
+ 		),
+ 		{
+-			Option: ({ value, children }: any) => (
++			Option: ({ value, children }: unknown) => (
+ 				<option value={value}>{children}</option>
+ 			),
+ 		}
+ 	),
+-	Text: ({ entry, children }: any) => {
++	Text: ({ entry, children }: unknown) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+ 			const val = key
+ 				.split(".")
+-				.reduce((acc: any, part: string) => acc?.[part], en);
++				.reduce((acc: unknown, part: string) => acc?.[part], en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: any) => (
++	GenericButton: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+@@ -60,7 +60,7 @@ jest.mock("@angen_frontend/components", () => ({
+ 		footer,
+ 		children,
+ 		onClose,
+-	}: any) => {
++	}: unknown) => {
+ 		if (!visible && !isOpen) return null;
+ 		return (
+ 			<div data-testid="generic-modal">
+@@ -73,13 +73,13 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</div>
+ 		);
+ 	},
+-	GenericUploadDragger: ({ file, onFileSelect }: any) => (
++	GenericUploadDragger: ({ file, onFileSelect }: unknown) => (
+ 		<div data-testid="generic-upload-dragger">
+ 			{file && <span>{file.name}</span>}
+ 			<div
+ 				className="drop-zone"
+-				onDragOver={(e: any) => e.preventDefault()}
+-				onDrop={(e: any) => {
++				onDragOver={(e: unknown) => e.preventDefault()}
++				onDrop={(e: unknown) => {
+ 					e.preventDefault();
+ 					if (e.dataTransfer?.files?.[0]) {
+ 						onFileSelect(e.dataTransfer.files[0]);
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+index 3334369..04c0b26 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+@@ -6,35 +6,35 @@ import { IKnowledgeDocument } from "../index";
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	DocFileSvgIcon: () => <span />,
+-	Text: ({ entry, children }: any) => {
++	Text: ({ entry, children }: unknown) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+ 			const val = key
+ 				.split(".")
+-				.reduce((acc: any, part: string) => acc?.[part], en);
++				.reduce((acc: unknown, part: string) => acc?.[part], en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: any) => (
++	GenericButton: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericStatusTag: ({ label }: any) => <span>{label}</span>,
+-	GenericDataTable: ({ columns, dataSource, emptyText }: any) => (
++	GenericStatusTag: ({ label }: unknown) => <span>{label}</span>,
++	GenericDataTable: ({ columns, dataSource, emptyText }: unknown) => (
+ 		<table>
+ 			<thead>
+ 				<tr>
+-					{columns?.map((c: any, idx: number) => (
++					{columns?.map((c: unknown, idx: number) => (
+ 						<th key={c.key || idx}>{c.title}</th>
+ 					))}
+ 				</tr>
+@@ -47,9 +47,9 @@ jest.mock("@angen_frontend/components", () => ({
+ 						</td>
+ 					</tr>
+ 				) : (
+-					dataSource.map((row: any, rIdx: number) => (
++					dataSource.map((row: unknown, rIdx: number) => (
+ 						<tr key={row.id || rIdx}>
+-							{columns?.map((c: any, cIdx: number) => (
++							{columns?.map((c: unknown, cIdx: number) => (
+ 								<td key={c.key || cIdx}>
+ 									{c.render
+ 										? c.render(
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+index a6d4e2e..ee04d94 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+@@ -1,5 +1,6 @@
+ import { render, screen, fireEvent } from "@testing-library/react";
+ import "@testing-library/jest-dom";
++import type React from "react";
+ import { KnowledgeDocTab } from "./index";
+ 
+ jest.mock("@angen_frontend/components", () => ({
+@@ -9,16 +10,30 @@ jest.mock("@angen_frontend/components", () => ({
+ 	SearchSvgIcon: () => <span data-testid="search-icon" />,
+ 	UploadSvgIcon: () => <span data-testid="upload-icon" />,
+ 	Select: Object.assign(
+-		({ value, onChange, children, options, id, className }: any) => (
++		({
++			value,
++			onChange,
++			children,
++			options,
++			id,
++			className,
++		}: {
++			value?: string;
++			onChange?: (value: string) => void;
++			children?: React.ReactNode;
++			options?: Array<{ value: string; label: string }>;
++			id?: string;
++			className?: string;
++		}) => (
+ 			<select
+ 				id={id}
+ 				className={className}
+ 				value={value}
+ 				data-testid={id}
+-				onChange={(e: any) => onChange?.(e.target.value)}
++				onChange={(e) => onChange?.(e.target.value)}
+ 			>
+ 				{options
+-					? options.map((opt: any) => (
++					? options.map((opt) => (
+ 							<option key={opt.value} value={opt.value}>
+ 								{opt.label}
+ 							</option>
+@@ -27,9 +42,13 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</select>
+ 		),
+ 		{
+-			Option: ({ value, children }: any) => (
+-				<option value={value}>{children}</option>
+-			),
++			Option: ({
++				value,
++				children,
++			}: {
++				value?: string;
++				children?: React.ReactNode;
++			}) => <option value={value}>{children}</option>,
+ 		}
+ 	),
+ 	message: {
+@@ -38,30 +57,63 @@ jest.mock("@angen_frontend/components", () => ({
+ 		warning: jest.fn(),
+ 		info: jest.fn(),
+ 	},
+-	Text: ({ entry, children }: any) => {
++	Text: ({
++		entry,
++		children,
++	}: {
++		entry?: { defaultMessage?: string } & Record<string, unknown>;
++		children?: React.ReactNode;
++	}) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+-			const en = require("../../../../../../types/src/translations/en.json");
+-			const val = key
+-				.split(".")
+-				.reduce((acc: any, part: string) => acc?.[part], en);
++			const en =
++				require("../../../../../../types/src/translations/en.json") as Record<
++					string,
++					unknown
++				>;
++			const val = key.split(".").reduce<unknown>((acc, part) => {
++				if (!acc || typeof acc !== "object") return undefined;
++				return (acc as Record<string, unknown>)[part];
++			}, en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, htmlType, ...props }: any) => (
++	GenericButton: ({
++		children,
++		onClick,
++		htmlType,
++		...props
++	}: {
++		children?: React.ReactNode;
++		onClick?: () => void;
++		htmlType?: "button" | "submit" | "reset";
++		[key: string]: unknown;
++	}) => (
+ 		<button {...props} type={htmlType || "button"} onClick={onClick}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, htmlType, ...props }: any) => (
++	GenericButtonV2: ({
++		children,
++		onClick,
++		htmlType,
++		...props
++	}: {
++		children?: React.ReactNode;
++		onClick?: () => void;
++		htmlType?: "button" | "submit" | "reset";
++		[key: string]: unknown;
++	}) => (
+ 		<button {...props} type={htmlType || "button"} onClick={onClick}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericStatusTag: ({ label }: any) => <span>{label}</span>,
++	GenericStatusTag: ({ label }: { label?: React.ReactNode }) => (
++		<span>{label}</span>
++	),
+ 	GenericModalV2: ({
+ 		visible,
+ 		isOpen,
+@@ -69,7 +121,14 @@ jest.mock("@angen_frontend/components", () => ({
+ 		footer,
+ 		children,
+ 		onClose,
+-	}: any) => {
++	}: {
++		visible?: boolean;
++		isOpen?: boolean;
++		title?: React.ReactNode;
++		footer?: React.ReactNode;
++		children?: React.ReactNode;
++		onClose?: () => void;
++	}) => {
+ 		if (!visible && !isOpen) return null;
+ 		return (
+ 			<div data-testid="generic-modal" className="confirm-modal-box">
+@@ -89,7 +148,14 @@ jest.mock("@angen_frontend/components", () => ({
+ 		footer,
+ 		children,
+ 		onClose,
+-	}: any) => {
++	}: {
++		visible?: boolean;
++		open?: boolean;
++		title?: React.ReactNode;
++		footer?: React.ReactNode;
++		children?: React.ReactNode;
++		onClose?: () => void;
++	}) => {
+ 		if (!visible && !open) return null;
+ 		return (
+ 			<div data-testid="generic-side-drawer">
+@@ -102,12 +168,18 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</div>
+ 		);
+ 	},
+-	GenericUploadDragger: ({ file, onFileSelect }: any) => (
++	GenericUploadDragger: ({
++		file,
++		onFileSelect,
++	}: {
++		file?: { name: string } | null;
++		onFileSelect: (file: File) => void;
++	}) => (
+ 		<div data-testid="generic-upload-dragger">
+ 			{file && <span>{file.name}</span>}
+ 			<div
+ 				className="drop-zone"
+-				onDrop={(e: any) => {
++				onDrop={(e) => {
+ 					e.preventDefault();
+ 					if (e.dataTransfer?.files?.[0]) {
+ 						onFileSelect(e.dataTransfer.files[0]);
+@@ -118,50 +190,81 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</div>
+ 		</div>
+ 	),
+-	GenericDataTable: ({ columns, dataSource, pagination, emptyText }: any) => {
+-		const pageSize = pagination
+-			? pagination.pageSize || 5
+-			: dataSource?.length || 1;
+-		const current = pagination ? pagination.current || 1 : 1;
+-		const total = pagination
+-			? pagination.total ?? (dataSource?.length || 0)
+-			: dataSource?.length || 0;
++	GenericDataTable: ({
++		columns,
++		dataSource,
++		pagination,
++		emptyText,
++	}: {
++		columns?: Array<{
++			key?: string;
++			title?: React.ReactNode;
++			dataIndex?: string;
++			render?: (
++				value: unknown,
++				row: Record<string, unknown>,
++				index: number
++			) => React.ReactNode;
++		}>;
++		dataSource?: Array<Record<string, unknown>>;
++		pagination?: {
++			pageSize?: number;
++			current?: number;
++			total?: number;
++			pageSizeOptions?: string[];
++			showTotal?: (total: number) => React.ReactNode;
++			onChange?: (page: number, pageSize: number) => void;
++		};
++		emptyText?: React.ReactNode;
++	}) => {
++		const pageSize = pagination?.pageSize || dataSource?.length || 1;
++		const current = pagination?.current || 1;
++		const total = pagination?.total ?? dataSource?.length ?? 0;
+ 		const totalPages = Math.max(1, Math.ceil(total / pageSize));
+-		const rows =
+-			pagination && dataSource && dataSource.length > pageSize
+-				? dataSource.slice((current - 1) * pageSize, current * pageSize)
+-				: dataSource || [];
++		const rows = dataSource || [];
++		const visibleRows =
++			pagination && rows.length > pageSize
++				? rows.slice((current - 1) * pageSize, current * pageSize)
++				: rows;
+ 		return (
+ 			<div>
+ 				<table>
+ 					<thead>
+ 						<tr>
+-							{columns?.map((c: any, idx: number) => (
+-								<th key={c.key || idx}>{c.title}</th>
++							{columns?.map((column, idx) => (
++								<th key={column.key || idx}>{column.title}</th>
+ 							))}
+ 						</tr>
+ 					</thead>
+ 					<tbody>
+-						{rows.length === 0 ? (
++						{visibleRows.length === 0 ? (
+ 							<tr>
+ 								<td colSpan={columns?.length || 1}>
+ 									{emptyText || "No data"}
+ 								</td>
+ 							</tr>
+ 						) : (
+-							rows.map((row: any, rIdx: number) => (
+-								<tr key={row.id || rIdx}>
+-									{columns?.map((c: any, cIdx: number) => (
+-										<td key={c.key || cIdx}>
+-											{c.render
+-												? c.render(
+-														c.dataIndex
+-															? row[c.dataIndex]
++							visibleRows.map((row, rIdx) => (
++								<tr key={String(row.id || rIdx)}>
++									{columns?.map((column, cIdx) => (
++										<td key={column.key || cIdx}>
++											{column.render
++												? column.render(
++														column.dataIndex
++															? row[
++																	column
++																		.dataIndex
++															  ]
+ 															: row,
+ 														row,
+ 														rIdx
+ 												  )
+-												: row[c.dataIndex]}
++												: column.dataIndex
++												? String(
++														row[column.dataIndex] ??
++															""
++												  )
++												: null}
+ 										</td>
+ 									))}
+ 								</tr>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx
+index 5dfe824..2625aa1 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx
+@@ -4,14 +4,14 @@ import { KeyTakeawayCard } from "./index";
+ 
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+-	Text: ({ entry, children }: any) => {
++	Text: ({ entry, children }: unknown) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+ 			const val = key
+ 				.split(".")
+-				.reduce((acc: any, part: string) => acc?.[part], en);
++				.reduce((acc: unknown, part: string) => acc?.[part], en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+index 75b1580..cc14bf2 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+@@ -18,25 +18,25 @@ jest.mock("@angen_frontend/components", () => ({
+ 		info: jest.fn(),
+ 		error: jest.fn(),
+ 	},
+-	Text: ({ entry, children }: any) => {
++	Text: ({ entry, children }: unknown) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+ 			const val = key
+ 				.split(".")
+-				.reduce((acc: any, part: string) => acc?.[part], en);
++				.reduce((acc: unknown, part: string) => acc?.[part], en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: any) => (
++	GenericButton: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+@@ -47,7 +47,7 @@ jest.mock("@angen_frontend/components", () => ({
+ 		loading,
+ 		title,
+ 		children,
+-	}: any) => {
++	}: unknown) => {
+ 		if (!visible) return null;
+ 		return (
+ 			<div data-testid="generic-side-drawer">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+index d92103e..734252f 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.tsx
+@@ -1,4 +1,5 @@
+ import { FC, useState } from "react";
++import type { ReactNode } from "react";
+ import {
+ 	CoThinkerCircleCheckSvgIcon,
+ 	CircleCloseSvgIcon,
+@@ -29,6 +30,44 @@ interface IProps {
+ type TabType = "payload" | "chunks" | "feedback" | "prompt";
+ const COPY_TOAST_DURATION_MS = 2200;
+ 
++const renderIf = (condition: boolean, content: ReactNode): ReactNode =>
++	condition ? content : null;
++
++const renderIfElse = (
++	condition: boolean,
++	content: ReactNode,
++	fallback: ReactNode
++): ReactNode => (condition ? content : fallback);
++
++const getTabClassName = (activeTab: TabType, tab: TabType): string =>
++	`tab-bar-item${activeTab === tab ? " active" : ""}`;
++
++const formatOptionalTimestamp = (value: string | null): string =>
++	value ? formatTimestamp(value) : "-";
++
++const getFeedbackBadgeClass = (type: "up" | "down" | "none"): string =>
++	type === "up" ? "badge-success" : "badge-danger";
++
++const withFallback = (
++	value: string | null | undefined,
++	fallback: string
++): string => value || fallback;
++
++const copyWithFallback = (text: string): boolean => {
++	const textArea = document.createElement("textarea");
++	textArea.value = text;
++	textArea.setAttribute("readonly", "true");
++	textArea.style.position = "fixed";
++	textArea.style.left = "-9999px";
++	textArea.style.top = "-9999px";
++	document.body.appendChild(textArea);
++	textArea.focus();
++	textArea.select();
++	const successful = document.execCommand("copy");
++	document.body.removeChild(textArea);
++	return successful;
++};
++
+ export const LogDetailDrawer: FC<IProps> = ({
+ 	visible,
+ 	record,
+@@ -57,22 +96,10 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 			}
+ 			throw new Error("Clipboard API unavailable");
+ 		} catch {
+-			const textArea = document.createElement("textarea");
+-			textArea.value = text;
+-			textArea.setAttribute("readonly", "true");
+-			textArea.style.position = "fixed";
+-			textArea.style.left = "-9999px";
+-			textArea.style.top = "-9999px";
+-			document.body.appendChild(textArea);
+-			textArea.focus();
+-			textArea.select();
+-			const successful = document.execCommand("copy");
+-			document.body.removeChild(textArea);
+-			if (successful) {
+-				showCopyNotification(successMsg);
+-			} else {
+-				showCopyNotification("Clipboard copy blocked by browser");
+-			}
++			const copied = copyWithFallback(text);
++			showCopyNotification(
++				copied ? successMsg : "Clipboard copy blocked by browser"
++			);
+ 		}
+ 	};
+ 
+@@ -85,9 +112,10 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 			title={<Text entry={{ "cothinker.logAudit.drawerTitle": {} }} />}
+ 			width="68%"
+ 		>
+-			{!record ? null : (
++			{record ? (
+ 				<div className="drawer-scroll-body">
+-					{copyToast && (
++					{renderIf(
++						Boolean(copyToast),
+ 						<div className="drawer-toast-alert">{copyToast}</div>
+ 					)}
+ 
+@@ -200,7 +228,8 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 									/>
+ 								</span>
+ 								<div className="desc-value feedback-inline-wrapper">
+-									{record.feedbackDetail.type === "up" && (
++									{renderIf(
++										record.feedbackDetail.type === "up",
+ 										<span className="feedback-status up">
+ 											<CoThinkerCircleCheckSvgIcon className="feedback-icon" />
+ 											<span className="status-text sr-only">
+@@ -213,7 +242,8 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 											</span>
+ 										</span>
+ 									)}
+-									{record.feedbackDetail.type === "down" && (
++									{renderIf(
++										record.feedbackDetail.type === "down",
+ 										<span className="feedback-status down">
+ 											<CircleCloseSvgIcon className="feedback-icon" />
+ 											<span className="status-text sr-only">
+@@ -226,7 +256,8 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 											</span>
+ 										</span>
+ 									)}
+-									{record.feedbackDetail.type === "none" && (
++									{renderIf(
++										record.feedbackDetail.type === "none",
+ 										<span className="text-medium-grey">
+ 											<Text
+ 												entry={{
+@@ -236,7 +267,8 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 											/>
+ 										</span>
+ 									)}
+-									{record.feedbackDetail.comment && (
++									{renderIf(
++										Boolean(record.feedbackDetail.comment),
+ 										<span className="feedback-comment-quote">
+ 											"{record.feedbackDetail.comment}"
+ 										</span>
+@@ -335,9 +367,10 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							<div className="evidence-tab-bar">
+ 								<button
+ 									type="button"
+-									className={`tab-bar-item ${
+-										activeTab === "payload" ? "active" : ""
+-									}`}
++									className={getTabClassName(
++										activeTab,
++										"payload"
++									)}
+ 									onClick={() => setActiveTab("payload")}
+ 								>
+ 									<Text
+@@ -349,9 +382,10 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 								</button>
+ 								<button
+ 									type="button"
+-									className={`tab-bar-item ${
+-										activeTab === "chunks" ? "active" : ""
+-									}`}
++									className={getTabClassName(
++										activeTab,
++										"chunks"
++									)}
+ 									onClick={() => setActiveTab("chunks")}
+ 								>
+ 									<Text
+@@ -363,9 +397,10 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 								</button>
+ 								<button
+ 									type="button"
+-									className={`tab-bar-item ${
+-										activeTab === "feedback" ? "active" : ""
+-									}`}
++									className={getTabClassName(
++										activeTab,
++										"feedback"
++									)}
+ 									onClick={() => setActiveTab("feedback")}
+ 								>
+ 									<Text
+@@ -377,9 +412,10 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 								</button>
+ 								<button
+ 									type="button"
+-									className={`tab-bar-item ${
+-										activeTab === "prompt" ? "active" : ""
+-									}`}
++									className={getTabClassName(
++										activeTab,
++										"prompt"
++									)}
+ 									onClick={() => setActiveTab("prompt")}
+ 								>
+ 									<Text
+@@ -391,21 +427,28 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 							</div>
+ 
+ 							<div className="evidence-tab-content">
+-								{activeTab === "payload" && (
++								{renderIf(
++									activeTab === "payload",
+ 									<div className="tab-pane-content">
+ 										<div className="tab-toolbar">
+ 											<div>
+ 												<div className="tab-toolbar-title">
+-													{record.requestPayload
+-														?.queries?.[0]?.context
+-														?.customPageName ||
+-														"Immunology Analytics"}
++													{withFallback(
++														record.requestPayload
++															?.queries?.[0]
++															?.context
++															?.customPageName,
++														"Immunology Analytics"
++													)}
+ 												</div>
+ 												<p className="tab-toolbar-sub">
+-													{record.requestPayload
+-														?.queries?.[0]?.context
+-														?.panelName ||
+-														"Biologic Market Share"}{" "}
++													{withFallback(
++														record.requestPayload
++															?.queries?.[0]
++															?.context
++															?.panelName,
++														"Biologic Market Share"
++													)}{" "}
+ 													/ TableauDashboard
+ 												</p>
+ 											</div>
+@@ -444,10 +487,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 													/>
+ 												</span>
+ 												<span className="desc-value code-snippet">
+-													{record.requestPayload
+-														?.requestId ||
++													{withFallback(
++														record.requestPayload
++															?.requestId,
+ 														record.overview
+-															.requestId}
++															.requestId
++													)}
+ 												</span>
+ 											</div>
+ 											<div className="desc-cell">
+@@ -476,8 +521,11 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 													/>
+ 												</span>
+ 												<span className="desc-value code-snippet">
+-													{record.requestPayload
+-														?.correlationId || "-"}
++													{withFallback(
++														record.requestPayload
++															?.correlationId,
++														"-"
++													)}
+ 												</span>
+ 											</div>
+ 										</div>
+@@ -494,7 +542,8 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 									</div>
+ 								)}
+ 
+-								{activeTab === "chunks" && (
++								{renderIf(
++									activeTab === "chunks",
+ 									<div className="tab-pane-content">
+ 										<p className="chunk-context-note">
+ 											<Text
+@@ -505,7 +554,8 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 											/>
+ 										</p>
+ 
+-										{record.docChunks.length > 0 ? (
++										{renderIfElse(
++											record.docChunks.length > 0,
+ 											<div className="chunk-list">
+ 												{record.docChunks.map(
+ 													(chunk) => (
+@@ -551,11 +601,9 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 																</span>
+ 																<span>
+ 																	Used{" "}
+-																	{chunk.usedAt
+-																		? formatTimestamp(
+-																				chunk.usedAt
+-																		  )
+-																		: "-"}
++																	{formatOptionalTimestamp(
++																		chunk.usedAt
++																	)}
+ 																</span>
+ 																<button
+ 																	type="button"
+@@ -577,8 +625,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 														</div>
+ 													)
+ 												)}
+-											</div>
+-										) : (
++											</div>,
+ 											<div className="empty-chunk-notice">
+ 												<Text
+ 													entry={{
+@@ -591,10 +638,12 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 									</div>
+ 								)}
+ 
+-								{activeTab === "feedback" && (
++								{renderIf(
++									activeTab === "feedback",
+ 									<div className="tab-pane-content">
+-										{record.feedbackDetail.type !==
+-										"none" ? (
++										{renderIfElse(
++											record.feedbackDetail.type !==
++												"none",
+ 											<div className="overview-descriptions-grid border-sm single-col">
+ 												<div className="desc-cell col-span-2">
+ 													<span className="desc-label">
+@@ -607,14 +656,11 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 													</span>
+ 													<span className="desc-value">
+ 														<span
+-															className={`status-badge ${
++															className={`status-badge ${getFeedbackBadgeClass(
+ 																record
+ 																	.feedbackDetail
+-																	.type ===
+-																"up"
+-																	? "badge-success"
+-																	: "badge-danger"
+-															}`}
++																	.type
++															)}`}
+ 														>
+ 															{record
+ 																.feedbackDetail
+@@ -688,8 +734,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 														)}
+ 													</span>
+ 												</div>
+-											</div>
+-										) : (
++											</div>,
+ 											<div className="empty-chunk-notice">
+ 												<Text
+ 													entry={{
+@@ -702,7 +747,8 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 									</div>
+ 								)}
+ 
+-								{activeTab === "prompt" && (
++								{renderIf(
++									activeTab === "prompt",
+ 									<div className="tab-pane-content">
+ 										<div className="prompt-toolbar">
+ 											<GenericButtonV2
+@@ -726,8 +772,10 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 										</div>
+ 										<div className="prompt-viewer">
+ 											<pre>
+-												{record.fullPrompt ||
+-													"No prompt available."}
++												{withFallback(
++													record.fullPrompt,
++													"No prompt available."
++												)}
+ 											</pre>
+ 										</div>
+ 									</div>
+@@ -736,7 +784,7 @@ export const LogDetailDrawer: FC<IProps> = ({
+ 						</div>
+ 					</div>
+ 				</div>
+-			)}
++			) : null}
+ 		</GenericSideDrawer>
+ 	);
+ };
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+index 0505548..65a1bdc 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+@@ -19,14 +19,14 @@ jest.mock("@angen_frontend/components", () => ({
+ 		warning: jest.fn(),
+ 		info: jest.fn(),
+ 	},
+-	Text: ({ entry, children }: any) => {
++	Text: ({ entry, children }: unknown) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../types/src/translations/en.json");
+ 			const val = key
+ 				.split(".")
+-				.reduce((acc: any, part: string) => acc?.[part], en);
++				.reduce((acc: unknown, part: string) => acc?.[part], en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+@@ -38,7 +38,7 @@ jest.mock("@angen_frontend/components", () => ({
+ 		onChange,
+ 		startPlaceholder = "Start date",
+ 		endPlaceholder = "End date",
+-	}: any) => (
++	}: unknown) => (
+ 		<div data-testid="mock-date-range-picker">
+ 			<input
+ 				aria-label={startPlaceholder}
+@@ -57,11 +57,11 @@ jest.mock("@angen_frontend/components", () => ({
+ 		options = [],
+ 		onChange,
+ 		placeholder,
+-	}: any) => (
++	}: unknown) => (
+ 		<div data-testid="mock-generic-multi-select">
+ 			<div>{placeholder}</div>
+ 			<div>
+-				{options.map((opt: any) => (
++				{options.map((opt: unknown) => (
+ 					<button
+ 						key={opt.value}
+ 						type="button"
+@@ -78,24 +78,24 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</div>
+ 		</div>
+ 	),
+-	GenericButton: ({ children, onClick, ...props }: any) => (
++	GenericButton: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericStatusTag: ({ label }: any) => <span>{label}</span>,
++	GenericStatusTag: ({ label }: unknown) => <span>{label}</span>,
+ 	GenericSideDrawer: ({
+ 		visible,
+ 		onClose,
+ 		loading,
+ 		title,
+ 		children,
+-	}: any) => {
++	}: unknown) => {
+ 		if (!visible) return null;
+ 		return (
+ 			<div data-testid="generic-side-drawer">
+@@ -114,12 +114,12 @@ jest.mock("@angen_frontend/components", () => ({
+ 		pagination,
+ 		emptyText,
+ 		onRow,
+-	}: any) => (
++	}: unknown) => (
+ 		<div data-testid="mock-generic-data-table">
+ 			<table>
+ 				<thead>
+ 					<tr>
+-						{columns?.map((c: any, idx: number) => (
++						{columns?.map((c: unknown, idx: number) => (
+ 							<th key={c.key || idx}>{c.title}</th>
+ 						))}
+ 					</tr>
+@@ -136,25 +136,30 @@ jest.mock("@angen_frontend/components", () => ({
+ 							</td>
+ 						</tr>
+ 					) : (
+-						dataSource.map((row: any, rIdx: number) => {
++						dataSource.map((row: unknown, rIdx: number) => {
+ 							const rowProps = onRow ? onRow(row) : {};
+ 							return (
+ 								<tr key={row.resultId || rIdx} {...rowProps}>
+-									{columns?.map((c: any, cIdx: number) => (
+-										<td key={c.key || cIdx}>
+-											{c.render
+-												? c.render(
+-														c.dataIndex
+-															? row[c.dataIndex]
+-															: row,
+-														row,
+-														rIdx
+-												  )
+-												: c.dataIndex
+-												? row[c.dataIndex]
+-												: null}
+-										</td>
+-									))}
++									{columns?.map(
++										(c: unknown, cIdx: number) => (
++											<td key={c.key || cIdx}>
++												{c.render
++													? c.render(
++															c.dataIndex
++																? row[
++																		c
++																			.dataIndex
++																  ]
++																: row,
++															row,
++															rIdx
++													  )
++													: c.dataIndex
++													? row[c.dataIndex]
++													: null}
++											</td>
++										)
++									)}
+ 								</tr>
+ 							);
+ 						})
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx
+index e4c1c93..2b32002 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx
+@@ -8,14 +8,14 @@ jest.mock("@angen_frontend/services", () => ({
+ 
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+-	Text: ({ entry, children }: any) => {
++	Text: ({ entry, children }: unknown) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+ 			const val = key
+ 				.split(".")
+-				.reduce((acc: any, part: string) => acc?.[part], en);
++				.reduce((acc: unknown, part: string) => acc?.[part], en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+index 16c6591..6fe20be 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.spec.tsx
+@@ -16,7 +16,7 @@ jest.mock("@angen_frontend/components", () => ({
+ 		const en = require("../../../../../../types/src/translations/en.json");
+ 		const value = key
+ 			.split(".")
+-			.reduce((result: any, part: string) => result?.[part], en);
++			.reduce((result: unknown, part: string) => result?.[part], en);
+ 		return <span>{typeof value === "string" ? value : key}</span>;
+ 	},
+ 	DataAnalysisSvgIcon: () => <span />,
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx
+index ccf7d9f..99a1986 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/index.tsx
+@@ -117,6 +117,119 @@ interface IProps {
+ 	initialMetrics?: FeedbackMetrics;
+ }
+ 
++interface OverviewSummaryResponse {
++	totalGenerations?: number;
++	thumbsUp?: number;
++	thumbsDown?: number;
++	cost?: {
++		total?: number | null;
++		average?: number | null;
++		totalTokens?: number | null;
++	};
++}
++
++interface FeedbackBreakdownResponse {
++	items?: Array<{
++		role: string;
++		generations: number;
++		positive: number;
++		negative: number;
++		rated: number;
++		noFeedback: number;
++		positiveRate: number | null;
++		feedbackCoverage: number | null;
++	}>;
++	window?: {
++		startDate?: string;
++		endDate?: string;
++	};
++}
++
++interface FeedbackTrendResponse {
++	points?: Array<{
++		date: string;
++		generations: number;
++		positive: number;
++		negative: number;
++		rated: number;
++		noFeedback: number;
++		positiveRate: number | null;
++		feedbackCoverage: number | null;
++	}>;
++	window?: {
++		startDate?: string;
++		endDate?: string;
++	};
++}
++
++const mapFeedbackCounts = (summaryRes: OverviewSummaryResponse) => {
++	const totalGenerations = summaryRes.totalGenerations || 0;
++	const thumbsUpCount = summaryRes.thumbsUp || 0;
++	const thumbsDownCount = summaryRes.thumbsDown || 0;
++	const ratedCount = thumbsUpCount + thumbsDownCount;
++
++	return {
++		totalGenerations,
++		thumbsUpCount,
++		thumbsDownCount,
++		ratedCount,
++		noFeedbackCount: Math.max(0, totalGenerations - ratedCount),
++		positiveFeedbackRate:
++			ratedCount > 0
++				? Number(((thumbsUpCount / ratedCount) * 100).toFixed(2))
++				: null,
++		feedbackCoverage:
++			totalGenerations > 0
++				? Number(((ratedCount / totalGenerations) * 100).toFixed(2))
++				: null,
++	};
++};
++
++const mapOverviewMetrics = (
++	summaryRes: OverviewSummaryResponse,
++	roleRes: FeedbackBreakdownResponse | null | undefined,
++	trendRes: FeedbackTrendResponse | null | undefined
++): FeedbackMetrics => {
++	const {
++		totalGenerations,
++		thumbsUpCount,
++		thumbsDownCount,
++		ratedCount,
++		noFeedbackCount,
++		positiveFeedbackRate,
++		feedbackCoverage,
++	} = mapFeedbackCounts(summaryRes);
++	const totalLlmCostUsd = summaryRes.cost?.total ?? null;
++	const avgCostPerGenerationUsd = summaryRes.cost?.average ?? null;
++	const totalLlmTokens = summaryRes.cost?.totalTokens ?? null;
++	const avgTokensPerGeneration =
++		totalLlmTokens !== null && totalGenerations > 0
++			? Math.round(totalLlmTokens / totalGenerations)
++			: null;
++
++	return {
++		timeRange: {
++			start:
++				roleRes?.window?.startDate || trendRes?.window?.startDate || "",
++			end: roleRes?.window?.endDate || trendRes?.window?.endDate || "",
++		},
++		role: "ALL",
++		totalGenerations,
++		thumbsUpCount,
++		thumbsDownCount,
++		noFeedbackCount,
++		ratedCount,
++		positiveFeedbackRate,
++		feedbackCoverage,
++		totalLlmCostUsd,
++		avgCostPerGenerationUsd,
++		totalLlmTokens,
++		avgTokensPerGeneration,
++		roleFeedbackBreakdown: (roleRes?.items || []).map(mapRoleFeedback),
++		feedbackTrend: (trendRes?.points || []).map(mapFeedbackTrendPoint),
++	};
++};
++
+ const DEFAULT_METRICS: FeedbackMetrics = {
+ 	timeRange: {
+ 		start: "",
+@@ -138,7 +251,7 @@ const DEFAULT_METRICS: FeedbackMetrics = {
+ 	feedbackTrend: [],
+ };
+ 
+-export const OverviewTab: FC<IProps> = ({ initialMetrics }) => {
++const useOverviewMetrics = (initialMetrics?: FeedbackMetrics) => {
+ 	const [metrics, setMetrics] = useState<FeedbackMetrics>(
+ 		initialMetrics || DEFAULT_METRICS
+ 	);
+@@ -156,61 +269,7 @@ export const OverviewTab: FC<IProps> = ({ initialMetrics }) => {
+ 				InsightService.getFeedbackTrend(),
+ 			]);
+ 
+-			const totalGenerations = summaryRes.totalGenerations || 0;
+-			const thumbsUpCount = summaryRes.thumbsUp || 0;
+-			const thumbsDownCount = summaryRes.thumbsDown || 0;
+-			const ratedCount = thumbsUpCount + thumbsDownCount;
+-			const noFeedbackCount = Math.max(0, totalGenerations - ratedCount);
+-			const positiveFeedbackRate =
+-				ratedCount > 0
+-					? Number(((thumbsUpCount / ratedCount) * 100).toFixed(2))
+-					: null;
+-			const feedbackCoverage =
+-				totalGenerations > 0
+-					? Number(((ratedCount / totalGenerations) * 100).toFixed(2))
+-					: null;
+-
+-			const totalLlmCostUsd = summaryRes.cost?.total ?? null;
+-			const avgCostPerGenerationUsd = summaryRes.cost?.average ?? null;
+-			const totalLlmTokens = summaryRes.cost?.totalTokens ?? null;
+-			const avgTokensPerGeneration =
+-				totalLlmTokens !== null && totalGenerations > 0
+-					? Math.round(totalLlmTokens / totalGenerations)
+-					: null;
+-
+-			const roleFeedbackBreakdown = (roleRes?.items || []).map(
+-				mapRoleFeedback
+-			);
+-			const feedbackTrend = (trendRes?.points || []).map(
+-				mapFeedbackTrendPoint
+-			);
+-
+-			setMetrics({
+-				timeRange: {
+-					start:
+-						roleRes?.window?.startDate ||
+-						trendRes?.window?.startDate ||
+-						"",
+-					end:
+-						roleRes?.window?.endDate ||
+-						trendRes?.window?.endDate ||
+-						"",
+-				},
+-				role: "ALL",
+-				totalGenerations,
+-				thumbsUpCount,
+-				thumbsDownCount,
+-				noFeedbackCount,
+-				ratedCount,
+-				positiveFeedbackRate,
+-				feedbackCoverage,
+-				totalLlmCostUsd,
+-				avgCostPerGenerationUsd,
+-				totalLlmTokens,
+-				avgTokensPerGeneration,
+-				roleFeedbackBreakdown,
+-				feedbackTrend,
+-			});
++			setMetrics(mapOverviewMetrics(summaryRes, roleRes, trendRes));
+ 		} catch (err) {
+ 			const msg =
+ 				err instanceof Error
+@@ -228,6 +287,13 @@ export const OverviewTab: FC<IProps> = ({ initialMetrics }) => {
+ 		}
+ 	}, [initialMetrics, fetchOverviewData]);
+ 
++	return { metrics, loading, error, fetchOverviewData };
++};
++
++export const OverviewTab: FC<IProps> = ({ initialMetrics }) => {
++	const { metrics, loading, error, fetchOverviewData } =
++		useOverviewMetrics(initialMetrics);
++
+ 	if (loading) {
+ 		return (
+ 			<div className="overviewTabContainer">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
+index 4a650b8..d31f617 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
+@@ -5,35 +5,35 @@ import { IPromptVersion } from "../index";
+ 
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+-	Text: ({ entry, children }: any) => {
++	Text: ({ entry, children }: unknown) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+ 			const val = key
+ 				.split(".")
+-				.reduce((acc: any, part: string) => acc?.[part], en);
++				.reduce((acc: unknown, part: string) => acc?.[part], en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: any) => (
++	GenericButton: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericDataTable: ({ columns, dataSource }: any) => (
++	GenericDataTable: ({ columns, dataSource }: unknown) => (
+ 		<table>
+ 			<tbody>
+-				{dataSource?.map((row: any, rIdx: number) => (
++				{dataSource?.map((row: unknown, rIdx: number) => (
+ 					<tr key={row.scope || rIdx}>
+-						{columns?.map((c: any, cIdx: number) => (
++						{columns?.map((c: unknown, cIdx: number) => (
+ 							<td key={c.key || cIdx}>
+ 								{c.render
+ 									? c.render(
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+index 449b74b..0db88a1 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+@@ -7,30 +7,36 @@ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	CoThinkerPlusSvgIcon: () => <span data-testid="plus-icon" />,
+ 	SearchSvgIcon: () => <span data-testid="search-icon" />,
+-	Text: ({ entry, children }: any) => {
++	Text: ({ entry, children }: unknown) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+ 			const val = key
+ 				.split(".")
+-				.reduce((acc: any, part: string) => acc?.[part], en);
++				.reduce((acc: unknown, part: string) => acc?.[part], en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: any) => (
++	GenericButton: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericModalV2: ({ visible, title, footer, children, onClose }: any) => {
++	GenericModalV2: ({
++		visible,
++		title,
++		footer,
++		children,
++		onClose,
++	}: unknown) => {
+ 		if (!visible) return null;
+ 		return (
+ 			<div data-testid="generic-modal">
+@@ -43,12 +49,12 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</div>
+ 		);
+ 	},
+-	GenericDataTable: ({ columns, dataSource }: any) => (
++	GenericDataTable: ({ columns, dataSource }: unknown) => (
+ 		<table>
+ 			<tbody>
+-				{dataSource?.map((row: any, rIdx: number) => (
++				{dataSource?.map((row: unknown, rIdx: number) => (
+ 					<tr key={row.id || rIdx}>
+-						{columns?.map((c: any, cIdx: number) => (
++						{columns?.map((c: unknown, cIdx: number) => (
+ 							<td key={c.key || cIdx}>
+ 								{c.render
+ 									? c.render(
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
+index 8416f39..22f9e95 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
+@@ -5,44 +5,44 @@ import { IPromptConfig } from "../index";
+ 
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+-	Text: ({ entry, children }: any) => {
++	Text: ({ entry, children }: unknown) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+ 			const val = key
+ 				.split(".")
+-				.reduce((acc: any, part: string) => acc?.[part], en);
++				.reduce((acc: unknown, part: string) => acc?.[part], en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: any) => (
++	GenericButton: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericSideDrawer: ({ visible, children }: any) => {
++	GenericSideDrawer: ({ visible, children }: unknown) => {
+ 		if (!visible) return null;
+ 		return <div data-testid="generic-side-drawer">{children}</div>;
+ 	},
+ 	Select: Object.assign(
+-		({ value, onChange, children, options, id, className }: any) => (
++		({ value, onChange, children, options, id, className }: unknown) => (
+ 			<select
+ 				id={id}
+ 				className={className}
+ 				value={value}
+ 				data-testid={id}
+-				onChange={(e: any) => onChange?.(e.target.value)}
++				onChange={(e: unknown) => onChange?.(e.target.value)}
+ 			>
+ 				{options
+-					? options.map((opt: any) => (
++					? options.map((opt: unknown) => (
+ 							<option key={opt.value} value={opt.value}>
+ 								{opt.label}
+ 							</option>
+@@ -51,7 +51,7 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</select>
+ 		),
+ 		{
+-			Option: ({ value, children }: any) => (
++			Option: ({ value, children }: unknown) => (
+ 				<option value={value}>{children}</option>
+ 			),
+ 		}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+index 888e763..4d03ffa 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+@@ -6,35 +6,35 @@ import { IPromptVersion } from "../index";
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	CoThinkerDownloadSvgIcon: () => <span data-testid="download-icon" />,
+-	Text: ({ entry, children }: any) => {
++	Text: ({ entry, children }: unknown) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../../types/src/translations/en.json");
+ 			const val = key
+ 				.split(".")
+-				.reduce((acc: any, part: string) => acc?.[part], en);
++				.reduce((acc: unknown, part: string) => acc?.[part], en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: any) => (
++	GenericButton: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericDataTable: ({ columns, dataSource }: any) => (
++	GenericDataTable: ({ columns, dataSource }: unknown) => (
+ 		<table>
+ 			<tbody>
+-				{dataSource?.map((row: any, rIdx: number) => (
++				{dataSource?.map((row: unknown, rIdx: number) => (
+ 					<tr key={row.id || rIdx}>
+-						{columns?.map((c: any, cIdx: number) => (
++						{columns?.map((c: unknown, cIdx: number) => (
+ 							<td key={c.key || cIdx}>
+ 								{c.render
+ 									? c.render(
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+index 6767b98..76c2fd3 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+@@ -16,16 +16,16 @@ jest.mock("@angen_frontend/components", () => ({
+ 		info: jest.fn(),
+ 	},
+ 	Select: Object.assign(
+-		({ value, onChange, children, options, id, className }: any) => (
++		({ value, onChange, children, options, id, className }: unknown) => (
+ 			<select
+ 				id={id}
+ 				className={className}
+ 				value={value}
+ 				data-testid={id}
+-				onChange={(e: any) => onChange?.(e.target.value)}
++				onChange={(e: unknown) => onChange?.(e.target.value)}
+ 			>
+ 				{options
+-					? options.map((opt: any) => (
++					? options.map((opt: unknown) => (
+ 							<option key={opt.value} value={opt.value}>
+ 								{opt.label}
+ 							</option>
+@@ -34,35 +34,41 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</select>
+ 		),
+ 		{
+-			Option: ({ value, children }: any) => (
++			Option: ({ value, children }: unknown) => (
+ 				<option value={value}>{children}</option>
+ 			),
+ 		}
+ 	),
+-	Text: ({ entry, children }: any) => {
++	Text: ({ entry, children }: unknown) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+ 			const en = require("../../../../../../types/src/translations/en.json");
+ 			const val = key
+ 				.split(".")
+-				.reduce((acc: any, part: string) => acc?.[part], en);
++				.reduce((acc: unknown, part: string) => acc?.[part], en);
+ 			if (typeof val === "string") return <span>{val}</span>;
+ 			return <span>{key}</span>;
+ 		}
+ 		return <span>{children}</span>;
+ 	},
+-	GenericButton: ({ children, onClick, ...props }: any) => (
++	GenericButton: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericButtonV2: ({ children, onClick, ...props }: any) => (
++	GenericButtonV2: ({ children, onClick, ...props }: unknown) => (
+ 		<button type="button" onClick={onClick} {...props}>
+ 			{children}
+ 		</button>
+ 	),
+-	GenericModalV2: ({ visible, title, footer, children, onClose }: any) => {
++	GenericModalV2: ({
++		visible,
++		title,
++		footer,
++		children,
++		onClose,
++	}: unknown) => {
+ 		if (!visible) return null;
+ 		return (
+ 			<div data-testid="generic-modal">
+@@ -75,16 +81,16 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</div>
+ 		);
+ 	},
+-	GenericSideDrawer: ({ visible, children }: any) => {
++	GenericSideDrawer: ({ visible, children }: unknown) => {
+ 		if (!visible) return null;
+ 		return <div data-testid="generic-side-drawer">{children}</div>;
+ 	},
+-	GenericDataTable: ({ columns, dataSource }: any) => (
++	GenericDataTable: ({ columns, dataSource }: unknown) => (
+ 		<table>
+ 			<tbody>
+-				{dataSource?.map((row: any, rIdx: number) => (
++				{dataSource?.map((row: unknown, rIdx: number) => (
+ 					<tr key={row.id || row.scope || rIdx}>
+-						{columns?.map((c: any, cIdx: number) => (
++						{columns?.map((c: unknown, cIdx: number) => (
+ 							<td key={c.key || cIdx}>
+ 								{c.render
+ 									? c.render(
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+index c1ecc93..ca15701 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+@@ -1,4 +1,5 @@
+ import { FC, useState, useMemo } from "react";
++import type { ReactNode } from "react";
+ import {
+ 	EditPenSvgIcon,
+ 	CollectionSvgIcon,
+@@ -159,6 +160,9 @@ Generate analytical commentary based on the user's dashboard view.`,
+ };
+ const TOAST_DURATION_MS = 3000;
+ 
++const renderIf = (condition: boolean, content: ReactNode): ReactNode =>
++	condition ? content : null;
++
+ export const INITIAL_PROMPT_VERSIONS: IPromptVersion[] = [
+ 	{
+ 		id: "ver-002-active",
+@@ -776,11 +780,12 @@ export const PromptManagementTab: FC = () => {
+ 		currentEditorConfig = inspectedVersion.config;
+ 	}
+ 
+-	return (
++	const renderPageContent = () => (
+ 		<div className="prompt-workspace">
+-			{toastMsg && (
+-				<div className={`page-toast-alert alert-${toastMsg.type}`}>
+-					{toastMsg.text}
++			{renderIf(
++				Boolean(toastMsg),
++				<div className={`page-toast-alert alert-${toastMsg?.type}`}>
++					{toastMsg?.text}
+ 				</div>
+ 			)}
+ 
+@@ -884,79 +889,89 @@ export const PromptManagementTab: FC = () => {
+ 				</section>
+ 			)}
+ 
+-			{activeTab !== "metrics" && draftVersion && (
+-				<section className="draft-bar" aria-label="Draft workspace">
+-					<div className="draft-heading">
+-						<div className="draft-meta-group">
+-							<span className="draft-tag">
++			{renderIf(
++				activeTab !== "metrics",
++				renderIf(
++					Boolean(draftVersion),
++					<section className="draft-bar" aria-label="Draft workspace">
++						<div className="draft-heading">
++							<div className="draft-meta-group">
++								<span className="draft-tag">
++									<Text
++										entry={{
++											"cothinker.prompt.statusDraft": {},
++										}}
++									/>
++								</span>
++								<span className="textBold">
++									Based on v{activeVersion.version}
++								</span>
++								<span className="dirty-state">
++									{isDirty
++										? "Unsaved changes"
++										: "Draft saved"}
++								</span>
++							</div>
++							<button
++								type="button"
++								className="discard-link"
++								onClick={handleDiscardDraft}
++							>
++								Discard draft
++							</button>
++						</div>
++						<label htmlFor="change-note">
++							<Text
++								entry={{
++									"cothinker.prompt.fieldChangeNote": {},
++								}}
++							/>
++						</label>
++						<input
++							id="change-note"
++							type="text"
++							className="change-note-input"
++							placeholder="Describe the purpose of this change"
++							value={draftChangeNote}
++							onChange={(e) => setDraftChangeNote(e.target.value)}
++							maxLength={500}
++						/>
++						<div className="draft-actions">
++							<GenericButtonV2
++								type="default"
++								className="el-btn-default"
++								disabled={changedFields.length === 0}
++								onClick={() => setViewChangesVisible(true)}
++							>
+ 								<Text
+ 									entry={{
+-										"cothinker.prompt.statusDraft": {},
++										"cothinker.prompt.viewChanges": {},
+ 									}}
+ 								/>
+-							</span>
+-							<span className="textBold">
+-								Based on v{activeVersion.version}
+-							</span>
+-							<span className="dirty-state">
+-								{isDirty ? "Unsaved changes" : "Draft saved"}
+-							</span>
++							</GenericButtonV2>
++							<GenericButtonV2
++								type="default"
++								className="el-btn-default"
++								onClick={handleSaveDraft}
++							>
++								<Text
++									entry={{ "cothinker.prompt.saveDraft": {} }}
++								/>
++							</GenericButtonV2>
++							<GenericButtonV2
++								type="primary"
++								className="el-btn-primary"
++								onClick={() => setPublishDialogVisible(true)}
++							>
++								<Text
++									entry={{
++										"cothinker.prompt.reviewPublish": {},
++									}}
++								/>
++							</GenericButtonV2>
+ 						</div>
+-						<button
+-							type="button"
+-							className="discard-link"
+-							onClick={handleDiscardDraft}
+-						>
+-							Discard draft
+-						</button>
+-					</div>
+-					<label htmlFor="change-note">
+-						<Text
+-							entry={{
+-								"cothinker.prompt.fieldChangeNote": {},
+-							}}
+-						/>
+-					</label>
+-					<input
+-						id="change-note"
+-						type="text"
+-						className="change-note-input"
+-						placeholder="Describe the purpose of this change"
+-						value={draftChangeNote}
+-						onChange={(e) => setDraftChangeNote(e.target.value)}
+-						maxLength={500}
+-					/>
+-					<div className="draft-actions">
+-						<GenericButtonV2
+-							type="default"
+-							className="el-btn-default"
+-							disabled={changedFields.length === 0}
+-							onClick={() => setViewChangesVisible(true)}
+-						>
+-							<Text
+-								entry={{ "cothinker.prompt.viewChanges": {} }}
+-							/>
+-						</GenericButtonV2>
+-						<GenericButtonV2
+-							type="default"
+-							className="el-btn-default"
+-							onClick={handleSaveDraft}
+-						>
+-							<Text
+-								entry={{ "cothinker.prompt.saveDraft": {} }}
+-							/>
+-						</GenericButtonV2>
+-						<GenericButtonV2
+-							type="primary"
+-							className="el-btn-primary"
+-							onClick={() => setPublishDialogVisible(true)}
+-						>
+-							<Text
+-								entry={{ "cothinker.prompt.reviewPublish": {} }}
+-							/>
+-						</GenericButtonV2>
+-					</div>
+-				</section>
++					</section>
++				)
+ 			)}
+ 
+ 			<div className="workspace-tabs">
+@@ -1032,7 +1047,12 @@ export const PromptManagementTab: FC = () => {
+ 				onUpdateShared={handleUpdateShared}
+ 				onUpdateRoleField={handleUpdateRoleField}
+ 			/>
++			{renderDialogs()}
++		</div>
++	);
+ 
++	const renderDialogs = () => (
++		<>
+ 			{viewChangesVisible && (
+ 				<GenericModalV2
+ 					isOpen={viewChangesVisible}
+@@ -1264,8 +1284,10 @@ export const PromptManagementTab: FC = () => {
+ 					</div>
+ 				</GenericModalV2>
+ 			)}
+-		</div>
++		</>
+ 	);
++
++	return <>{renderPageContent()}</>;
+ };
+ 
+ export default PromptManagementTab;
