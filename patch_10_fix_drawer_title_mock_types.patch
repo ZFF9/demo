@@ -1,0 +1,230 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+index 3aa35f8..f1a199f 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+@@ -6,6 +6,7 @@ import type {
+ 	GenericSideDrawer as GenericSideDrawerComponent,
+ 	Text as TextComponent,
+ } from "@angen_frontend/components";
++import type { TranslationEntry } from "@angen_frontend/types";
+ import { KnowledgeDocumentDetail } from "./index";
+ import { IKnowledgeDocument } from "../index";
+ 
+@@ -76,9 +77,32 @@ jest.mock("@angen_frontend/components", () => ({
+ 		children?: ReactNode;
+ 	}) => {
+ 		if (!visible) return null;
++		const isTranslationEntry = (
++			value: ComponentProps<typeof GenericSideDrawerComponent>["title"]
++		): value is TranslationEntry =>
++			Boolean(value) &&
++			typeof value === "object" &&
++			!Array.isArray(value) &&
++			!jest
++				.requireActual<typeof import("react")>("react")
++				.isValidElement(value);
++		let drawerTitle: ReactNode;
++		if (isTranslationEntry(title)) {
++			const key = Object.keys(title)[0];
++			if (key) {
++				const en = require("../../../../../../../types/src/translations/en.json");
++				const value = key.split(".").reduce<unknown>((acc, part) => {
++					if (!acc || typeof acc !== "object") return undefined;
++					return (acc as Record<string, unknown>)[part];
++				}, en);
++				drawerTitle = typeof value === "string" ? value : key;
++			} else drawerTitle = null;
++		} else {
++			drawerTitle = title;
++		}
+ 		return (
+ 			<div data-testid="generic-side-drawer">
+-				<span>{title}</span>
++				<span>{drawerTitle}</span>
+ 				<button type="button" aria-label="Close" onClick={onClose}>
+ 					Close
+ 				</button>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+index ee04d94..da6c728 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+@@ -1,8 +1,24 @@
+ import { render, screen, fireEvent } from "@testing-library/react";
+ import "@testing-library/jest-dom";
+ import type React from "react";
++import type { ComponentProps } from "react";
++import type {
++	GenericSideDrawer as GenericSideDrawerComponent,
++	Text as TextComponent,
++} from "@angen_frontend/components";
++import type { TranslationEntry } from "@angen_frontend/types";
+ import { KnowledgeDocTab } from "./index";
+ 
++type MockTextProps = Omit<
++	ComponentProps<typeof TextComponent>,
++	"entry" | "children"
++> & {
++	entry?: ComponentProps<typeof TextComponent>["entry"] & {
++		defaultMessage?: string;
++	};
++	children?: React.ReactNode;
++};
++
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	DocFileSvgIcon: () => <span data-testid="doc-file-icon" />,
+@@ -57,13 +73,7 @@ jest.mock("@angen_frontend/components", () => ({
+ 		warning: jest.fn(),
+ 		info: jest.fn(),
+ 	},
+-	Text: ({
+-		entry,
+-		children,
+-	}: {
+-		entry?: { defaultMessage?: string } & Record<string, unknown>;
+-		children?: React.ReactNode;
+-	}) => {
++	Text: ({ entry, children }: MockTextProps) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+ 		if (key) {
+@@ -148,18 +158,38 @@ jest.mock("@angen_frontend/components", () => ({
+ 		footer,
+ 		children,
+ 		onClose,
+-	}: {
+-		visible?: boolean;
+-		open?: boolean;
+-		title?: React.ReactNode;
+-		footer?: React.ReactNode;
+-		children?: React.ReactNode;
+-		onClose?: () => void;
+-	}) => {
++	}: ComponentProps<typeof GenericSideDrawerComponent>) => {
+ 		if (!visible && !open) return null;
++		const isTranslationEntry = (
++			value: ComponentProps<typeof GenericSideDrawerComponent>["title"]
++		): value is TranslationEntry =>
++			Boolean(value) &&
++			typeof value === "object" &&
++			!Array.isArray(value) &&
++			!jest
++				.requireActual<typeof import("react")>("react")
++				.isValidElement(value);
++		let drawerTitle: React.ReactNode;
++		if (isTranslationEntry(title)) {
++			const key = Object.keys(title)[0];
++			if (key) {
++				const en =
++					require("../../../../../../types/src/translations/en.json") as Record<
++						string,
++						unknown
++					>;
++				const value = key.split(".").reduce<unknown>((acc, part) => {
++					if (!acc || typeof acc !== "object") return undefined;
++					return (acc as Record<string, unknown>)[part];
++				}, en);
++				drawerTitle = typeof value === "string" ? value : key;
++			} else drawerTitle = null;
++		} else {
++			drawerTitle = title;
++		}
+ 		return (
+ 			<div data-testid="generic-side-drawer">
+-				<span>{title}</span>
++				<span>{drawerTitle}</span>
+ 				<button type="button" aria-label="Close" onClick={onClose}>
+ 					Close
+ 				</button>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+index 9c61ae2..a70fdc6 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+@@ -6,6 +6,7 @@ import type {
+ 	GenericSideDrawer as GenericSideDrawerComponent,
+ 	Text as TextComponent,
+ } from "@angen_frontend/components";
++import type { TranslationEntry } from "@angen_frontend/types";
+ import { LogDetailDrawer } from "./index";
+ import { IAuditGenerationDetail } from "../index";
+ 
+@@ -89,9 +90,32 @@ jest.mock("@angen_frontend/components", () => ({
+ 		children?: ReactNode;
+ 	}) => {
+ 		if (!visible) return null;
++		const isTranslationEntry = (
++			value: ComponentProps<typeof GenericSideDrawerComponent>["title"]
++		): value is TranslationEntry =>
++			Boolean(value) &&
++			typeof value === "object" &&
++			!Array.isArray(value) &&
++			!jest
++				.requireActual<typeof import("react")>("react")
++				.isValidElement(value);
++		let drawerTitle: ReactNode;
++		if (isTranslationEntry(title)) {
++			const key = Object.keys(title)[0];
++			if (key) {
++				const en = require("../../../../../../../types/src/translations/en.json");
++				const value = key.split(".").reduce<unknown>((acc, part) => {
++					if (!acc || typeof acc !== "object") return undefined;
++					return (acc as Record<string, unknown>)[part];
++				}, en);
++				drawerTitle = typeof value === "string" ? value : key;
++			} else drawerTitle = null;
++		} else {
++			drawerTitle = title;
++		}
+ 		return (
+ 			<div data-testid="generic-side-drawer">
+-				<div>{title}</div>
++				<div>{drawerTitle}</div>
+ 				<button type="button" aria-label="Close" onClick={onClose}>
+ 					Close
+ 				</button>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+index 53e3a5d..3207084 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+@@ -7,6 +7,7 @@ import type {
+ 	GenericStatusTag as GenericStatusTagComponent,
+ 	Text as TextComponent,
+ } from "@angen_frontend/components";
++import type { TranslationEntry } from "@angen_frontend/types";
+ import { LogAuditTab } from "./index";
+ import { InsightService } from "@angen_frontend/services";
+ import { IAuditGenerationDetail } from "./index";
+@@ -168,9 +169,32 @@ jest.mock("@angen_frontend/components", () => ({
+ 		children?: ReactNode;
+ 	}) => {
+ 		if (!visible) return null;
++		const isTranslationEntry = (
++			value: ComponentProps<typeof GenericSideDrawerComponent>["title"]
++		): value is TranslationEntry =>
++			Boolean(value) &&
++			typeof value === "object" &&
++			!Array.isArray(value) &&
++			!jest
++				.requireActual<typeof import("react")>("react")
++				.isValidElement(value);
++		let drawerTitle: ReactNode;
++		if (isTranslationEntry(title)) {
++			const key = Object.keys(title)[0];
++			if (key) {
++				const en = require("../../../../../../types/src/translations/en.json");
++				const value = key.split(".").reduce<unknown>((acc, part) => {
++					if (!acc || typeof acc !== "object") return undefined;
++					return (acc as Record<string, unknown>)[part];
++				}, en);
++				drawerTitle = typeof value === "string" ? value : key;
++			} else drawerTitle = null;
++		} else {
++			drawerTitle = title;
++		}
+ 		return (
+ 			<div data-testid="generic-side-drawer">
+-				<div>{title}</div>
++				<div>{drawerTitle}</div>
+ 				<button type="button" aria-label="Close" onClick={onClose}>
+ 					Close
+ 				</button>
