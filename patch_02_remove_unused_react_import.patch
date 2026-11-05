@@ -1,0 +1,11 @@
+diff --git a/packages/components/src/index.ts b/packages/components/src/index.ts
+index d5dfec2..f09923d 100644
+--- a/packages/components/src/index.ts
++++ b/packages/components/src/index.ts
+@@ -1,6 +1,5 @@
+ /* istanbul ignore file */
+ 
+-import React from "react";
+ import "antd/dist/reset.css";
+ import { Select, message } from "antd";
+ import ChartTypeSvgIcon from "./Icons/ChartTypeSvgIcon";
