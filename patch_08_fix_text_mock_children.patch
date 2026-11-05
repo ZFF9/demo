@@ -1,0 +1,176 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+index 265d66a..b3bffdb 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+@@ -1,6 +1,6 @@
+ import { render, screen } from "@testing-library/react";
+ import "@testing-library/jest-dom";
+-import type { ComponentProps } from "react";
++import type { ComponentProps, ReactNode } from "react";
+ import type {
+ 	GenericButtonV2 as GenericButtonV2Component,
+ 	GenericSideDrawer as GenericSideDrawerComponent,
+@@ -13,6 +13,7 @@ type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
++	children?: ReactNode;
+ };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+index a4e03d8..b4bbf3f 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+@@ -14,6 +14,7 @@ type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
++	children?: ReactNode;
+ };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+index bc777f4..cbda7ae 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+@@ -13,6 +13,7 @@ type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
++	children?: ReactNode;
+ };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx
+index 619ef05..9b51de5 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/KeyTakeawayCard/index.spec.tsx
+@@ -1,6 +1,6 @@
+ import { render, screen } from "@testing-library/react";
+ import "@testing-library/jest-dom";
+-import type { ComponentProps } from "react";
++import type { ComponentProps, ReactNode } from "react";
+ import type { Text as TextComponent } from "@angen_frontend/components";
+ import { KeyTakeawayCard } from "./index";
+ 
+@@ -8,6 +8,7 @@ type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
++	children?: ReactNode;
+ };
+ 
+ jest.mock("@angen_frontend/components", () => ({
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+index 5caf7f6..6590126 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+@@ -1,6 +1,6 @@
+ import { render, screen, fireEvent, act } from "@testing-library/react";
+ import "@testing-library/jest-dom";
+-import type { ComponentProps } from "react";
++import type { ComponentProps, ReactNode } from "react";
+ import type {
+ 	GenericButtonV2 as GenericButtonV2Component,
+ 	GenericSideDrawer as GenericSideDrawerComponent,
+@@ -13,6 +13,7 @@ type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
++	children?: ReactNode;
+ };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+index db1adf0..5cb128a 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+@@ -15,6 +15,7 @@ type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
++	children?: ReactNode;
+ };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx
+index 5ea05ea..bdde503 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/OverviewTab/KpiCards/index.spec.tsx
+@@ -1,6 +1,6 @@
+ import { render, screen } from "@testing-library/react";
+ import "@testing-library/jest-dom";
+-import type { ComponentProps } from "react";
++import type { ComponentProps, ReactNode } from "react";
+ import type { Text as TextComponent } from "@angen_frontend/components";
+ import { KpiCards } from "./index";
+ 
+@@ -8,6 +8,7 @@ type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
++	children?: ReactNode;
+ };
+ 
+ jest.mock("@angen_frontend/services", () => ({
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
+index 8d37754..e87c1a5 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
+@@ -12,6 +12,7 @@ type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
++	children?: ReactNode;
+ };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+index 0d19cc5..48ad3fd 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+@@ -13,6 +13,7 @@ type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
++	children?: ReactNode;
+ };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
+index 45a37bd..ad9ed14 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
+@@ -13,6 +13,7 @@ type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
++	children?: ReactNode;
+ };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+index d943b92..18409fb 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+@@ -12,6 +12,7 @@ type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
++	children?: ReactNode;
+ };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+index 73d361b..cf22b00 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+@@ -13,6 +13,7 @@ type MockTextProps = Omit<ComponentProps<typeof TextComponent>, "entry"> & {
+ 	entry?: ComponentProps<typeof TextComponent>["entry"] & {
+ 		defaultMessage?: string;
+ 	};
++	children?: ReactNode;
+ };
+ type MockButtonProps = {
+ 	children?: ComponentProps<typeof GenericButtonV2Component>["children"];
