@@ -1,0 +1,591 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+index a1872b0..1ee3aa7 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+@@ -1,4 +1,4 @@
+-import { render, screen, fireEvent } from "@testing-library/react";
++import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+ import "@testing-library/jest-dom";
+ import type { ComponentProps, ReactNode } from "react";
+ import type {
+@@ -9,6 +9,13 @@ import type {
+ import { MetricDefinitionsPanel } from "./index";
+ import { IMetricDefinition } from "../index";
+ 
++const METRIC_SEARCH_DEBOUNCE_MS = 300;
++
++afterEach(() => {
++	cleanup();
++	jest.useRealTimers();
++});
++
+ type MockTextProps = Omit<
+ 	ComponentProps<typeof TextComponent>,
+ 	"entry" | "children"
+@@ -29,6 +36,7 @@ type MockButtonProps = {
+ };
+ type MockRow = Record<string, unknown>;
+ type MockColumn = {
++	title?: ReactNode;
+ 	key?: string;
+ 	dataIndex?: string;
+ 	render?: (value: unknown, row: MockRow, index: number) => ReactNode;
+@@ -101,6 +109,13 @@ jest.mock("@angen_frontend/components", () => ({
+ 	},
+ 	GenericDataTable: ({ columns, dataSource }: MockDataTableProps) => (
+ 		<table>
++			<thead>
++				<tr>
++					{columns?.map((column, index) => (
++						<th key={column.key || index}>{column.title}</th>
++					))}
++				</tr>
++			</thead>
+ 			<tbody>
+ 				{dataSource?.map((row, rIdx: number) => (
+ 					<tr key={String(row.id || rIdx)}>
+@@ -145,10 +160,12 @@ describe("MetricDefinitionsPanel Component", () => {
+ 		},
+ 	];
+ 
+-	it("renders panel title, search bar, add button and metric items", () => {
++	it("renders demo-style search, count, columns and metric items", () => {
+ 		render(
+ 			<MetricDefinitionsPanel
+ 				metrics={mockMetrics}
++				total={2}
++				unfilteredTotal={14}
+ 				onSaveMetric={jest.fn()}
+ 				onDeleteMetric={jest.fn()}
+ 			/>
+@@ -156,14 +173,24 @@ describe("MetricDefinitionsPanel Component", () => {
+ 
+ 		expect(screen.getByText(/Metric definitions/i)).toBeInTheDocument();
+ 		expect(screen.getByText("Add metric")).toBeInTheDocument();
++		expect(screen.getByText("14 metrics")).toBeInTheDocument();
++		expect(
++			screen.queryByRole("button", { name: "Search" })
++		).not.toBeInTheDocument();
++		expect(screen.queryByText(/Last Updated/i)).not.toBeInTheDocument();
+ 		expect(screen.getByText("Market Share")).toBeInTheDocument();
+ 		expect(screen.getByText("TRx Volume")).toBeInTheDocument();
+ 	});
+ 
+-	it("filters metric list based on search query and displays empty match notice", () => {
++	it("debounces server search and immediately searches on Enter", () => {
++		jest.useFakeTimers();
++		const onSearch = jest.fn();
+ 		render(
+ 			<MetricDefinitionsPanel
+ 				metrics={mockMetrics}
++				total={2}
++				unfilteredTotal={14}
++				onSearch={onSearch}
+ 				onSaveMetric={jest.fn()}
+ 				onDeleteMetric={jest.fn()}
+ 			/>
+@@ -174,13 +201,51 @@ describe("MetricDefinitionsPanel Component", () => {
+ 		);
+ 		fireEvent.change(searchInput, { target: { value: "TRx" } });
+ 
+-		expect(screen.getByText("TRx Volume")).toBeInTheDocument();
+-		expect(screen.queryByText("Market Share")).not.toBeInTheDocument();
++		expect(onSearch).not.toHaveBeenCalled();
++		jest.advanceTimersByTime(METRIC_SEARCH_DEBOUNCE_MS / 2);
++		expect(onSearch).not.toHaveBeenCalled();
++		jest.advanceTimersByTime(METRIC_SEARCH_DEBOUNCE_MS / 2);
++		expect(onSearch).toHaveBeenCalledWith("TRx");
+ 
+-		fireEvent.change(searchInput, { target: { value: "NonExistentTerm" } });
+-		expect(
+-			screen.getByText("No metrics match your search.")
+-		).toBeInTheDocument();
++		fireEvent.change(searchInput, {
++			target: { value: "Market" },
++		});
++		fireEvent.keyDown(searchInput, { key: "Enter", code: "Enter" });
++		expect(onSearch).toHaveBeenLastCalledWith("Market");
++		expect(onSearch).toHaveBeenCalledTimes(2);
++	});
++
++	it("clears server search immediately and shows filtered count in demo format", () => {
++		const onSearch = jest.fn();
++		const { rerender } = render(
++			<MetricDefinitionsPanel
++				metrics={mockMetrics.slice(0, 1)}
++				total={1}
++				unfilteredTotal={14}
++				onSearch={onSearch}
++				onSaveMetric={jest.fn()}
++				onDeleteMetric={jest.fn()}
++			/>
++		);
++
++		const searchInput = screen.getByPlaceholderText(
++			"Search metric definitions"
++		);
++		fireEvent.change(searchInput, { target: { value: "TRx" } });
++		rerender(
++			<MetricDefinitionsPanel
++				metrics={mockMetrics.slice(0, 1)}
++				total={3}
++				unfilteredTotal={14}
++				onSearch={onSearch}
++				onSaveMetric={jest.fn()}
++				onDeleteMetric={jest.fn()}
++			/>
++		);
++		expect(screen.getByText("3 of 14 metrics")).toBeInTheDocument();
++
++		fireEvent.change(searchInput, { target: { value: "" } });
++		expect(onSearch).toHaveBeenLastCalledWith("");
+ 	});
+ 
+ 	it("handles add metric flow with validation errors and success save", () => {
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+index 2af08fe..f3cc63f 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+@@ -1,4 +1,5 @@
+-import { FC, useState, useMemo } from "react";
++import { FC, useState, useMemo, useEffect, useRef } from "react";
++import type { KeyboardEvent } from "react";
+ import {
+ 	CoThinkerPlusSvgIcon,
+ 	SearchSvgIcon,
+@@ -9,9 +10,12 @@ import {
+ } from "@angen_frontend/components";
+ import { IMetricDefinition } from "../index";
+ 
++const METRIC_SEARCH_DEBOUNCE_MS = 300;
++
+ interface IProps {
+ 	metrics: IMetricDefinition[];
+ 	total?: number;
++	unfilteredTotal?: number;
+ 	currentPage?: number;
+ 	pageSize?: number;
+ 	onPageChange?: (page: number, pageSize: number) => void;
+@@ -26,6 +30,7 @@ interface IProps {
+ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 	metrics,
+ 	total = metrics.length,
++	unfilteredTotal = total,
+ 	currentPage = 1,
+ 	pageSize = 20,
+ 	onPageChange = () => {},
+@@ -34,6 +39,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 	onDeleteMetric = () => {},
+ }) => {
+ 	const [searchQuery, setSearchQuery] = useState<string>("");
++	const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+ 	const [editorVisible, setEditorVisible] = useState<boolean>(false);
+ 	const [editingMetric, setEditingMetric] =
+ 		useState<IMetricDefinition | null>(null);
+@@ -50,6 +56,40 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 	const filteredMetrics = metrics;
+ 	const hasSearch = Boolean(searchQuery.trim());
+ 
++	useEffect(
++		() => () => {
++			if (searchTimeout.current) {
++				clearTimeout(searchTimeout.current);
++			}
++		},
++		[]
++	);
++
++	const handleSearchChange = (keyword: string) => {
++		setSearchQuery(keyword);
++		if (searchTimeout.current) {
++			clearTimeout(searchTimeout.current);
++		}
++		if (!keyword.trim()) {
++			searchTimeout.current = null;
++			onSearch("");
++			return;
++		}
++		searchTimeout.current = setTimeout(() => {
++			searchTimeout.current = null;
++			onSearch(keyword);
++		}, METRIC_SEARCH_DEBOUNCE_MS);
++	};
++
++	const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
++		if (event.key !== "Enter") return;
++		if (searchTimeout.current) {
++			clearTimeout(searchTimeout.current);
++			searchTimeout.current = null;
++		}
++		onSearch(searchQuery);
++	};
++
+ 	const renderMetricsContent = () => {
+ 		if (total === 0 && hasSearch) {
+ 			return (
+@@ -178,23 +218,6 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 					<p className="cell-text">{m.whyItMatters}</p>
+ 				),
+ 			},
+-			{
+-				title: <Text entry={{ "cothinker.prompt.lastUpdated": {} }} />,
+-				key: "updated",
+-				width: 170,
+-				render: (_: unknown, m: IMetricDefinition) => (
+-					<div className="meta-cell">
+-						<span>{m.updatedBy}</span>
+-						<span className="date-sub">
+-							{new Date(m.updatedAt).toLocaleDateString("en-GB", {
+-								day: "2-digit",
+-								month: "short",
+-								year: "numeric",
+-							})}
+-						</span>
+-					</div>
+-				),
+-			},
+ 			{
+ 				title: <Text entry={{ "cothinker.common.actions": {} }} />,
+ 				key: "actions",
+@@ -260,20 +283,14 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 						className="search-input"
+ 						placeholder="Search metric definitions"
+ 						value={searchQuery}
+-						onChange={(e) => {
+-							setSearchQuery(e.target.value);
+-						}}
++						onChange={(e) => handleSearchChange(e.target.value)}
++						onKeyDown={handleSearchKeyDown}
+ 					/>
+ 				</div>
+-				<button
+-					type="button"
+-					className="action-link"
+-					onClick={() => onSearch(searchQuery)}
+-				>
+-					Search
+-				</button>
+ 				<span className="metric-count-text">
+-					Showing {filteredMetrics.length} of {total} metrics
++					{hasSearch
++						? `${total} of ${unfilteredTotal} metrics`
++						: `${unfilteredTotal} metrics`}
+ 				</span>
+ 			</div>
+ 
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+index a0f668b..e6283ca 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+@@ -1,4 +1,4 @@
+-import { render, screen, fireEvent } from "@testing-library/react";
++import { act, render, screen, fireEvent } from "@testing-library/react";
+ import "@testing-library/jest-dom";
+ import type { ComponentProps, ReactNode } from "react";
+ import type {
+@@ -10,6 +10,8 @@ import type {
+ import { InsightService } from "@angen_frontend/services";
+ import { PromptManagementTab } from "./index";
+ 
++const METRIC_SEARCH_DEBOUNCE_MS = 300;
++
+ type MockTextProps = Omit<
+ 	ComponentProps<typeof TextComponent>,
+ 	"entry" | "children"
+@@ -479,8 +481,34 @@ describe("PromptManagementTab Component", () => {
+ 			target: { value: "Critical for budget allocation" },
+ 		});
+ 
++		(InsightService.getGlossaryTerms as jest.Mock).mockResolvedValueOnce({
++			total: 2,
++			page: 1,
++			pageSize: 20,
++			items: [
++				{
++					id: "metric-1",
++					name: "NBRx Market Share",
++					whatItMeasures: "New prescriptions",
++					whyItMatters: "Commercial momentum",
++					revision: 1,
++					updatedAt: "2026-11-01T00:00:00Z",
++					updatedBy: "Admin",
++				},
++				{
++					id: "metric-2",
++					name: "Custom ROI Metric",
++					whatItMeasures: "Measures campaign ROI percentage",
++					whyItMatters: "Critical for budget allocation",
++					revision: 1,
++					updatedAt: "2026-11-06T00:00:00Z",
++					updatedBy: "Admin",
++				},
++			],
++		});
+ 		fireEvent.click(screen.getByRole("button", { name: "Save" }));
+ 		await screen.findByText('Metric definition "Custom ROI Metric" added.');
++		expect(screen.getByText("2 metrics")).toBeInTheDocument();
+ 
+ 		const editButtons = screen.getAllByRole("button", { name: "Edit" });
+ 		fireEvent.click(editButtons[0]);
+@@ -492,9 +520,35 @@ describe("PromptManagementTab Component", () => {
+ 		fireEvent.change(editMeasuresInput, {
+ 			target: { value: "Updated measures content" },
+ 		});
++		(InsightService.getGlossaryTerms as jest.Mock).mockResolvedValueOnce({
++			total: 2,
++			page: 1,
++			pageSize: 20,
++			items: [
++				{
++					id: "metric-1",
++					name: "NBRx Market Share",
++					whatItMeasures: "New prescriptions",
++					whyItMatters: "Commercial momentum",
++					revision: 1,
++					updatedAt: "2026-11-01T00:00:00Z",
++					updatedBy: "Admin",
++				},
++				{
++					id: "metric-2",
++					name: "Custom ROI Metric",
++					whatItMeasures: "Updated measures content",
++					whyItMatters: "Critical for budget allocation",
++					revision: 1,
++					updatedAt: "2026-11-06T00:00:00Z",
++					updatedBy: "Admin",
++				},
++			],
++		});
+ 		fireEvent.click(screen.getByRole("button", { name: "Save" }));
+ 
+ 		await screen.findByText(/updated\./i);
++		expect(screen.getByText("2 metrics")).toBeInTheDocument();
+ 
+ 		const deleteButtons = screen.getAllByRole("button", { name: "Delete" });
+ 		fireEvent.click(deleteButtons[0]);
+@@ -505,8 +559,102 @@ describe("PromptManagementTab Component", () => {
+ 		const confirmDeleteBtn = screen.getByRole("button", {
+ 			name: /Delete metric/i,
+ 		});
++		(InsightService.getGlossaryTerms as jest.Mock).mockResolvedValueOnce({
++			total: 1,
++			page: 1,
++			pageSize: 20,
++			items: [],
++		});
+ 		fireEvent.click(confirmDeleteBtn);
+ 
+ 		await screen.findByText(/deleted\./i);
++		expect(await screen.findByText("1 metrics")).toBeInTheDocument();
++	});
++
++	it("keeps the latest metric search result when earlier requests finish later", async () => {
++		type MetricPage = {
++			total: number;
++			page: number;
++			pageSize: number;
++			items: Array<{
++				id: string;
++				name: string;
++				whatItMeasures: string;
++				whyItMatters: string;
++				revision: number;
++				updatedAt: string;
++				updatedBy: string;
++			}>;
++		};
++		let resolveOldSearch: (page: MetricPage) => void = () => {};
++		let resolveLatestSearch: (page: MetricPage) => void = () => {};
++		const metric = (
++			id: string,
++			name: string
++		): MetricPage["items"][number] => ({
++			id,
++			name,
++			whatItMeasures: "Measures demand",
++			whyItMatters: "Tracks performance",
++			revision: 1,
++			updatedAt: "2026-11-01T00:00:00Z",
++			updatedBy: "Admin",
++		});
++		(InsightService.getGlossaryTerms as jest.Mock).mockImplementation(
++			(params: { keyword?: string }) => {
++				if (params.keyword === "old") {
++					return new Promise<MetricPage>((resolve) => {
++						resolveOldSearch = resolve;
++					});
++				}
++				if (params.keyword === "latest") {
++					return new Promise<MetricPage>((resolve) => {
++						resolveLatestSearch = resolve;
++					});
++				}
++				return Promise.resolve({
++					total: 1,
++					page: 1,
++					pageSize: 20,
++					items: [metric("metric-1", "NBRx Market Share")],
++				});
++			}
++		);
++
++		render(<PromptManagementTab />);
++		fireEvent.click(screen.getByText("Metric Definitions"));
++		const searchInput = await screen.findByPlaceholderText(
++			"Search metric definitions"
++		);
++
++		fireEvent.change(searchInput, { target: { value: "old" } });
++		await act(async () => {
++			jest.advanceTimersByTime(METRIC_SEARCH_DEBOUNCE_MS);
++		});
++		fireEvent.change(searchInput, { target: { value: "latest" } });
++		await act(async () => {
++			jest.advanceTimersByTime(METRIC_SEARCH_DEBOUNCE_MS);
++		});
++
++		await act(async () => {
++			resolveLatestSearch({
++				total: 1,
++				page: 1,
++				pageSize: 20,
++				items: [metric("metric-latest", "Latest result")],
++			});
++		});
++		await act(async () => {
++			resolveOldSearch({
++				total: 1,
++				page: 1,
++				pageSize: 20,
++				items: [metric("metric-old", "Stale result")],
++			});
++		});
++
++		expect(screen.getByText("Latest result")).toBeInTheDocument();
++		expect(screen.queryByText("Stale result")).not.toBeInTheDocument();
++		expect(screen.getByText("1 of 1 metrics")).toBeInTheDocument();
+ 	});
+ });
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+index 4fca3e4..34c42fe 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+@@ -1,4 +1,4 @@
+-import { FC, useState, useMemo, useEffect, useCallback } from "react";
++import { FC, useState, useMemo, useEffect, useCallback, useRef } from "react";
+ import type { ReactNode } from "react";
+ import {
+ 	EditPenSvgIcon,
+@@ -607,6 +607,8 @@ export const PromptManagementTab: FC = () => {
+ 	const [versionPageSize, setVersionPageSize] = useState<number>(20);
+ 	const [metrics, setMetrics] = useState<IMetricDefinition[]>([]);
+ 	const [metricTotal, setMetricTotal] = useState<number>(0);
++	const [metricUnfilteredTotal, setMetricUnfilteredTotal] =
++		useState<number>(0);
+ 	const [metricPage, setMetricPage] = useState<number>(1);
+ 	const [metricPageSize, setMetricPageSize] = useState<number>(20);
+ 	const [metricKeyword, setMetricKeyword] = useState<string>("");
+@@ -617,6 +619,7 @@ export const PromptManagementTab: FC = () => {
+ 	const [metricsLoading, setMetricsLoading] = useState<boolean>(false);
+ 	const [versionsError, setVersionsError] = useState<string>("");
+ 	const [metricsError, setMetricsError] = useState<string>("");
++	const metricRequestId = useRef<number>(0);
+ 
+ 	const activeVersion = useMemo(() => {
+ 		return (
+@@ -713,6 +716,7 @@ export const PromptManagementTab: FC = () => {
+ 			page = metricPage,
+ 			pageSize = metricPageSize
+ 		) => {
++			const requestId = ++metricRequestId.current;
+ 			setMetricsLoading(true);
+ 			setMetricsError("");
+ 			try {
+@@ -721,15 +725,23 @@ export const PromptManagementTab: FC = () => {
+ 					page,
+ 					pageSize,
+ 				});
++				if (requestId !== metricRequestId.current) return;
+ 				setMetrics(result.items);
+ 				setMetricTotal(result.total);
++				if (!keyword.trim()) {
++					setMetricUnfilteredTotal(result.total);
++				}
+ 				setMetricPage(result.page);
+ 				setMetricPageSize(result.pageSize);
+ 			} catch (error) {
+-				setMetricsError((error as Error).message);
++				if (requestId === metricRequestId.current) {
++					setMetricsError((error as Error).message);
++				}
+ 				throw error;
+ 			} finally {
+-				setMetricsLoading(false);
++				if (requestId === metricRequestId.current) {
++					setMetricsLoading(false);
++				}
+ 			}
+ 		},
+ 		[metricKeyword, metricPage, metricPageSize]
+@@ -769,6 +781,7 @@ export const PromptManagementTab: FC = () => {
+ 		setLoading(false);
+ 		setVersionsLoading(true);
+ 		setMetricsLoading(true);
++		const metricRequestIdAtStart = metricRequestId.current;
+ 		await Promise.all([
+ 			InsightService.getPromptVersions({
+ 				page: 1,
+@@ -795,13 +808,25 @@ export const PromptManagementTab: FC = () => {
+ 				pageSize: 20,
+ 			})
+ 				.then((result) => {
++					setMetricUnfilteredTotal(result.total);
++					if (metricRequestId.current !== metricRequestIdAtStart) {
++						return;
++					}
+ 					setMetrics(result.items);
+ 					setMetricTotal(result.total);
+ 					setMetricPage(result.page);
+ 					setMetricPageSize(result.pageSize);
+ 				})
+-				.catch((error) => setMetricsError((error as Error).message))
+-				.finally(() => setMetricsLoading(false)),
++				.catch((error) => {
++					if (metricRequestId.current === metricRequestIdAtStart) {
++						setMetricsError((error as Error).message);
++					}
++				})
++				.finally(() => {
++					if (metricRequestId.current === metricRequestIdAtStart) {
++						setMetricsLoading(false);
++					}
++				}),
+ 		]);
+ 	}, []);
+ 
+@@ -1107,6 +1132,9 @@ export const PromptManagementTab: FC = () => {
+ 						revision: existing.revision,
+ 					}),
+ 			});
++			if (!isEdit) {
++				setMetricUnfilteredTotal((current) => current + 1);
++			}
+ 			await loadMetrics(metricKeyword, 1, metricPageSize);
+ 			showToast(
+ 				`Metric definition "${metric.name}" ${
+@@ -1131,6 +1159,7 @@ export const PromptManagementTab: FC = () => {
+ 				id,
+ 				revision: target.revision,
+ 			});
++			setMetricUnfilteredTotal((current) => Math.max(0, current - 1));
+ 			await loadMetrics(metricKeyword, metricPage, metricPageSize);
+ 			showToast(`Metric definition "${target.name}" deleted.`, "success");
+ 		} catch (error) {
+@@ -1487,6 +1516,7 @@ export const PromptManagementTab: FC = () => {
+ 									<MetricDefinitionsPanel
+ 										metrics={metrics}
+ 										total={metricTotal}
++										unfilteredTotal={metricUnfilteredTotal}
+ 										currentPage={metricPage}
+ 										pageSize={metricPageSize}
+ 										onPageChange={handleMetricPageChange}
