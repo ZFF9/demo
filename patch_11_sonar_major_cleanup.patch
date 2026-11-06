@@ -1,0 +1,540 @@
+diff --git a/packages/components/src/FeedbackTrendChart/index.spec.tsx b/packages/components/src/FeedbackTrendChart/index.spec.tsx
+index 8c78bc4..422f80f 100644
+--- a/packages/components/src/FeedbackTrendChart/index.spec.tsx
++++ b/packages/components/src/FeedbackTrendChart/index.spec.tsx
+@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
+ import "@testing-library/jest-dom";
+ import { FeedbackTrendChart } from "./index";
+ 
++const POSITIVE_FEEDBACK_RATE = 70;
+ const mockSetOption = jest.fn();
+ 
+ jest.mock("echarts", () => ({
+@@ -43,7 +44,7 @@ describe("FeedbackTrendChart", () => {
+ 						thumbsDownCount: 3,
+ 						ratedCount: 10,
+ 						noFeedbackCount: 0,
+-						positiveFeedbackRate: 70,
++						positiveFeedbackRate: POSITIVE_FEEDBACK_RATE,
+ 						feedbackCoverage: 100,
+ 					},
+ 				]}
+@@ -56,7 +57,7 @@ describe("FeedbackTrendChart", () => {
+ 		const option = mockSetOption.mock.calls[0][0];
+ 		expect(option.xAxis.data).toEqual(["2026-10-22"]);
+ 		expect(option.xAxis.axisLabel.formatter("2026-10-22")).toBe("10/22");
+-		expect(option.series[0].data).toEqual([70]);
++		expect(option.series[0].data).toEqual([POSITIVE_FEEDBACK_RATE]);
+ 		expect(option.tooltip.formatter({ dataIndex: 0 })).toContain(
+ 			"2026-10-22"
+ 		);
+diff --git a/packages/components/src/FeedbackTrendChart/index.tsx b/packages/components/src/FeedbackTrendChart/index.tsx
+index 56a033a..747515a 100644
+--- a/packages/components/src/FeedbackTrendChart/index.tsx
++++ b/packages/components/src/FeedbackTrendChart/index.tsx
+@@ -20,6 +20,7 @@ export interface IFeedbackTrendChartProps {
+ }
+ 
+ const GRID = { left: 52, right: 24, top: 36, bottom: 40 };
++const DATE_PART_COUNT = 3;
+ const AXIS_LABEL_COLOR = "#64748b";
+ const AXIS_LINE = { lineStyle: { color: "#e2e8f0" } };
+ const Y_AXIS = {
+@@ -46,7 +47,7 @@ const getDataIndex = (params: unknown): number => {
+ 
+ const formatDate = (value: string): string => {
+ 	const parts = value.split("-");
+-	return parts.length === 3
++	return parts.length === DATE_PART_COUNT
+ 		? `${Number(parts[1])}/${Number(parts[2])}`
+ 		: value;
+ };
+diff --git a/packages/components/src/RoleFeedbackChart/index.spec.tsx b/packages/components/src/RoleFeedbackChart/index.spec.tsx
+index 9574fb0..5dabd76 100644
+--- a/packages/components/src/RoleFeedbackChart/index.spec.tsx
++++ b/packages/components/src/RoleFeedbackChart/index.spec.tsx
+@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
+ import "@testing-library/jest-dom";
+ import { RoleFeedbackChart } from "./index";
+ 
++const POSITIVE_FEEDBACK_RATE = 70;
+ const mockSetOption = jest.fn();
+ 
+ jest.mock("echarts", () => ({
+@@ -43,7 +44,7 @@ describe("RoleFeedbackChart", () => {
+ 						thumbsDownCount: 3,
+ 						ratedCount: 10,
+ 						noFeedbackCount: 0,
+-						positiveFeedbackRate: 70,
++						positiveFeedbackRate: POSITIVE_FEEDBACK_RATE,
+ 						feedbackCoverage: 100,
+ 					},
+ 				]}
+@@ -56,7 +57,7 @@ describe("RoleFeedbackChart", () => {
+ 		expect(screen.getByText("Optimal (80%-100%)")).toBeInTheDocument();
+ 		const option = mockSetOption.mock.calls[0][0];
+ 		expect(option.xAxis.data).toEqual(["BU Marketing"]);
+-		expect(option.series[0].data[0].value).toBe(70);
++		expect(option.series[0].data[0].value).toBe(POSITIVE_FEEDBACK_RATE);
+ 		expect(option.tooltip.formatter({ dataIndex: 0 })).toContain(
+ 			"BU Marketing"
+ 		);
+diff --git a/packages/components/src/RoleFeedbackChart/index.tsx b/packages/components/src/RoleFeedbackChart/index.tsx
+index 29b0e4a..e7f7cca 100644
+--- a/packages/components/src/RoleFeedbackChart/index.tsx
++++ b/packages/components/src/RoleFeedbackChart/index.tsx
+@@ -24,6 +24,7 @@ const RATE_BANDS = [
+ 	{ label: "Review", range: "60%-79%", color: "#D97706" },
+ 	{ label: "Attention", range: "<60%", color: "#DC2626" },
+ ];
++const OPTIMAL_FEEDBACK_RATE_THRESHOLD = 80;
+ const GRID = { left: 52, right: 24, top: 36, bottom: 40 };
+ const AXIS_LABEL_COLOR = "#64748b";
+ const AXIS_LINE = { lineStyle: { color: "#e2e8f0" } };
+@@ -51,7 +52,7 @@ const getDataIndex = (params: unknown): number => {
+ 
+ const getBarColor = (rate: number | null): string => {
+ 	if (rate === null) return "#94A3B8";
+-	if (rate >= 80) return "#059669";
++	if (rate >= OPTIMAL_FEEDBACK_RATE_THRESHOLD) return "#059669";
+ 	if (rate >= 60) return "#D97706";
+ 	return "#DC2626";
+ };
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+index 6085f4d..ea10403 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+@@ -107,21 +107,24 @@ jest.mock("@angen_frontend/components", () => ({
+ 				) : (
+ 					dataSource.map((row, rIdx: number) => (
+ 						<tr key={String(row.id || rIdx)}>
+-							{columns?.map((c: MockColumn, cIdx: number) => (
+-								<td key={c.key || cIdx}>
+-									{c.render
+-										? c.render(
+-												c.dataIndex
+-													? row[c.dataIndex]
+-													: row,
+-												row,
+-												rIdx
+-										  )
+-										: c.dataIndex
+-										? String(row[c.dataIndex] ?? "")
+-										: null}
+-								</td>
+-							))}
++							{columns?.map((c: MockColumn, cIdx: number) => {
++								let cellContent: ReactNode;
++								if (c.render) {
++									const value = c.dataIndex
++										? row[c.dataIndex]
++										: row;
++									cellContent = c.render(value, row, rIdx);
++								} else if (c.dataIndex) {
++									cellContent = String(
++										row[c.dataIndex] ?? ""
++									);
++								} else {
++									cellContent = null;
++								}
++								return (
++									<td key={c.key || cIdx}>{cellContent}</td>
++								);
++							})}
+ 						</tr>
+ 					))
+ 				)}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+index da6c728..8f534b8 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+@@ -276,27 +276,30 @@ jest.mock("@angen_frontend/components", () => ({
+ 						) : (
+ 							visibleRows.map((row, rIdx) => (
+ 								<tr key={String(row.id || rIdx)}>
+-									{columns?.map((column, cIdx) => (
+-										<td key={column.key || cIdx}>
+-											{column.render
+-												? column.render(
+-														column.dataIndex
+-															? row[
+-																	column
+-																		.dataIndex
+-															  ]
+-															: row,
+-														row,
+-														rIdx
+-												  )
+-												: column.dataIndex
+-												? String(
+-														row[column.dataIndex] ??
+-															""
+-												  )
+-												: null}
+-										</td>
+-									))}
++									{columns?.map((column, cIdx) => {
++										let cellContent: React.ReactNode;
++										if (column.render) {
++											const value = column.dataIndex
++												? row[column.dataIndex]
++												: row;
++											cellContent = column.render(
++												value,
++												row,
++												rIdx
++											);
++										} else if (column.dataIndex) {
++											cellContent = String(
++												row[column.dataIndex] ?? ""
++											);
++										} else {
++											cellContent = null;
++										}
++										return (
++											<td key={column.key || cIdx}>
++												{cellContent}
++											</td>
++										);
++									})}
+ 								</tr>
+ 							))
+ 						)}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+index a70fdc6..f5f8f2d 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/LogDetailDrawer/index.spec.tsx
+@@ -10,6 +10,8 @@ import type { TranslationEntry } from "@angen_frontend/types";
+ import { LogDetailDrawer } from "./index";
+ import { IAuditGenerationDetail } from "../index";
+ 
++const COPY_TOAST_DURATION_MS = 2500;
++
+ type MockTextProps = Omit<
+ 	ComponentProps<typeof TextComponent>,
+ 	"entry" | "children"
+@@ -260,7 +262,7 @@ describe("LogDetailDrawer Component", () => {
+ 		).toBeInTheDocument();
+ 
+ 		act(() => {
+-			jest.advanceTimersByTime(2500);
++			jest.advanceTimersByTime(COPY_TOAST_DURATION_MS);
+ 		});
+ 		expect(
+ 			screen.queryByText("Request payload copied to clipboard")
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+index 3207084..0eea02e 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/LogAuditTab/index.spec.tsx
+@@ -209,73 +209,69 @@ jest.mock("@angen_frontend/components", () => ({
+ 		pagination,
+ 		emptyText,
+ 		onRow,
+-	}: MockDataTableProps) => (
+-		<div data-testid="mock-generic-data-table">
+-			<table>
+-				<thead>
+-					<tr>
+-						{columns?.map((c: MockColumn, idx: number) => (
+-							<th key={c.key || idx}>{c.title}</th>
+-						))}
++	}: MockDataTableProps) => {
++		let tableBody: ReactNode;
++		if (loading) {
++			tableBody = (
++				<tr>
++					<td colSpan={columns?.length || 1}>Loading...</td>
++				</tr>
++			);
++		} else if (!dataSource || dataSource.length === 0) {
++			tableBody = (
++				<tr>
++					<td colSpan={columns?.length || 1}>
++						{emptyText || "No data"}
++					</td>
++				</tr>
++			);
++		} else {
++			tableBody = dataSource.map((row, rIdx: number) => {
++				const rowProps = onRow ? onRow(row) : {};
++				return (
++					<tr key={String(row.resultId || rIdx)} {...rowProps}>
++						{columns?.map((c: MockColumn, cIdx: number) => {
++							let cellContent: ReactNode;
++							if (c.render) {
++								const value = c.dataIndex
++									? row[c.dataIndex]
++									: row;
++								cellContent = c.render(value, row, rIdx);
++							} else if (c.dataIndex) {
++								cellContent = String(row[c.dataIndex] ?? "");
++							} else {
++								cellContent = null;
++							}
++							return <td key={c.key || cIdx}>{cellContent}</td>;
++						})}
+ 					</tr>
+-				</thead>
+-				<tbody>
+-					{loading ? (
+-						<tr>
+-							<td colSpan={columns?.length || 1}>Loading...</td>
+-						</tr>
+-					) : !dataSource || dataSource.length === 0 ? (
++				);
++			});
++		}
++		return (
++			<div data-testid="mock-generic-data-table">
++				<table>
++					<thead>
+ 						<tr>
+-							<td colSpan={columns?.length || 1}>
+-								{emptyText || "No data"}
+-							</td>
++							{columns?.map((c: MockColumn, idx: number) => (
++								<th key={c.key || idx}>{c.title}</th>
++							))}
+ 						</tr>
+-					) : (
+-						dataSource.map((row, rIdx: number) => {
+-							const rowProps = onRow ? onRow(row) : {};
+-							return (
+-								<tr
+-									key={String(row.resultId || rIdx)}
+-									{...rowProps}
+-								>
+-									{columns?.map(
+-										(c: MockColumn, cIdx: number) => (
+-											<td key={c.key || cIdx}>
+-												{c.render
+-													? c.render(
+-															c.dataIndex
+-																? row[
+-																		c
+-																			.dataIndex
+-																  ]
+-																: row,
+-															row,
+-															rIdx
+-													  )
+-													: c.dataIndex
+-													? String(
+-															row[c.dataIndex] ??
+-																""
+-													  )
+-													: null}
+-											</td>
+-										)
+-									)}
+-								</tr>
+-							);
+-						})
+-					)}
+-				</tbody>
+-			</table>
+-			{pagination && (
+-				<div className="pagination">
+-					{pagination.showTotal && (
+-						<span>{pagination.showTotal(pagination.total)}</span>
+-					)}
+-				</div>
+-			)}
+-		</div>
+-	),
++					</thead>
++					<tbody>{tableBody}</tbody>
++				</table>
++				{pagination && (
++					<div className="pagination">
++						{pagination.showTotal && (
++							<span>
++								{pagination.showTotal(pagination.total)}
++							</span>
++						)}
++					</div>
++				)}
++			</div>
++		);
++	},
+ }));
+ 
+ jest.mock("@angen_frontend/services", () => ({
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
+index 2a94025..22fe338 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
+@@ -80,21 +80,20 @@ jest.mock("@angen_frontend/components", () => ({
+ 			<tbody>
+ 				{dataSource?.map((row, rIdx: number) => (
+ 					<tr key={String(row.scope || rIdx)}>
+-						{columns?.map((c: MockColumn, cIdx: number) => (
+-							<td key={c.key || cIdx}>
+-								{c.render
+-									? c.render(
+-											c.dataIndex
+-												? row[c.dataIndex]
+-												: row,
+-											row,
+-											rIdx
+-									  )
+-									: c.dataIndex
+-									? String(row[c.dataIndex] ?? "")
+-									: null}
+-							</td>
+-						))}
++						{columns?.map((c: MockColumn, cIdx: number) => {
++							let cellContent: ReactNode;
++							if (c.render) {
++								const value = c.dataIndex
++									? row[c.dataIndex]
++									: row;
++								cellContent = c.render(value, row, rIdx);
++							} else if (c.dataIndex) {
++								cellContent = String(row[c.dataIndex] ?? "");
++							} else {
++								cellContent = null;
++							}
++							return <td key={c.key || cIdx}>{cellContent}</td>;
++						})}
+ 					</tr>
+ 				))}
+ 			</tbody>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+index 37a71e3..a1872b0 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+@@ -104,21 +104,20 @@ jest.mock("@angen_frontend/components", () => ({
+ 			<tbody>
+ 				{dataSource?.map((row, rIdx: number) => (
+ 					<tr key={String(row.id || rIdx)}>
+-						{columns?.map((c: MockColumn, cIdx: number) => (
+-							<td key={c.key || cIdx}>
+-								{c.render
+-									? c.render(
+-											c.dataIndex
+-												? row[c.dataIndex]
+-												: row,
+-											row,
+-											rIdx
+-									  )
+-									: c.dataIndex
+-									? String(row[c.dataIndex] ?? "")
+-									: null}
+-							</td>
+-						))}
++						{columns?.map((c: MockColumn, cIdx: number) => {
++							let cellContent: ReactNode;
++							if (c.render) {
++								const value = c.dataIndex
++									? row[c.dataIndex]
++									: row;
++								cellContent = c.render(value, row, rIdx);
++							} else if (c.dataIndex) {
++								cellContent = String(row[c.dataIndex] ?? "");
++							} else {
++								cellContent = null;
++							}
++							return <td key={c.key || cIdx}>{cellContent}</td>;
++						})}
+ 					</tr>
+ 				))}
+ 			</tbody>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+index 0e81ee4..bda8bd9 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+@@ -8,6 +8,8 @@ import type {
+ import { VersionHistoryPanel } from "./index";
+ import { IPromptVersion } from "../index";
+ 
++const EXPORT_COMPLETION_DELAY_MS = 700;
++
+ type MockTextProps = Omit<
+ 	ComponentProps<typeof TextComponent>,
+ 	"entry" | "children"
+@@ -81,21 +83,20 @@ jest.mock("@angen_frontend/components", () => ({
+ 			<tbody>
+ 				{dataSource?.map((row, rIdx: number) => (
+ 					<tr key={String(row.id || rIdx)}>
+-						{columns?.map((c: MockColumn, cIdx: number) => (
+-							<td key={c.key || cIdx}>
+-								{c.render
+-									? c.render(
+-											c.dataIndex
+-												? row[c.dataIndex]
+-												: row,
+-											row,
+-											rIdx
+-									  )
+-									: c.dataIndex
+-									? String(row[c.dataIndex] ?? "")
+-									: null}
+-							</td>
+-						))}
++						{columns?.map((c: MockColumn, cIdx: number) => {
++							let cellContent: ReactNode;
++							if (c.render) {
++								const value = c.dataIndex
++									? row[c.dataIndex]
++									: row;
++								cellContent = c.render(value, row, rIdx);
++							} else if (c.dataIndex) {
++								cellContent = String(row[c.dataIndex] ?? "");
++							} else {
++								cellContent = null;
++							}
++							return <td key={c.key || cIdx}>{cellContent}</td>;
++						})}
+ 					</tr>
+ 				))}
+ 			</tbody>
+@@ -220,7 +221,7 @@ describe("VersionHistoryPanel Component", () => {
+ 		expect(screen.getByText(/Exporting/i)).toBeInTheDocument();
+ 
+ 		act(() => {
+-			jest.advanceTimersByTime(700);
++			jest.advanceTimersByTime(EXPORT_COMPLETION_DELAY_MS);
+ 		});
+ 
+ 		expect(screen.getByText("Export to Excel")).toBeInTheDocument();
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+index e4adf62..b3f6103 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+@@ -161,21 +161,20 @@ jest.mock("@angen_frontend/components", () => ({
+ 			<tbody>
+ 				{dataSource?.map((row, rIdx: number) => (
+ 					<tr key={String(row.id || row.scope || rIdx)}>
+-						{columns?.map((c: MockColumn, cIdx: number) => (
+-							<td key={c.key || cIdx}>
+-								{c.render
+-									? c.render(
+-											c.dataIndex
+-												? row[c.dataIndex]
+-												: row,
+-											row,
+-											rIdx
+-									  )
+-									: c.dataIndex
+-									? String(row[c.dataIndex] ?? "")
+-									: null}
+-							</td>
+-						))}
++						{columns?.map((c: MockColumn, cIdx: number) => {
++							let cellContent: ReactNode;
++							if (c.render) {
++								const value = c.dataIndex
++									? row[c.dataIndex]
++									: row;
++								cellContent = c.render(value, row, rIdx);
++							} else if (c.dataIndex) {
++								cellContent = String(row[c.dataIndex] ?? "");
++							} else {
++								cellContent = null;
++							}
++							return <td key={c.key || cIdx}>{cellContent}</td>;
++						})}
+ 					</tr>
+ 				))}
+ 			</tbody>
