@@ -1,0 +1,3523 @@
+diff --git a/packages/services/src/HttpService/service.spec.ts b/packages/services/src/HttpService/service.spec.ts
+index 888d4c3..017133f 100644
+--- a/packages/services/src/HttpService/service.spec.ts
++++ b/packages/services/src/HttpService/service.spec.ts
+@@ -268,6 +268,30 @@ describe("service", () => {
+ 			});
+ 		});
+ 
++		it("sends FormData without serializing it or setting a multipart content type", async () => {
++			const formData = new FormData();
++			formData.append("brandName", "Brand A");
++			const headers = new Headers({
++				"Content-Type": "application/json",
++			});
++			global.fetch = jest.fn().mockResolvedValue({
++				json: jest.fn().mockResolvedValue({ code: 0 }),
++				headers,
++				status: 200,
++			});
++
++			await httpService.postFormData("/upload", formData);
++
++			expect(fetch).toHaveBeenCalledWith(
++				"https://example.com/upload",
++				expect.objectContaining({
++					method: "POST",
++					body: formData,
++					headers: { "X-Correlation-ID": "SAMPLEULID" },
++				})
++			);
++		});
++
+ 		it("should not send any default headers, additional headers and credentials in the PUT request when calling put", async () => {
+ 			const url: Path = "/test";
+ 			const payload = { id: "XAY12" };
+diff --git a/packages/services/src/HttpService/service.ts b/packages/services/src/HttpService/service.ts
+index 8acf138..c770013 100644
+--- a/packages/services/src/HttpService/service.ts
++++ b/packages/services/src/HttpService/service.ts
+@@ -29,7 +29,8 @@ const request = async <Result, Payload = undefined>(
+ 	analyticsInput?: IAnalyticsWithoutApiLoadTime,
+ 	onCaptureAnalytics?: (
+ 		input?: IAnalyticsWithoutApiLoadTime
+-	) => (overrideInput?: Partial<IAnalyticsWithoutApiLoadTime>) => void
++	) => (overrideInput?: Partial<IAnalyticsWithoutApiLoadTime>) => void,
++	isFormData: boolean = false
+ ) => {
+ 	if (isAuthenticationFailed) {
+ 		throw new Error("Unauthorized");
+@@ -46,7 +47,9 @@ const request = async <Result, Payload = undefined>(
+ 		method,
+ 		...(withCredentials && { credentials: "include" }),
+ 		headers: updatedHeaders,
+-		...(payload && { body: JSON.stringify(payload) }),
++		...(payload && {
++			body: isFormData ? (payload as BodyInit) : JSON.stringify(payload),
++		}),
+ 		...(signal && { signal }),
+ 	};
+ 
+@@ -140,6 +143,30 @@ export const createHttpService = ({
+ 				onCaptureAnalytics
+ 			);
+ 		},
++		postFormData: async <T>(
++			path: Path,
++			payload: FormData,
++			additionalHeaders: Record<string, string> = {},
++			signal?: AbortSignal
++		) => {
++			const formHeaders = Object.fromEntries(
++				Object.entries({ ...headers, ...additionalHeaders }).filter(
++					([name]) => name.toLowerCase() !== "content-type"
++				)
++			);
++			return request<T, FormData>(
++				basePath,
++				path,
++				"POST",
++				formHeaders,
++				withCredentials,
++				payload,
++				signal,
++				undefined,
++				undefined,
++				true
++			);
++		},
+ 		put: async <T, J extends {} = {}>(
+ 			path: Path,
+ 			payload: J,
+diff --git a/packages/services/src/InsightService/index.spec.ts b/packages/services/src/InsightService/index.spec.ts
+index 9d69f21..efd984e 100644
+--- a/packages/services/src/InsightService/index.spec.ts
++++ b/packages/services/src/InsightService/index.spec.ts
+@@ -14,6 +14,7 @@ jest.mock("../HttpService", () => ({
+ 	__esModule: true,
+ 	BackendHttpClient: {
+ 		post: jest.fn(),
++		postFormData: jest.fn(),
+ 		get: jest.fn(),
+ 	},
+ }));
+@@ -733,4 +734,159 @@ describe("InsightService", () => {
+ 			});
+ 		});
+ 	});
++
++	describe("portal administration APIs", () => {
++		it("loads prompt versions with server pagination", async () => {
++			const page = { total: 1, page: 2, pageSize: 20, items: [] };
++			(BackendHttpClient.get as jest.Mock).mockResolvedValue({
++				status: HttpStatus.OK,
++				data: { code: 0, message: "success", data: page },
++			});
++
++			await expect(
++				InsightService.getPromptVersions({ page: 2, pageSize: 20 })
++			).resolves.toEqual(page);
++			expect(BackendHttpClient.get).toHaveBeenCalledWith(
++				"/commentary/v1/portal/prompts/versions?page=2&pageSize=20"
++			);
++		});
++
++		it("loads glossary terms with an encoded name keyword and server paging", async () => {
++			const page = { total: 0, page: 1, pageSize: 20, items: [] };
++			(BackendHttpClient.get as jest.Mock).mockResolvedValue({
++				status: HttpStatus.OK,
++				data: { code: 0, message: "success", data: page },
++			});
++
++			await expect(
++				InsightService.getGlossaryTerms({
++					keyword: "NBRx & share",
++					page: 1,
++					pageSize: 20,
++				})
++			).resolves.toEqual(page);
++			expect(BackendHttpClient.get).toHaveBeenCalledWith(
++				"/commentary/v1/portal/glossary-terms?keyword=NBRx+%26+share&page=1&pageSize=20"
++			);
++		});
++
++		it("treats a missing draft as an empty draft state", async () => {
++			(BackendHttpClient.get as jest.Mock).mockResolvedValue({
++				status: HttpStatus.NOT_FOUND,
++				data: { code: "NOT_FOUND", message: "Prompt draft not found" },
++			});
++
++			await expect(
++				InsightService.getPromptVersion({ status: "draft" })
++			).resolves.toBeNull();
++		});
++
++		it("sends knowledge uploads as multipart form data", async () => {
++			(BackendHttpClient.postFormData as jest.Mock).mockResolvedValue({
++				status: HttpStatus.OK,
++				data: {
++					code: 0,
++					message: "success",
++					data: { success: true, message: null, id: "doc-1" },
++				},
++			});
++			const file = new File(["content"], "document.pdf", {
++				type: "application/pdf",
++			});
++
++			await expect(
++				InsightService.uploadKnowledgeDocument({
++					file,
++					brandName: "Brand A",
++					effectiveDate: "2026-11-06",
++					description: "Description",
++				})
++			).resolves.toMatchObject({ success: true, id: "doc-1" });
++
++			const [, formData] = (BackendHttpClient.postFormData as jest.Mock)
++				.mock.calls[0];
++			expect(formData.get("file")).toBe(file);
++			expect(formData.get("brandName")).toBe("Brand A");
++			expect(formData.get("effectiveDate")).toBe("2026-11-06");
++			expect(formData.get("expiryDate")).toBeNull();
++		});
++
++		it("sends optimistic-lock fields for glossary updates", async () => {
++			(BackendHttpClient.post as jest.Mock).mockResolvedValue({
++				status: HttpStatus.OK,
++				data: {
++					code: 0,
++					message: "success",
++					data: {
++						id: "term-1",
++						name: "Metric",
++						whatItMeasures: "Measure",
++						whyItMatters: "Impact",
++						revision: 3,
++						updatedAt: "2026-11-06T00:00:00Z",
++						updatedBy: "Admin",
++					},
++				},
++			});
++
++			await InsightService.saveGlossaryTerm({
++				id: "term-1",
++				revision: 2,
++				name: "Metric",
++				whatItMeasures: "Measure",
++				whyItMatters: "Impact",
++			});
++
++			expect(BackendHttpClient.post).toHaveBeenCalledWith(
++				"/commentary/v1/portal/glossary-terms/save",
++				{
++					id: "term-1",
++					revision: 2,
++					name: "Metric",
++					whatItMeasures: "Measure",
++					whyItMatters: "Impact",
++				}
++			);
++		});
++
++		it("posts knowledge refresh IDs and rejects an empty refresh request", async () => {
++			(BackendHttpClient.post as jest.Mock).mockResolvedValue({
++				status: HttpStatus.OK,
++				data: {
++					code: 0,
++					message: "success",
++					data: { results: [] },
++				},
++			});
++
++			await expect(
++				InsightService.refreshKnowledgeDocuments(["doc-1"])
++			).resolves.toEqual([]);
++			expect(BackendHttpClient.post).toHaveBeenCalledWith(
++				"/commentary/v1/portal/knowledge-documents/refresh",
++				{ ids: ["doc-1"] }
++			);
++			await expect(
++				InsightService.refreshKnowledgeDocuments([])
++			).rejects.toThrow("At least one knowledge document ID is required");
++		});
++
++		it("surfaces portal API error messages", async () => {
++			(BackendHttpClient.post as jest.Mock).mockResolvedValue({
++				status: HttpStatus.CONFLICT,
++				data: {
++					code: "REVISION_CONFLICT",
++					message: "This record has changed.",
++				},
++			});
++
++			await expect(
++				InsightService.setKnowledgeDocumentStatus({
++					id: "doc-1",
++					revision: 2,
++					adminStatus: "active",
++				})
++			).rejects.toThrow("This record has changed.");
++		});
++	});
+ });
+diff --git a/packages/services/src/InsightService/index.ts b/packages/services/src/InsightService/index.ts
+index 8c88f1e..034187d 100644
+--- a/packages/services/src/InsightService/index.ts
++++ b/packages/services/src/InsightService/index.ts
+@@ -185,6 +185,108 @@ export interface IPortalAuditExportResult {
+ 	filename: string;
+ }
+ 
++export type PromptRoleCode =
++	| "BU Marketing"
++	| "Sales Manager"
++	| "Sales Representative";
++
++export interface IPromptRole {
++	roleCode: PromptRoleCode;
++	audienceLens: string;
++	priorities: string;
++	commentaryFocus: string;
++}
++
++export interface IPromptVersionDetail {
++	versionId: string;
++	versionNo: number | null;
++	versionLabel: string;
++	status: "draft" | "active" | "inactive";
++	sharedInstructions: string;
++	roles: IPromptRole[];
++	changeNote: string | null;
++	revision: number;
++	publishedBy: string | null;
++	publishedAt: string | null;
++	updatedAt: string;
++	updatedBy: string | null;
++}
++
++export interface IPromptVersionListItem {
++	versionId: string;
++	versionNo: number;
++	versionLabel: string;
++	status: "active" | "inactive";
++	changeNote: string | null;
++	publishedBy: string | null;
++	publishedAt: string | null;
++	revision?: number;
++}
++
++export interface IPromptVersionPage {
++	total: number;
++	page: number;
++	pageSize: number;
++	items: IPromptVersionListItem[];
++}
++
++export interface IGlossaryTerm {
++	id: string;
++	name: string;
++	whatItMeasures: string;
++	whyItMatters: string;
++	revision: number;
++	updatedAt: string;
++	updatedBy: string | null;
++}
++
++export interface IGlossaryTermPage {
++	total: number;
++	page: number;
++	pageSize: number;
++	items: IGlossaryTerm[];
++}
++
++export interface IKnowledgeDocumentApiItem {
++	id: string;
++	filename: string;
++	fileType: string;
++	fileSizeBytes: number;
++	processingStatus: "processing" | "ready" | "failed";
++	processingError: string | null;
++	brandName: string;
++	adminStatus: "active" | "inactive";
++	availabilityHint: string | null;
++	effectiveDate: string;
++	expiryDate: string | null;
++	uploadedBy: string | null;
++	uploadedAt: string;
++	revision: number;
++	description?: string;
++	updatedBy?: string | null;
++	updatedAt?: string;
++}
++
++export interface IKnowledgeDocumentPage {
++	total: number;
++	page: number;
++	pageSize: number;
++	items: IKnowledgeDocumentApiItem[];
++}
++
++export interface IKnowledgeDocumentRefreshResult {
++	id: string;
++	outcome: "updated" | "skipped" | "failed";
++	message?: string | null;
++	processingStatus?: "processing" | "ready" | "failed" | null;
++}
++
++export interface IPortalWriteResult {
++	success: boolean;
++	message: string | null;
++	id?: string | null;
++}
++
+ const RESOLVE_INSIGHT_CONFIG_PATH = "/insights/config/resolve";
+ const GENERATE_INSIGHT_PATH = "/commentary/v1/insights/generate";
+ const GET_INSIGHT_RESULT_PATH = "/commentary/v1/insights/result";
+@@ -207,6 +309,26 @@ const PORTAL_PROMPTS_DRAFT_SAVE_PATH =
+ const PORTAL_PROMPTS_VERSIONS_PATH = "/commentary/v1/portal/prompts/versions";
+ const PORTAL_PROMPTS_VERSIONS_EXPORT_PATH =
+ 	"/commentary/v1/portal/prompts/versions/export";
++const PORTAL_PROMPTS_PATH = "/commentary/v1/portal/prompts";
++const PORTAL_PROMPTS_DRAFT_PUBLISH_PATH =
++	"/commentary/v1/portal/prompts/draft/publish";
++const PORTAL_PROMPTS_GLOSSARY_PATH = "/commentary/v1/portal/glossary-terms";
++const PORTAL_PROMPTS_GLOSSARY_SAVE_PATH =
++	"/commentary/v1/portal/glossary-terms/save";
++const PORTAL_PROMPTS_GLOSSARY_DELETE_PATH =
++	"/commentary/v1/portal/glossary-terms/delete";
++const PORTAL_KNOWLEDGE_DOCUMENTS_PATH =
++	"/commentary/v1/portal/knowledge-documents";
++const PORTAL_KNOWLEDGE_UPLOAD_PATH =
++	"/commentary/v1/portal/knowledge-documents/upload";
++const PORTAL_KNOWLEDGE_UPDATE_PATH =
++	"/commentary/v1/portal/knowledge-documents/update";
++const PORTAL_KNOWLEDGE_STATUS_PATH =
++	"/commentary/v1/portal/knowledge-documents/set-admin-status";
++const PORTAL_KNOWLEDGE_RETRY_PATH =
++	"/commentary/v1/portal/knowledge-documents/retry";
++const PORTAL_KNOWLEDGE_REFRESH_PATH =
++	"/commentary/v1/portal/knowledge-documents/refresh";
+ 
+ const appendAuditFilters = (
+ 	query: URLSearchParams,
+@@ -232,6 +354,283 @@ const getExportFilename = (disposition: string | null): string => {
+ 	return `cothinker_logs_${utc}.xlsx`;
+ };
+ 
++const getPromptExportFilename = (disposition: string | null): string => {
++	const match = disposition?.match(/filename=["']?([^"';]+)["']?/i);
++	if (match?.[1]) return match[1];
++	const date = new Date();
++	const pad = (value: number) => String(value).padStart(2, "0");
++	const utc = `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(
++		date.getUTCDate()
++	)}_${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(
++		date.getUTCSeconds()
++	)}`;
++	return `cothinker_prompt_templates_${utc}.xlsx`;
++};
++
++async function portalGet<T>(path: `/${string}`): Promise<T> {
++	const { data, status } = await BackendHttpClient.get<{
++		code: number;
++		message: string;
++		data: T;
++	}>(path);
++	if (status === HttpStatus.OK && data?.code === 0 && "data" in data) {
++		return data.data;
++	}
++	if (data?.message) throw new Error(data.message);
++	throw new Error("Portal API error");
++}
++
++async function portalPost<T, P extends Record<string, unknown>>(
++	path: `/${string}`,
++	payload: P
++): Promise<T> {
++	const { data, status } = await BackendHttpClient.post<{
++		code: number;
++		message: string;
++		data: T;
++	}>(path, payload);
++	if (status === HttpStatus.OK && data?.code === 0 && "data" in data) {
++		return data.data;
++	}
++	if (data?.message) throw new Error(data.message);
++	throw new Error("Portal API error");
++}
++
++function pagePath(
++	basePath: string,
++	params: Record<string, string | number | undefined>
++): `/${string}` {
++	const query = new URLSearchParams();
++	Object.entries(params).forEach(([key, value]) => {
++		if (value !== undefined && value !== "") query.set(key, String(value));
++	});
++	const qs = query.toString();
++	return `${basePath}${qs ? `?${qs}` : ""}`;
++}
++
++async function getPromptVersion(
++	params: { status?: "draft"; versionId?: string; versionNo?: number } = {}
++): Promise<IPromptVersionDetail | null> {
++	const path = pagePath(PORTAL_PROMPTS_PATH, params);
++	const { data, status } = await BackendHttpClient.get<{
++		code: number;
++		message: string;
++		data: IPromptVersionDetail;
++	}>(path);
++	if (params.status === "draft" && status === HttpStatus.NOT_FOUND) {
++		return null;
++	}
++	if (status === HttpStatus.OK && data?.code === 0 && "data" in data) {
++		return data.data;
++	}
++	if (data?.message) throw new Error(data.message);
++	throw new Error("Get prompt version API error");
++}
++
++async function savePromptDraft(payload: {
++	sharedInstructions: string;
++	roles: IPromptRole[];
++	changeNote?: string;
++	versionId?: string;
++	revision?: number;
++}): Promise<IPromptVersionDetail> {
++	return portalPost<IPromptVersionDetail, typeof payload>(
++		PORTAL_PROMPTS_DRAFT_SAVE_PATH,
++		payload
++	);
++}
++
++async function deletePromptDraft(versionId?: string): Promise<void> {
++	await portalPost<IPortalWriteResult, { versionId?: string }>(
++		PORTAL_PROMPTS_DRAFT_DELETE_PATH,
++		{ ...(versionId && { versionId }) }
++	);
++}
++
++async function publishPromptDraft(payload: {
++	versionId: string;
++	revision: number;
++	changeNote: string;
++}): Promise<IPromptVersionDetail> {
++	return portalPost<IPromptVersionDetail, typeof payload>(
++		PORTAL_PROMPTS_DRAFT_PUBLISH_PATH,
++		payload
++	);
++}
++
++async function getPromptVersions(params: {
++	page: number;
++	pageSize: number;
++}): Promise<IPromptVersionPage> {
++	return portalGet<IPromptVersionPage>(
++		pagePath(PORTAL_PROMPTS_VERSIONS_PATH, params)
++	);
++}
++
++async function republishPromptVersion(
++	versionId: string,
++	payload: { revision: number; changeNote: string }
++): Promise<IPromptVersionDetail> {
++	return portalPost<IPromptVersionDetail, typeof payload>(
++		`${PORTAL_PROMPTS_VERSIONS_PATH}/${encodeURIComponent(
++			versionId
++		)}/republish`,
++		payload
++	);
++}
++
++async function getGlossaryTerms(params: {
++	keyword?: string;
++	page: number;
++	pageSize: number;
++}): Promise<IGlossaryTermPage> {
++	return portalGet<IGlossaryTermPage>(
++		pagePath(PORTAL_PROMPTS_GLOSSARY_PATH, params)
++	);
++}
++
++async function saveGlossaryTerm(payload: {
++	id?: string;
++	name: string;
++	whatItMeasures: string;
++	whyItMatters: string;
++	revision?: number;
++}): Promise<IGlossaryTerm> {
++	return portalPost<IGlossaryTerm, typeof payload>(
++		PORTAL_PROMPTS_GLOSSARY_SAVE_PATH,
++		payload
++	);
++}
++
++async function deleteGlossaryTerm(payload: {
++	id: string;
++	revision?: number;
++}): Promise<void> {
++	await portalPost<IPortalWriteResult, typeof payload>(
++		PORTAL_PROMPTS_GLOSSARY_DELETE_PATH,
++		payload
++	);
++}
++
++async function exportPromptVersions(): Promise<IPortalAuditExportResult> {
++	const response = await fetch(`/api${PORTAL_PROMPTS_VERSIONS_EXPORT_PATH}`, {
++		method: "GET",
++		credentials: "include",
++		headers: {
++			Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
++		},
++	});
++	if (!response.ok) {
++		let errorMsg = `HTTP Error ${response.status}`;
++		try {
++			const errJson = await response.json();
++			if (errJson && errJson.message) errorMsg = errJson.message;
++		} catch {}
++		throw new Error(errorMsg);
++	}
++	return {
++		blob: await response.blob(),
++		filename: getPromptExportFilename(
++			response.headers.get("content-disposition")
++		),
++	};
++}
++
++async function getKnowledgeDocuments(params: {
++	keyword?: string;
++	brandName?: string;
++	adminStatus?: "active" | "inactive";
++	page: number;
++	pageSize: number;
++}): Promise<IKnowledgeDocumentPage> {
++	return portalGet<IKnowledgeDocumentPage>(
++		pagePath(PORTAL_KNOWLEDGE_DOCUMENTS_PATH, params)
++	);
++}
++
++async function getKnowledgeDocument(
++	id: string
++): Promise<IKnowledgeDocumentApiItem> {
++	return portalGet<IKnowledgeDocumentApiItem>(
++		`${PORTAL_KNOWLEDGE_DOCUMENTS_PATH}/${encodeURIComponent(id)}`
++	);
++}
++
++async function uploadKnowledgeDocument(payload: {
++	file: File;
++	brandName: string;
++	effectiveDate: string;
++	expiryDate?: string;
++	description: string;
++}): Promise<IPortalWriteResult> {
++	const form = new FormData();
++	form.append("file", payload.file);
++	form.append("brandName", payload.brandName);
++	form.append("effectiveDate", payload.effectiveDate);
++	if (payload.expiryDate) form.append("expiryDate", payload.expiryDate);
++	form.append("description", payload.description);
++	const { data, status } = await BackendHttpClient.postFormData<{
++		code: number;
++		message: string;
++		data: IPortalWriteResult;
++	}>(PORTAL_KNOWLEDGE_UPLOAD_PATH, form);
++	if (status === HttpStatus.OK && data?.code === 0 && "data" in data) {
++		return data.data;
++	}
++	if (data?.message) throw new Error(data.message);
++	throw new Error("Upload knowledge document API error");
++}
++
++async function updateKnowledgeDocument(payload: {
++	id: string;
++	revision: number;
++	brandName: string;
++	effectiveDate: string;
++	expiryDate: string | null;
++	description: string;
++}): Promise<IPortalWriteResult> {
++	return portalPost<IPortalWriteResult, typeof payload>(
++		PORTAL_KNOWLEDGE_UPDATE_PATH,
++		payload
++	);
++}
++
++async function setKnowledgeDocumentStatus(payload: {
++	id: string;
++	revision: number;
++	adminStatus: "active" | "inactive";
++}): Promise<IPortalWriteResult> {
++	return portalPost<IPortalWriteResult, typeof payload>(
++		PORTAL_KNOWLEDGE_STATUS_PATH,
++		payload
++	);
++}
++
++async function retryKnowledgeDocument(payload: {
++	id: string;
++	revision: number;
++}): Promise<IPortalWriteResult> {
++	return portalPost<IPortalWriteResult, typeof payload>(
++		PORTAL_KNOWLEDGE_RETRY_PATH,
++		payload
++	);
++}
++
++async function refreshKnowledgeDocuments(
++	ids: string[]
++): Promise<IKnowledgeDocumentRefreshResult[]> {
++	if (ids.length === 0) {
++		throw new Error("At least one knowledge document ID is required");
++	}
++	const result = await portalPost<
++		{
++			results: IKnowledgeDocumentRefreshResult[];
++		},
++		{ ids: string[] }
++	>(PORTAL_KNOWLEDGE_REFRESH_PATH, { ids });
++	return result.results;
++}
++
+ export class InsightTimeoutError extends Error {
+ 	public readonly isTimeout = true;
+ 	public readonly correlationId?: string;
+@@ -557,6 +956,17 @@ export {
+ 	PORTAL_PROMPTS_DRAFT_SAVE_PATH,
+ 	PORTAL_PROMPTS_VERSIONS_PATH,
+ 	PORTAL_PROMPTS_VERSIONS_EXPORT_PATH,
++	PORTAL_PROMPTS_PATH,
++	PORTAL_PROMPTS_DRAFT_PUBLISH_PATH,
++	PORTAL_PROMPTS_GLOSSARY_PATH,
++	PORTAL_PROMPTS_GLOSSARY_SAVE_PATH,
++	PORTAL_PROMPTS_GLOSSARY_DELETE_PATH,
++	PORTAL_KNOWLEDGE_DOCUMENTS_PATH,
++	PORTAL_KNOWLEDGE_UPLOAD_PATH,
++	PORTAL_KNOWLEDGE_UPDATE_PATH,
++	PORTAL_KNOWLEDGE_STATUS_PATH,
++	PORTAL_KNOWLEDGE_RETRY_PATH,
++	PORTAL_KNOWLEDGE_REFRESH_PATH,
+ };
+ 
+ export const InsightService = {
+@@ -572,4 +982,21 @@ export const InsightService = {
+ 	getAuditGenerations,
+ 	getAuditGenerationDetail,
+ 	exportAuditGenerations,
++	getPromptVersion,
++	savePromptDraft,
++	deletePromptDraft,
++	publishPromptDraft,
++	getPromptVersions,
++	republishPromptVersion,
++	exportPromptVersions,
++	getGlossaryTerms,
++	saveGlossaryTerm,
++	deleteGlossaryTerm,
++	getKnowledgeDocuments,
++	getKnowledgeDocument,
++	uploadKnowledgeDocument,
++	updateKnowledgeDocument,
++	setKnowledgeDocumentStatus,
++	retryKnowledgeDocument,
++	refreshKnowledgeDocuments,
+ };
+diff --git a/packages/services/src/index.ts b/packages/services/src/index.ts
+index 6de882f..8fa9d5f 100644
+--- a/packages/services/src/index.ts
++++ b/packages/services/src/index.ts
+@@ -27,6 +27,17 @@ export type {
+ 	IGenerationRequestPayload,
+ 	IGenerationFeedbackDetail,
+ 	IAuditGenerationDetail,
++	PromptRoleCode,
++	IPromptRole,
++	IPromptVersionDetail,
++	IPromptVersionListItem,
++	IPromptVersionPage,
++	IGlossaryTerm,
++	IGlossaryTermPage,
++	IKnowledgeDocumentApiItem,
++	IKnowledgeDocumentPage,
++	IKnowledgeDocumentRefreshResult,
++	IPortalWriteResult,
+ } from "./InsightService";
+ export {
+ 	InsightService,
+@@ -40,6 +51,17 @@ export {
+ 	PORTAL_PROMPTS_DRAFT_SAVE_PATH,
+ 	PORTAL_PROMPTS_VERSIONS_PATH,
+ 	PORTAL_PROMPTS_VERSIONS_EXPORT_PATH,
++	PORTAL_PROMPTS_PATH,
++	PORTAL_PROMPTS_DRAFT_PUBLISH_PATH,
++	PORTAL_PROMPTS_GLOSSARY_PATH,
++	PORTAL_PROMPTS_GLOSSARY_SAVE_PATH,
++	PORTAL_PROMPTS_GLOSSARY_DELETE_PATH,
++	PORTAL_KNOWLEDGE_DOCUMENTS_PATH,
++	PORTAL_KNOWLEDGE_UPLOAD_PATH,
++	PORTAL_KNOWLEDGE_UPDATE_PATH,
++	PORTAL_KNOWLEDGE_STATUS_PATH,
++	PORTAL_KNOWLEDGE_RETRY_PATH,
++	PORTAL_KNOWLEDGE_REFRESH_PATH,
+ } from "./InsightService";
+ export {
+ 	ConfigService,
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+index f8efa00..9a8b4b6 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+@@ -294,6 +294,9 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 								<GenericButtonV2
+ 									type="default"
+ 									className="el-btn-default retry-btn"
++									disabled={
++										doc.processingStatus === "PROCESSING"
++									}
+ 									onClick={() => onRetry(doc)}
+ 								>
+ 									<Text
+@@ -327,6 +330,10 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 								? "el-btn-warning"
+ 								: "el-btn-primary"
+ 						}
++						disabled={
++							doc.processingStatus !== "READY" &&
++							doc.status !== "ACTIVE"
++						}
+ 						onClick={() => onChangeStatus(doc)}
+ 					>
+ 						{doc.status === "ACTIVE" ? (
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+index e32e765..da4aef2 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+@@ -6,11 +6,12 @@ import {
+ 	Text,
+ 	Select,
+ } from "@angen_frontend/components";
+-import { IKnowledgeDocument, KNOWLEDGE_BRANDS, documentDate } from "../index";
++import { IKnowledgeDocument, documentDate } from "../index";
+ 
+ interface IKnowledgeDocumentEditorProps {
+ 	visible: boolean;
+ 	initialDoc: IKnowledgeDocument | null;
++	brandOptions?: string[];
+ 	onClose: () => void;
+ 	onSave: (metadata: Partial<IKnowledgeDocument>, file?: File | null) => void;
+ }
+@@ -18,6 +19,7 @@ interface IKnowledgeDocumentEditorProps {
+ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 	visible,
+ 	initialDoc,
++	brandOptions,
+ 	onClose,
+ 	onSave,
+ }) => {
+@@ -38,7 +40,7 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 			setError("");
+ 		} else {
+ 			setSelectedFile(null);
+-			setBrand(KNOWLEDGE_BRANDS[0]);
++			setBrand("");
+ 			setEffectiveFrom(documentDate());
+ 			setEffectiveTo("");
+ 			setDescription("");
+@@ -46,6 +48,12 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 		}
+ 	}, [initialDoc, visible]);
+ 
++	useEffect(() => {
++		if (visible && !initialDoc && !brand && brandOptions?.length) {
++			setBrand(brandOptions[0]);
++		}
++	}, [brandOptions, brand, initialDoc, visible]);
++
+ 	if (!visible) return null;
+ 
+ 	const handleFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+@@ -189,7 +197,7 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 							className="form-select ant-select-full"
+ 							value={brand}
+ 							onChange={(val) => setBrand(val)}
+-							options={KNOWLEDGE_BRANDS.map((b) => ({
++							options={(brandOptions || []).map((b) => ({
+ 								value: b,
+ 								label: b,
+ 							}))}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+index ea10403..91ae44b 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+@@ -160,10 +160,10 @@ describe("KnowledgeDocumentTable Component", () => {
+ 		render(
+ 			<KnowledgeDocumentTable
+ 				documents={mockDocs}
++				total={1}
+ 				pageSize={10}
+ 				currentPage={1}
+ 				onPageChange={handlePageChange}
+-				onPageSizeChange={jest.fn()}
+ 				onView={jest.fn()}
+ 				onEdit={jest.fn()}
+ 				onChangeStatus={jest.fn()}
+@@ -187,10 +187,10 @@ describe("KnowledgeDocumentTable Component", () => {
+ 		render(
+ 			<KnowledgeDocumentTable
+ 				documents={[]}
++				total={0}
+ 				pageSize={10}
+ 				currentPage={1}
+ 				onPageChange={jest.fn()}
+-				onPageSizeChange={jest.fn()}
+ 				onView={jest.fn()}
+ 				onEdit={jest.fn()}
+ 				onChangeStatus={jest.fn()}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
+index 2e01c17..65df3cf 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
+@@ -14,10 +14,10 @@ import {
+ 
+ interface IKnowledgeDocumentTableProps {
+ 	documents: IKnowledgeDocument[];
++	total?: number;
+ 	pageSize: number;
+ 	currentPage: number;
+-	onPageChange: (page: number) => void;
+-	onPageSizeChange: (size: number) => void;
++	onPageChange: (page: number, pageSize: number) => void;
+ 	onView: (doc: IKnowledgeDocument) => void;
+ 	onEdit: (doc: IKnowledgeDocument) => void;
+ 	onChangeStatus: (doc: IKnowledgeDocument) => void;
+@@ -27,22 +27,25 @@ const KEYBOARD_ENTER_CODE = 13;
+ 
+ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 	documents,
++	total,
+ 	pageSize,
+ 	currentPage,
+ 	onPageChange,
+-	onPageSizeChange,
+ 	onView,
+ 	onEdit,
+ 	onChangeStatus,
+ }) => {
+ 	const [jumpInput, setJumpInput] = useState<string>("");
+ 
+-	const totalPages = Math.max(1, Math.ceil(documents.length / pageSize));
++	const totalPages = Math.max(
++		1,
++		Math.ceil((total ?? documents.length) / pageSize)
++	);
+ 
+ 	const handleJump = () => {
+ 		const target = parseInt(jumpInput, 10);
+ 		if (!isNaN(target) && target >= 1 && target <= totalPages) {
+-			onPageChange(target);
++			onPageChange(target, pageSize);
+ 			setJumpInput("");
+ 		}
+ 	};
+@@ -152,6 +155,10 @@ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 						<button
+ 							type="button"
+ 							className="action-link"
++							disabled={
++								row.status !== "ACTIVE" &&
++								row.processingStatus !== "READY"
++							}
+ 							onClick={() => onChangeStatus(row)}
+ 						>
+ 							{row.status === "ACTIVE"
+@@ -175,16 +182,15 @@ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 				pagination={{
+ 					current: currentPage,
+ 					pageSize,
+-					total: documents.length,
++					total: total ?? documents.length,
+ 					showSizeChanger: true,
+ 					pageSizeOptions: ["5", "10", "20"],
+ 					showTotal: (total) => `Total ${total}`,
+-					onChange: (page, size) => {
+-						onPageChange(page);
+-						if (size && size !== pageSize) {
+-							onPageSizeChange(size);
+-						}
+-					},
++					onChange: (page, size) =>
++						onPageChange(
++							size && size !== pageSize ? 1 : page,
++							size || pageSize
++						),
+ 				}}
+ 				emptyText="No documents match your filters."
+ 			/>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+index 8f534b8..4af4df9 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+@@ -7,7 +7,14 @@ import type {
+ 	Text as TextComponent,
+ } from "@angen_frontend/components";
+ import type { TranslationEntry } from "@angen_frontend/types";
+-import { KnowledgeDocTab } from "./index";
++import {
++	FilterService,
++	InsightService,
++	IKnowledgeDocumentApiItem,
++} from "@angen_frontend/services";
++import { initialKnowledgeDocuments, KnowledgeDocTab } from "./index";
++
++let mockKnowledgeDocs: IKnowledgeDocumentApiItem[] = [];
+ 
+ type MockTextProps = Omit<
+ 	ComponentProps<typeof TextComponent>,
+@@ -357,10 +364,143 @@ jest.mock("@angen_frontend/components", () => ({
+ 	},
+ }));
+ 
++jest.mock("@angen_frontend/services", () => ({
++	FilterService: { retrieveAdvancedFilter: jest.fn() },
++	InsightService: {
++		getKnowledgeDocuments: jest.fn(),
++		getKnowledgeDocument: jest.fn(),
++		uploadKnowledgeDocument: jest.fn(),
++		updateKnowledgeDocument: jest.fn(),
++		setKnowledgeDocumentStatus: jest.fn(),
++		retryKnowledgeDocument: jest.fn(),
++		refreshKnowledgeDocuments: jest.fn(),
++	},
++}));
++
+ describe("KnowledgeDocTab Component", () => {
+ 	beforeEach(() => {
+ 		jest.clearAllMocks();
+ 		jest.useFakeTimers();
++		mockKnowledgeDocs = initialKnowledgeDocuments().map((document) => ({
++			id: document.id,
++			filename: document.fileName,
++			fileType: document.fileType || "PDF",
++			fileSizeBytes: document.fileSizeBytes,
++			processingStatus:
++				document.processingStatus === "READY"
++					? "ready"
++					: document.processingStatus === "FAILED"
++					? "failed"
++					: "processing",
++			processingError: document.processingError || null,
++			brandName: document.brand,
++			adminStatus: document.status === "ACTIVE" ? "active" : "inactive",
++			availabilityHint: null,
++			effectiveDate: document.effectiveFrom,
++			expiryDate: document.effectiveTo || null,
++			uploadedBy: document.uploadedBy,
++			uploadedAt: document.uploadedAt,
++			revision: 1,
++			description: document.description,
++			updatedBy: null,
++			updatedAt: document.updatedAt,
++		}));
++		(FilterService.retrieveAdvancedFilter as jest.Mock).mockResolvedValue(
++			Object.fromEntries(
++				["STELARA", "TREMFYA", "DARZALEX", "INVEGA", "XARELTO"].map(
++					(brand) => [brand, { enabled: true, isLeaf: true }]
++				)
++			)
++		);
++		(InsightService.getKnowledgeDocuments as jest.Mock).mockImplementation(
++			(params: {
++				keyword?: string;
++				brandName?: string;
++				adminStatus?: string;
++				page: number;
++				pageSize: number;
++			}) => {
++				const filtered = mockKnowledgeDocs.filter(
++					(document) =>
++						(!params.keyword ||
++							document.filename
++								.toLowerCase()
++								.includes(params.keyword.toLowerCase())) &&
++						(!params.brandName ||
++							document.brandName === params.brandName) &&
++						(!params.adminStatus ||
++							document.adminStatus === params.adminStatus)
++				);
++				const start = (params.page - 1) * params.pageSize;
++				return Promise.resolve({
++					total: filtered.length,
++					page: params.page,
++					pageSize: params.pageSize,
++					items: filtered.slice(start, start + params.pageSize),
++				});
++			}
++		);
++		(InsightService.getKnowledgeDocument as jest.Mock).mockImplementation(
++			(id: string) =>
++				Promise.resolve(
++					mockKnowledgeDocs.find((document) => document.id === id)
++				)
++		);
++		(
++			InsightService.uploadKnowledgeDocument as jest.Mock
++		).mockImplementation(
++			(payload: {
++				file: File;
++				brandName: string;
++				effectiveDate: string;
++				expiryDate?: string;
++				description: string;
++			}) => {
++				mockKnowledgeDocs.unshift({
++					id: "knowledge-uploaded",
++					filename: payload.file.name,
++					fileType: "PDF",
++					fileSizeBytes: payload.file.size,
++					processingStatus: "processing",
++					processingError: null,
++					brandName: payload.brandName,
++					adminStatus: "inactive",
++					availabilityHint: null,
++					effectiveDate: payload.effectiveDate,
++					expiryDate: payload.expiryDate || null,
++					uploadedBy: "Admin",
++					uploadedAt: new Date().toISOString(),
++					revision: 1,
++					description: payload.description,
++				});
++				return Promise.resolve({
++					success: true,
++					message: null,
++					id: "knowledge-uploaded",
++				});
++			}
++		);
++		(InsightService.updateKnowledgeDocument as jest.Mock).mockResolvedValue(
++			{ success: true, message: null }
++		);
++		(
++			InsightService.setKnowledgeDocumentStatus as jest.Mock
++		).mockImplementation(
++			(payload: { id: string; adminStatus: "active" | "inactive" }) => {
++				const target = mockKnowledgeDocs.find(
++					(document) => document.id === payload.id
++				);
++				if (target) target.adminStatus = payload.adminStatus;
++				return Promise.resolve({ success: true, message: null });
++			}
++		);
++		(InsightService.retryKnowledgeDocument as jest.Mock).mockResolvedValue({
++			success: true,
++			message: null,
++		});
++		(
++			InsightService.refreshKnowledgeDocuments as jest.Mock
++		).mockResolvedValue([]);
+ 	});
+ 
+ 	afterEach(() => {
+@@ -368,8 +508,9 @@ describe("KnowledgeDocTab Component", () => {
+ 		jest.useRealTimers();
+ 	});
+ 
+-	it("renders heading, filters panel and documents table correctly", () => {
++	it("renders heading, filters panel and documents table correctly", async () => {
+ 		render(<KnowledgeDocTab />);
++		await screen.findByText("STELARA_Brand_Evidence.pdf");
+ 
+ 		expect(screen.getByText("Knowledge Doc Container")).toBeInTheDocument();
+ 		expect(screen.getByText("Filters")).toBeInTheDocument();
+@@ -381,8 +522,9 @@ describe("KnowledgeDocTab Component", () => {
+ 		).toBeInTheDocument();
+ 	});
+ 
+-	it("filters documents by filename and resets filter", () => {
++	it("filters documents by filename and resets filter", async () => {
+ 		render(<KnowledgeDocTab />);
++		await screen.findByText("STELARA_Brand_Evidence.pdf");
+ 
+ 		const searchInput = screen.getByPlaceholderText("Search documents");
+ 		fireEvent.change(searchInput, {
+@@ -392,43 +534,32 @@ describe("KnowledgeDocTab Component", () => {
+ 		const searchBtn = screen.getByText("Search");
+ 		fireEvent.click(searchBtn);
+ 
+-		expect(
+-			screen.getByText("TREMFYA_Brand_Evidence.pdf")
+-		).toBeInTheDocument();
+-		expect(
+-			screen.queryByText("STELARA_Brand_Evidence.pdf")
+-		).not.toBeInTheDocument();
++		await screen.findByText("TREMFYA_Brand_Evidence.pdf");
+ 
+ 		const resetBtn = screen.getByText("Reset");
+ 		fireEvent.click(resetBtn);
+ 
+-		expect(
+-			screen.getByText("STELARA_Brand_Evidence.pdf")
+-		).toBeInTheDocument();
++		await screen.findByText("STELARA_Brand_Evidence.pdf");
+ 	});
+ 
+-	it("filters documents by brand selection", () => {
++	it("filters documents by brand selection", async () => {
+ 		render(<KnowledgeDocTab />);
+ 
++		await screen.findByText("STELARA_Brand_Evidence.pdf");
+ 		const brandSelect = screen.getByDisplayValue("All brands");
+ 		fireEvent.change(brandSelect, { target: { value: "TREMFYA" } });
+ 
+ 		fireEvent.click(screen.getByText("Search"));
+-		expect(
+-			screen.getByText("TREMFYA_Brand_Evidence.pdf")
+-		).toBeInTheDocument();
+-		expect(
+-			screen.queryByText("STELARA_Brand_Evidence.pdf")
+-		).not.toBeInTheDocument();
++		await screen.findByText("TREMFYA_Brand_Evidence.pdf");
+ 	});
+ 
+-	it("opens detail drawer and closes it", () => {
++	it("opens detail drawer and closes it", async () => {
+ 		render(<KnowledgeDocTab />);
+ 
+-		const viewButtons = screen.getAllByText("View");
++		const viewButtons = await screen.findAllByText("View");
+ 		fireEvent.click(viewButtons[0]);
+ 
+-		expect(screen.getByText("Document details")).toBeInTheDocument();
++		await screen.findByText("Document details");
+ 		expect(screen.getByText("Document metadata")).toBeInTheDocument();
+ 
+ 		const closeBtns = screen.getAllByRole("button", { name: "Close" });
+@@ -437,10 +568,12 @@ describe("KnowledgeDocTab Component", () => {
+ 		expect(screen.queryByText("Document metadata")).not.toBeInTheDocument();
+ 	});
+ 
+-	it("opens edit document modal and saves modified metadata", () => {
++	it("opens edit document modal and saves modified metadata", async () => {
+ 		render(<KnowledgeDocTab />);
+ 
+-		const editButtons = screen.getAllByRole("button", { name: "Edit" });
++		const editButtons = await screen.findAllByRole("button", {
++			name: "Edit",
++		});
+ 		fireEvent.click(editButtons[0]);
+ 
+ 		expect(screen.getByText("Edit document metadata")).toBeInTheDocument();
+@@ -455,14 +588,13 @@ describe("KnowledgeDocTab Component", () => {
+ 		const saveBtn = screen.getByRole("button", { name: "Save changes" });
+ 		fireEvent.click(saveBtn);
+ 
+-		expect(
+-			screen.getAllByText("Document metadata saved.")[0]
+-		).toBeInTheDocument();
++		await screen.findByText("Document metadata saved.");
+ 	});
+ 
+-	it("uploads a new document and adds it to document list", () => {
++	it("uploads a new document and adds it to document list", async () => {
+ 		render(<KnowledgeDocTab />);
+ 
++		await screen.findByText("STELARA_Brand_Evidence.pdf");
+ 		const uploadBtn = screen.getByText("Upload Document");
+ 		fireEvent.click(uploadBtn);
+ 
+@@ -492,18 +624,16 @@ describe("KnowledgeDocTab Component", () => {
+ 		});
+ 		fireEvent.click(submitBtns[submitBtns.length - 1]);
+ 
+-		expect(
+-			screen.getAllByText(
+-				"Document uploaded. Processing has started; status remains Inactive."
+-			)[0]
+-		).toBeInTheDocument();
+-		expect(screen.getByText("new_clinical_trial.pdf")).toBeInTheDocument();
++		await screen.findByText(
++			"Document uploaded. Processing has started; status remains Inactive."
++		);
++		await screen.findByText("new_clinical_trial.pdf");
+ 	});
+ 
+-	it("confirms document status toggle between active and inactive", () => {
++	it("confirms document status toggle between active and inactive", async () => {
+ 		render(<KnowledgeDocTab />);
+ 
+-		const toggleButtons = screen.getAllByRole("button", {
++		const toggleButtons = await screen.findAllByRole("button", {
+ 			name: /Activate|Deactivate/i,
+ 		});
+ 		const targetBtn =
+@@ -520,13 +650,12 @@ describe("KnowledgeDocTab Component", () => {
+ 		) as HTMLButtonElement;
+ 		fireEvent.click(modalConfirmBtn);
+ 
+-		expect(
+-			screen.getAllByText(/Document (activated|deactivated)\./i)[0]
+-		).toBeInTheDocument();
++		await screen.findByText(/Document (activated|deactivated)\./i);
+ 	});
+ 
+-	it("changes pagination page and page size", () => {
++	it("changes pagination page and page size", async () => {
+ 		render(<KnowledgeDocTab />);
++		await screen.findByText("STELARA_Brand_Evidence.pdf");
+ 
+ 		const pageSizeSelect = screen.getByDisplayValue("5/page");
+ 		fireEvent.change(pageSizeSelect, { target: { value: "10" } });
+@@ -535,6 +664,22 @@ describe("KnowledgeDocTab Component", () => {
+ 
+ 		const nextBtn = screen.getByRole("button", { name: "Next page" });
+ 		fireEvent.click(nextBtn);
++		await screen.findByRole("button", { name: "2" });
+ 		expect(screen.getByRole("button", { name: "2" })).toHaveClass("active");
+ 	});
++
++	it("refreshes only processing documents on the current page when requested", async () => {
++		mockKnowledgeDocs[0].processingStatus = "processing";
++		render(<KnowledgeDocTab />);
++
++		await screen.findByText("STELARA_Brand_Evidence.pdf");
++		fireEvent.click(
++			screen.getByRole("button", { name: "Refresh documents" })
++		);
++
++		await screen.findByText("Documents list refreshed.");
++		expect(InsightService.refreshKnowledgeDocuments).toHaveBeenCalledWith([
++			mockKnowledgeDocs[0].id,
++		]);
++	});
+ });
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+index 00f3179..ce54d0d 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+@@ -1,4 +1,11 @@
+-import { FC, useState, useMemo, FormEvent } from "react";
++import {
++	FC,
++	useState,
++	useMemo,
++	FormEvent,
++	useEffect,
++	useCallback,
++} from "react";
+ import {
+ 	SearchSvgIcon,
+ 	UploadSvgIcon,
+@@ -12,6 +19,17 @@ import {
+ import { KnowledgeDocumentTable } from "./KnowledgeDocumentTable";
+ import { KnowledgeDocumentEditor } from "./KnowledgeDocumentEditor";
+ import { KnowledgeDocumentDetail } from "./KnowledgeDocumentDetail";
++import {
++	FilterService,
++	InsightService,
++	IKnowledgeDocumentApiItem,
++} from "@angen_frontend/services";
++import {
++	AdvancedFilterOptions,
++	AdvancedFilterName,
++	LeafProjectPath,
++	ParentProjectPath,
++} from "@angen_frontend/types";
+ import "./index.scss";
+ 
+ export type DocFileType =
+@@ -52,6 +70,8 @@ export interface IKnowledgeDocument {
+ 	uploadedBy: string;
+ 	uploadedAt: string;
+ 	updatedAt?: string;
++	revision?: number;
++	availabilityHint?: string | null;
+ 	chunkCount?: number;
+ 	totalTokens?: number;
+ }
+@@ -97,8 +117,6 @@ const EFFECTIVE_TO_FORMAT_INDEX = 5;
+ const EXPIRED_OFFSET_DAYS = -1;
+ const DEFAULT_PAGE_SIZE = 5;
+ const TOAST_DURATION_MS = 3000;
+-const PROCESSING_RETRY_DELAY_MS = 2000;
+-
+ export function documentDate(date = new Date()): string {
+ 	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+ 		2,
+@@ -149,10 +167,8 @@ export function getDocumentAvailability(
+ ): string {
+ 	if (document.processingStatus === "PROCESSING") return "Processing";
+ 	if (document.processingStatus === "FAILED") return "Processing failed";
++	if (document.availabilityHint) return document.availabilityHint;
+ 	if (document.status !== "ACTIVE") return "Inactive";
+-	const today = documentDate(now);
+-	if (document.effectiveFrom > today) return "Not yet effective";
+-	if (document.effectiveTo && document.effectiveTo < today) return "Expired";
+ 	return "Available for retrieval";
+ }
+ 
+@@ -244,21 +260,60 @@ export function initialKnowledgeDocuments(
+ 	).sort((left, right) => right.uploadedAt.localeCompare(left.uploadedAt));
+ }
+ 
++const mapKnowledgeDocument = (
++	item: IKnowledgeDocumentApiItem
++): IKnowledgeDocument => ({
++	id: item.id,
++	documentId: item.id,
++	fileName: item.filename,
++	fileType: item.fileType,
++	fileSize: formatDocumentSize(item.fileSizeBytes),
++	fileSizeBytes: item.fileSizeBytes,
++	brand: item.brandName,
++	description: item.description || "",
++	status: item.adminStatus === "active" ? "ACTIVE" : "INACTIVE",
++	processingStatus:
++		item.processingStatus === "ready"
++			? "READY"
++			: item.processingStatus === "failed"
++			? "FAILED"
++			: "PROCESSING",
++	processingError: item.processingError || undefined,
++	effectiveFrom: item.effectiveDate,
++	effectiveTo: item.expiryDate || undefined,
++	uploadedBy: item.uploadedBy || "",
++	uploadedAt: item.uploadedAt,
++	updatedAt: item.updatedAt,
++	revision: item.revision,
++	availabilityHint: item.availabilityHint,
++});
++
++const enabledBrandNames = (options: AdvancedFilterOptions): string[] =>
++	Object.entries(options).flatMap(([name, option]) => {
++		if (option.enabled && option.isLeaf) return [name];
++		return option.children ? enabledBrandNames(option.children) : [];
++	});
++
+ export const KnowledgeDocTab: FC = () => {
+-	const [documents, setDocuments] = useState<IKnowledgeDocument[]>(() =>
+-		initialKnowledgeDocuments()
+-	);
++	const [documents, setDocuments] = useState<IKnowledgeDocument[]>([]);
++	const [total, setTotal] = useState<number>(0);
++	const [brandOptions, setBrandOptions] = useState<string[]>([]);
++	const [brandError, setBrandError] = useState<string>("");
++	const [loading, setLoading] = useState<boolean>(true);
++	const [loadError, setLoadError] = useState<string>("");
++	const [brandLoading, setBrandLoading] = useState<boolean>(true);
+ 
+ 	const [filters, setFilters] = useState<IDocFilterParams>({
+ 		search: "",
+ 		brand: "",
+ 		status: "",
+ 	});
+-	const [appliedFilters, setAppliedFilters] = useState<IDocFilterParams>({
+-		search: "",
+-		brand: "",
+-		status: "",
+-	});
++	const emptyFilters = useMemo<IDocFilterParams>(
++		() => ({ search: "", brand: "", status: "" }),
++		[]
++	);
++	const [appliedFilters, setAppliedFilters] =
++		useState<IDocFilterParams>(emptyFilters);
+ 
+ 	const [currentPage, setCurrentPage] = useState<number>(1);
+ 	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+@@ -294,47 +349,114 @@ export const KnowledgeDocTab: FC = () => {
+ 		}, TOAST_DURATION_MS);
+ 	};
+ 
+-	const filteredDocuments = useMemo(() => {
+-		const searchLower = appliedFilters.search.trim().toLowerCase();
+-		return documents.filter((doc) => {
+-			if (
+-				searchLower &&
+-				!doc.fileName.toLowerCase().includes(searchLower) &&
+-				!doc.description.toLowerCase().includes(searchLower)
+-			) {
+-				return false;
+-			}
+-			if (appliedFilters.brand && doc.brand !== appliedFilters.brand) {
+-				return false;
+-			}
+-			if (appliedFilters.status && doc.status !== appliedFilters.status) {
++	const loadDocuments = useCallback(
++		async (
++			page: number,
++			requestedPageSize: number,
++			requestFilters: IDocFilterParams
++		) => {
++			setLoading(true);
++			setLoadError("");
++			try {
++				const result = await InsightService.getKnowledgeDocuments({
++					keyword: requestFilters.search.trim() || undefined,
++					brandName: requestFilters.brand || undefined,
++					adminStatus: requestFilters.status
++						? (requestFilters.status.toLowerCase() as
++								| "active"
++								| "inactive")
++						: undefined,
++					page,
++					pageSize: requestedPageSize,
++				});
++				setDocuments(result.items.map(mapKnowledgeDocument));
++				setTotal(result.total);
++				setCurrentPage(result.page);
++				setPageSize(result.pageSize);
++				return true;
++			} catch (error) {
++				setLoadError((error as Error).message);
+ 				return false;
++			} finally {
++				setLoading(false);
+ 			}
+-			return true;
+-		});
+-	}, [documents, appliedFilters]);
++		},
++		[]
++	);
++
++	useEffect(() => {
++		void loadDocuments(1, DEFAULT_PAGE_SIZE, emptyFilters);
++	}, [emptyFilters, loadDocuments]);
++
++	const loadBrandOptions = useCallback(async () => {
++		setBrandError("");
++		setBrandLoading(true);
++		try {
++			const options = await FilterService.retrieveAdvancedFilter(
++				{
++					name: AdvancedFilterName.MARKET_DEFINITION,
++					selected: {},
++				},
++				`${ParentProjectPath.AP360}:${LeafProjectPath["J&J_IM_TA_PERFORMANCE"]}`
++			);
++			setBrandOptions(enabledBrandNames(options));
++		} catch (error) {
++			setBrandError((error as Error).message);
++		} finally {
++			setBrandLoading(false);
++		}
++	}, []);
++
++	useEffect(() => {
++		void loadBrandOptions();
++	}, [loadBrandOptions]);
++
++	const filteredDocuments = documents;
+ 
+ 	const handleSearchSubmit = (e: FormEvent) => {
+ 		e.preventDefault();
+-		setAppliedFilters({ ...filters });
++		const nextFilters = { ...filters };
++		setAppliedFilters(nextFilters);
+ 		setCurrentPage(1);
++		void loadDocuments(1, pageSize, nextFilters);
+ 	};
+ 
+ 	const handleResetFilters = () => {
+-		const empty = { search: "", brand: "", status: "" };
+-		setFilters(empty);
+-		setAppliedFilters(empty);
++		setFilters(emptyFilters);
++		setAppliedFilters(emptyFilters);
+ 		setCurrentPage(1);
++		void loadDocuments(1, pageSize, emptyFilters);
+ 	};
+ 
+ 	const handleRefresh = () => {
+-		setDocuments(initialKnowledgeDocuments());
+-		showToast("Documents list refreshed.", "success");
++		const processingIds = documents
++			.filter((doc) => doc.processingStatus === "PROCESSING")
++			.map((doc) => doc.id);
++		if (processingIds.length === 0) {
++			void loadDocuments(currentPage, pageSize, appliedFilters).then(
++				(loaded) => {
++					if (loaded)
++						showToast("Documents list refreshed.", "success");
++				}
++			);
++			return;
++		}
++		InsightService.refreshKnowledgeDocuments(processingIds)
++			.then(() => loadDocuments(currentPage, pageSize, appliedFilters))
++			.then((loaded) => {
++				if (loaded) showToast("Documents list refreshed.", "success");
++			})
++			.catch((error: Error) => showToast(error.message, "warning"));
+ 	};
+ 
+-	const handleViewDocument = (doc: IKnowledgeDocument) => {
+-		setDetailDoc(doc);
+-		setDetailVisible(true);
++	const handleViewDocument = async (doc: IKnowledgeDocument) => {
++		try {
++			const detail = await InsightService.getKnowledgeDocument(doc.id);
++			setDetailDoc(mapKnowledgeDocument(detail));
++			setDetailVisible(true);
++		} catch (error) {
++			showToast((error as Error).message, "warning");
++		}
+ 	};
+ 
+ 	const handleOpenUpload = () => {
+@@ -347,66 +469,59 @@ export const KnowledgeDocTab: FC = () => {
+ 		setEditorVisible(true);
+ 	};
+ 
+-	const handleSaveDocument = (payload: {
++	const handleSaveDocument = async (payload: {
+ 		file: File | null;
+ 		metadata: Partial<IKnowledgeDocument>;
+ 	}) => {
+-		if (editingDoc) {
+-			setDocuments((prev) =>
+-				prev.map((d) =>
+-					d.id === editingDoc.id
+-						? {
+-								...d,
+-								...payload.metadata,
+-								updatedAt: new Date().toISOString(),
+-						  }
+-						: d
+-				)
+-			);
+-			if (detailDoc && detailDoc.id === editingDoc.id) {
+-				setDetailDoc((prev) =>
+-					prev ? { ...prev, ...payload.metadata } : null
++		try {
++			if (editingDoc) {
++				if (editingDoc.revision === undefined) {
++					throw new Error("The document revision is unavailable.");
++				}
++				await InsightService.updateKnowledgeDocument({
++					id: editingDoc.id,
++					revision: editingDoc.revision,
++					brandName: payload.metadata.brand || editingDoc.brand,
++					effectiveDate:
++						payload.metadata.effectiveFrom ||
++						editingDoc.effectiveFrom,
++					expiryDate: payload.metadata.effectiveTo || null,
++					description:
++						payload.metadata.description ?? editingDoc.description,
++				});
++				if (detailDoc?.id === editingDoc.id) {
++					setDetailDoc(
++						mapKnowledgeDocument(
++							await InsightService.getKnowledgeDocument(
++								editingDoc.id
++							)
++						)
++					);
++				}
++				showToast("Document metadata saved.", "success");
++			} else if (payload.file) {
++				await InsightService.uploadKnowledgeDocument({
++					file: payload.file,
++					brandName: payload.metadata.brand || "",
++					effectiveDate: payload.metadata.effectiveFrom || "",
++					expiryDate: payload.metadata.effectiveTo,
++					description: payload.metadata.description || "",
++				});
++				setCurrentPage(1);
++				showToast(
++					"Document uploaded. Processing has started; status remains Inactive.",
++					"success"
+ 				);
+ 			}
+-			showToast("Document metadata saved.", "success");
+-		} else {
+-			if (!payload.file) return;
+-			const newDoc: IKnowledgeDocument = {
+-				id: `knowledge_upload_${Date.now()}`,
+-				fileName: payload.file.name,
+-				fileType:
+-					payload.file.name.split(".").pop()?.toUpperCase() || "PDF",
+-				fileSize: `${(payload.file.size / 1024).toFixed(1)} KB`,
+-				fileSizeBytes: payload.file.size,
+-				brand: payload.metadata.brand || "STELARA",
+-				description: payload.metadata.description || "",
+-				status: "INACTIVE",
+-				processingStatus: "PROCESSING",
+-				effectiveFrom:
+-					payload.metadata.effectiveFrom ||
+-					new Date().toISOString().split("T")[0],
+-				effectiveTo: payload.metadata.effectiveTo || undefined,
+-				uploadedBy: "John Doe",
+-				uploadedAt: new Date().toISOString(),
+-				updatedAt: new Date().toISOString(),
+-			};
+-			setDocuments((prev) => [newDoc, ...prev]);
+-			showToast(
+-				"Document uploaded. Processing has started; status remains Inactive.",
+-				"success"
++			setEditorVisible(false);
++			await loadDocuments(
++				editingDoc ? currentPage : 1,
++				pageSize,
++				appliedFilters
+ 			);
+-
+-			setTimeout(() => {
+-				setDocuments((prev) =>
+-					prev.map((d) =>
+-						d.id === newDoc.id
+-							? { ...d, processingStatus: "READY" }
+-							: d
+-					)
+-				);
+-			}, TOAST_DURATION_MS);
++		} catch (error) {
++			showToast((error as Error).message, "warning");
+ 		}
+-		setEditorVisible(false);
+ 	};
+ 
+ 	const handleChangeStatusClick = (doc: IKnowledgeDocument) => {
+@@ -414,83 +529,62 @@ export const KnowledgeDocTab: FC = () => {
+ 		setConfirmModalVisible(true);
+ 	};
+ 
+-	const handleConfirmStatusChange = () => {
++	const handleConfirmStatusChange = async () => {
+ 		if (!confirmTarget) return;
+-
+ 		const activating = confirmTarget.status === "INACTIVE";
+-		const nextStatus = activating ? "ACTIVE" : "INACTIVE";
+-
+-		setDocuments((prev) =>
+-			prev.map((d) =>
+-				d.id === confirmTarget.id ? { ...d, status: nextStatus } : d
+-			)
+-		);
+-
+-		if (detailDoc && detailDoc.id === confirmTarget.id) {
+-			setDetailDoc((prev) =>
+-				prev ? { ...prev, status: nextStatus } : null
++		try {
++			if (confirmTarget.revision === undefined) {
++				throw new Error("The document revision is unavailable.");
++			}
++			await InsightService.setKnowledgeDocumentStatus({
++				id: confirmTarget.id,
++				revision: confirmTarget.revision,
++				adminStatus: activating ? "active" : "inactive",
++			});
++			await loadDocuments(currentPage, pageSize, appliedFilters);
++			if (detailDoc?.id === confirmTarget.id) {
++				setDetailDoc(
++					mapKnowledgeDocument(
++						await InsightService.getKnowledgeDocument(
++							confirmTarget.id
++						)
++					)
++				);
++			}
++			showToast(
++				`Document ${activating ? "activated" : "deactivated"}.`,
++				"success"
+ 			);
++			setConfirmModalVisible(false);
++		} catch (error) {
++			showToast((error as Error).message, "warning");
+ 		}
+-
+-		showToast(
+-			`Document ${activating ? "activated" : "deactivated"}.`,
+-			"success"
+-		);
+-		setConfirmModalVisible(false);
+ 	};
+ 
+-	const handleRetryProcessing = (doc: IKnowledgeDocument) => {
+-		setDocuments((prev) =>
+-			prev.map((d) =>
+-				d.id === doc.id
+-					? {
+-							...d,
+-							processingStatus: "PROCESSING",
+-							processingError: undefined,
+-					  }
+-					: d
+-			)
+-		);
+-		if (detailDoc && detailDoc.id === doc.id) {
+-			setDetailDoc((prev) =>
+-				prev
+-					? {
+-							...prev,
+-							processingStatus: "PROCESSING",
+-							processingError: undefined,
+-					  }
+-					: null
+-			);
+-		}
+-		showToast(
+-			"Processing restarted. The document remains Inactive.",
+-			"success"
+-		);
+-
+-		setTimeout(() => {
+-			setDocuments((prev) =>
+-				prev.map((d) =>
+-					d.id === doc.id
+-						? {
+-								...d,
+-								processingStatus: "READY",
+-								updatedAt: new Date().toISOString(),
+-						  }
+-						: d
+-				)
+-			);
+-			if (detailDoc && detailDoc.id === doc.id) {
+-				setDetailDoc((prev) =>
+-					prev
+-						? {
+-								...prev,
+-								processingStatus: "READY",
+-								updatedAt: new Date().toISOString(),
+-						  }
+-						: null
++	const handleRetryProcessing = async (doc: IKnowledgeDocument) => {
++		try {
++			if (doc.revision === undefined) {
++				throw new Error("The document revision is unavailable.");
++			}
++			await InsightService.retryKnowledgeDocument({
++				id: doc.id,
++				revision: doc.revision,
++			});
++			await loadDocuments(currentPage, pageSize, appliedFilters);
++			if (detailDoc?.id === doc.id) {
++				setDetailDoc(
++					mapKnowledgeDocument(
++						await InsightService.getKnowledgeDocument(doc.id)
++					)
+ 				);
+ 			}
+-		}, PROCESSING_RETRY_DELAY_MS);
++			showToast(
++				"Processing restarted. The document remains Inactive.",
++				"success"
++			);
++		} catch (error) {
++			showToast((error as Error).message, "warning");
++		}
+ 	};
+ 
+ 	return (
+@@ -500,6 +594,37 @@ export const KnowledgeDocTab: FC = () => {
+ 					{toastMsg.text}
+ 				</div>
+ 			)}
++			{loading && (
++				<div className="panel-loading">Loading documents...</div>
++			)}
++			{loadError && (
++				<div className="panel-error" role="alert">
++					<span>{loadError}</span>
++					<button
++						type="button"
++						onClick={() =>
++							void loadDocuments(
++								currentPage,
++								pageSize,
++								appliedFilters
++							)
++						}
++					>
++						Retry
++					</button>
++				</div>
++			)}
++			{brandError && (
++				<div className="panel-error" role="alert">
++					<span>{brandError}</span>
++					<button
++						type="button"
++						onClick={() => void loadBrandOptions()}
++					>
++						Retry
++					</button>
++				</div>
++			)}
+ 
+ 			<header className="page-heading">
+ 				<div>
+@@ -566,11 +691,12 @@ export const KnowledgeDocTab: FC = () => {
+ 						}
+ 						options={[
+ 							{ value: "", label: "All brands" },
+-							...KNOWLEDGE_BRANDS.map((b) => ({
++							...brandOptions.map((b) => ({
+ 								value: b,
+ 								label: b,
+ 							})),
+ 						]}
++						disabled={brandLoading || !!brandError}
+ 					/>
+ 
+ 					<Select
+@@ -636,10 +762,7 @@ export const KnowledgeDocTab: FC = () => {
+ 					</div>
+ 					<div className="list-actions">
+ 						<span>
+-							{filteredDocuments.length}{" "}
+-							{filteredDocuments.length === 1
+-								? "document"
+-								: "documents"}
++							{total} {total === 1 ? "document" : "documents"}
+ 						</span>
+ 						<GenericButtonV2
+ 							type="default"
+@@ -656,10 +779,16 @@ export const KnowledgeDocTab: FC = () => {
+ 				<div className="table-wrap">
+ 					<KnowledgeDocumentTable
+ 						documents={filteredDocuments}
++						total={total}
+ 						pageSize={pageSize}
+ 						currentPage={currentPage}
+-						onPageChange={setCurrentPage}
+-						onPageSizeChange={setPageSize}
++						onPageChange={(page, requestedPageSize) =>
++							void loadDocuments(
++								page,
++								requestedPageSize,
++								appliedFilters
++							)
++						}
+ 						onView={handleViewDocument}
+ 						onEdit={handleOpenEdit}
+ 						onChangeStatus={handleChangeStatusClick}
+@@ -670,6 +799,7 @@ export const KnowledgeDocTab: FC = () => {
+ 			<KnowledgeDocumentEditor
+ 				visible={editorVisible}
+ 				initialDoc={editingDoc}
++				brandOptions={brandOptions}
+ 				onClose={() => setEditorVisible(false)}
+ 				onSave={(metadata, file) =>
+ 					handleSaveDocument({ file: file || null, metadata })
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+index ce28fb4..2af08fe 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+@@ -11,15 +11,25 @@ import { IMetricDefinition } from "../index";
+ 
+ interface IProps {
+ 	metrics: IMetricDefinition[];
++	total?: number;
++	currentPage?: number;
++	pageSize?: number;
++	onPageChange?: (page: number, pageSize: number) => void;
++	onSearch?: (keyword: string) => void;
+ 	onSaveMetric: (
+ 		metric: Omit<IMetricDefinition, "updatedAt" | "updatedBy">,
+ 		isEdit: boolean
+-	) => void;
+-	onDeleteMetric?: (id: string) => void;
++	) => void | Promise<void>;
++	onDeleteMetric?: (id: string) => void | Promise<void>;
+ }
+ 
+ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 	metrics,
++	total = metrics.length,
++	currentPage = 1,
++	pageSize = 20,
++	onPageChange = () => {},
++	onSearch = () => {},
+ 	onSaveMetric,
+ 	onDeleteMetric = () => {},
+ }) => {
+@@ -31,24 +41,24 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 	const [measuresInput, setMeasuresInput] = useState<string>("");
+ 	const [mattersInput, setMattersInput] = useState<string>("");
+ 	const [formError, setFormError] = useState<string>("");
++	const [saving, setSaving] = useState<boolean>(false);
+ 
+ 	const [deleteTarget, setDeleteTarget] = useState<IMetricDefinition | null>(
+ 		null
+ 	);
+ 
+-	const filteredMetrics = useMemo(() => {
+-		const q = searchQuery.trim().toLowerCase();
+-		if (!q) return metrics;
+-		return metrics.filter(
+-			(m) =>
+-				m.name.toLowerCase().includes(q) ||
+-				m.whatItMeasures.toLowerCase().includes(q) ||
+-				m.whyItMatters.toLowerCase().includes(q)
+-		);
+-	}, [metrics, searchQuery]);
++	const filteredMetrics = metrics;
++	const hasSearch = Boolean(searchQuery.trim());
+ 
+ 	const renderMetricsContent = () => {
+-		if (metrics.length === 0) {
++		if (total === 0 && hasSearch) {
++			return (
++				<div className="empty-metrics-notice">
++					<Text entry={{ "cothinker.prompt.noMetricsMatch": {} }} />
++				</div>
++			);
++		}
++		if (total === 0) {
+ 			return (
+ 				<div className="empty-metrics-notice">
+ 					<Text entry={{ "cothinker.prompt.noMetricsYet": {} }} />
+@@ -68,7 +78,14 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 				columns={columns}
+ 				dataSource={filteredMetrics}
+ 				rowKey="id"
+-				pagination={false}
++				pagination={{
++					current: currentPage,
++					pageSize,
++					total,
++					showSizeChanger: true,
++					pageSizeOptions: ["20", "50", "100"],
++					onChange: onPageChange,
++				}}
+ 			/>
+ 		);
+ 	};
+@@ -91,7 +108,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 		setEditorVisible(true);
+ 	};
+ 
+-	const handleSave = () => {
++	const handleSave = async () => {
+ 		const trimmedName = nameInput.trim();
+ 		const trimmedMeasures = measuresInput.trim();
+ 		const trimmedMatters = mattersInput.trim();
+@@ -114,16 +131,25 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 			return;
+ 		}
+ 
+-		onSaveMetric(
+-			{
+-				id: editingMetric ? editingMetric.id : `metric-${Date.now()}`,
+-				name: trimmedName,
+-				whatItMeasures: trimmedMeasures,
+-				whyItMatters: trimmedMatters,
+-			},
+-			Boolean(editingMetric)
+-		);
+-		setEditorVisible(false);
++		setSaving(true);
++		try {
++			await onSaveMetric(
++				{
++					id: editingMetric
++						? editingMetric.id
++						: `metric-${Date.now()}`,
++					name: trimmedName,
++					whatItMeasures: trimmedMeasures,
++					whyItMatters: trimmedMatters,
++				},
++				Boolean(editingMetric)
++			);
++			setEditorVisible(false);
++		} catch (error) {
++			setFormError((error as Error).message);
++		} finally {
++			setSaving(false);
++		}
+ 	};
+ 
+ 	const columns = useMemo(
+@@ -185,7 +211,10 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 						<button
+ 							type="button"
+ 							className="action-link delete-link"
+-							onClick={() => setDeleteTarget(m)}
++							onClick={() => {
++								setFormError("");
++								setDeleteTarget(m);
++							}}
+ 						>
+ 							Delete
+ 						</button>
+@@ -231,11 +260,20 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 						className="search-input"
+ 						placeholder="Search metric definitions"
+ 						value={searchQuery}
+-						onChange={(e) => setSearchQuery(e.target.value)}
++						onChange={(e) => {
++							setSearchQuery(e.target.value);
++						}}
+ 					/>
+ 				</div>
++				<button
++					type="button"
++					className="action-link"
++					onClick={() => onSearch(searchQuery)}
++				>
++					Search
++				</button>
+ 				<span className="metric-count-text">
+-					Showing {filteredMetrics.length} of {metrics.length} metrics
++					Showing {filteredMetrics.length} of {total} metrics
+ 				</span>
+ 			</div>
+ 
+@@ -262,6 +300,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 							<GenericButtonV2
+ 								type="primary"
+ 								className="el-btn-primary"
++								disabled={saving}
+ 								onClick={handleSave}
+ 							>
+ 								Save
+@@ -339,9 +378,13 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 							<GenericButtonV2
+ 								type="primary"
+ 								className="el-btn-danger"
+-								onClick={() => {
+-									onDeleteMetric(deleteTarget.id);
+-									setDeleteTarget(null);
++								onClick={async () => {
++									try {
++										await onDeleteMetric(deleteTarget.id);
++										setDeleteTarget(null);
++									} catch (error) {
++										setFormError((error as Error).message);
++									}
+ 								}}
+ 							>
+ 								Delete metric
+@@ -350,6 +393,9 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 					}
+ 				>
+ 					<div className="modal-body">
++						{formError && (
++							<div className="form-error-alert">{formError}</div>
++						)}
+ 						<p>
+ 							Delete the metric definition{" "}
+ 							<span className="textBold">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+index 562bdfe..a6d936f 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+@@ -4,12 +4,10 @@ import {
+ 	GenericDataTable,
+ 	GenericButtonV2,
+ 	Text,
++	message,
+ } from "@angen_frontend/components";
+-import {
+-	IPromptVersion,
+-	generatePromptVersionsExcelBlob,
+-	formatDateTime,
+-} from "../index";
++import { InsightService } from "@angen_frontend/services";
++import { IPromptVersion, formatDateTime } from "../index";
+ 
+ const EXPORT_STATE_RESET_DELAY_MS = 600;
+ 
+@@ -17,6 +15,11 @@ interface IProps {
+ 	versions: IPromptVersion[];
+ 	activeVersionId: string;
+ 	hasDraft: boolean;
++	total?: number;
++	currentPage?: number;
++	pageSize?: number;
++	onPageChange?: (page: number, pageSize: number) => void;
++	onExport?: () => Promise<{ blob: Blob; filename: string }>;
+ 	onInspect?: (version: IPromptVersion) => void;
+ 	onRollback?: (version: IPromptVersion) => void;
+ 	onInspectVersion?: (version: IPromptVersion) => void;
+@@ -27,6 +30,11 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 	versions,
+ 	activeVersionId,
+ 	hasDraft,
++	total = versions.length,
++	currentPage = 1,
++	pageSize = 20,
++	onPageChange = () => {},
++	onExport = () => InsightService.exportPromptVersions(),
+ 	onInspect,
+ 	onRollback,
+ 	onInspectVersion,
+@@ -34,20 +42,20 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ }) => {
+ 	const [exporting, setExporting] = useState<boolean>(false);
+ 
+-	const handleExport = () => {
++	const handleExport = async () => {
+ 		setExporting(true);
+ 		try {
+-			const blob = generatePromptVersionsExcelBlob(versions);
+-			const url = URL.createObjectURL(blob);
++			const result = await onExport();
++			const url = URL.createObjectURL(result.blob);
+ 			const link = document.createElement("a");
+ 			link.href = url;
+-			link.download = `cothinker-prompt-versions-${new Date()
+-				.toISOString()
+-				.slice(0, 10)}.xlsx`;
++			link.download = result.filename;
+ 			document.body.appendChild(link);
+ 			link.click();
+ 			document.body.removeChild(link);
+ 			URL.revokeObjectURL(url);
++		} catch (error) {
++			message.error((error as Error).message);
+ 		} finally {
+ 			setTimeout(() => {
+ 				setExporting(false);
+@@ -162,13 +170,11 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 					</p>
+ 				</div>
+ 				<div className="history-tools">
+-					<span className="version-count-tag">
+-						{versions.length} versions
+-					</span>
++					<span className="version-count-tag">{total} versions</span>
+ 					<GenericButtonV2
+ 						type="default"
+ 						className="el-btn-default"
+-						disabled={exporting || versions.length === 0}
++						disabled={exporting || total === 0}
+ 						prefixIcon={<CoThinkerDownloadSvgIcon size={14} />}
+ 						onClick={handleExport}
+ 					>
+@@ -200,7 +206,14 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 				columns={columns}
+ 				dataSource={versions}
+ 				rowKey="id"
+-				pagination={false}
++				pagination={{
++					current: currentPage,
++					pageSize,
++					total,
++					showSizeChanger: true,
++					pageSizeOptions: ["20", "50", "100"],
++					onChange: onPageChange,
++				}}
+ 			/>
+ 		</section>
+ 	);
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+index b3f6103..a0f668b 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+@@ -7,6 +7,7 @@ import type {
+ 	GenericSideDrawer as GenericSideDrawerComponent,
+ 	Text as TextComponent,
+ } from "@angen_frontend/components";
++import { InsightService } from "@angen_frontend/services";
+ import { PromptManagementTab } from "./index";
+ 
+ type MockTextProps = Omit<
+@@ -182,10 +183,154 @@ jest.mock("@angen_frontend/components", () => ({
+ 	),
+ }));
+ 
++jest.mock("@angen_frontend/services", () => ({
++	InsightService: {
++		getPromptVersion: jest.fn(),
++		getPromptVersions: jest.fn(),
++		getGlossaryTerms: jest.fn(),
++		savePromptDraft: jest.fn(),
++		deletePromptDraft: jest.fn(),
++		publishPromptDraft: jest.fn(),
++		republishPromptVersion: jest.fn(),
++		exportPromptVersions: jest.fn(),
++		saveGlossaryTerm: jest.fn(),
++		deleteGlossaryTerm: jest.fn(),
++	},
++}));
++
+ describe("PromptManagementTab Component", () => {
+ 	beforeEach(() => {
+ 		jest.clearAllMocks();
+ 		jest.useFakeTimers();
++		const roles = [
++			{
++				roleCode: "BU Marketing",
++				audienceLens: "Marketing audience",
++				priorities: "Brand growth",
++				commentaryFocus: "Brand momentum",
++			},
++			{
++				roleCode: "Sales Manager",
++				audienceLens: "Manager audience",
++				priorities: "Team growth",
++				commentaryFocus: "Territory focus",
++			},
++			{
++				roleCode: "Sales Representative",
++				audienceLens: "Representative audience",
++				priorities: "Account growth",
++				commentaryFocus: "Call planning",
++			},
++		];
++		(InsightService.getPromptVersion as jest.Mock).mockImplementation(
++			(params?: { status?: string; versionId?: string }) =>
++				Promise.resolve(
++					params?.status === "draft"
++						? null
++						: {
++								versionId:
++									params?.versionId === "version-1"
++										? "version-1"
++										: "version-2",
++								versionNo:
++									params?.versionId === "version-1" ? 1 : 2,
++								versionLabel:
++									params?.versionId === "version-1"
++										? "v1"
++										: "v2",
++								status:
++									params?.versionId === "version-1"
++										? "inactive"
++										: "active",
++								sharedInstructions: "Active shared prompt",
++								roles,
++								changeNote:
++									params?.versionId === "version-1"
++										? "Initial prompt"
++										: "Current prompt",
++								revision:
++									params?.versionId === "version-1" ? 1 : 2,
++								publishedBy: "Admin",
++								publishedAt: "2026-11-01T00:00:00Z",
++								updatedAt: "2026-11-01T00:00:00Z",
++								updatedBy: "Admin",
++						  }
++				)
++		);
++		(InsightService.getPromptVersions as jest.Mock).mockResolvedValue({
++			total: 2,
++			page: 1,
++			pageSize: 20,
++			items: [
++				{
++					versionId: "version-2",
++					versionNo: 2,
++					versionLabel: "v2",
++					status: "active",
++					changeNote: "Current prompt",
++					publishedBy: "Admin",
++					publishedAt: "2026-11-01T00:00:00Z",
++					revision: 2,
++				},
++				{
++					versionId: "version-1",
++					versionNo: 1,
++					versionLabel: "v1",
++					status: "inactive",
++					changeNote: "Initial prompt",
++					publishedBy: "Admin",
++					publishedAt: "2026-10-01T00:00:00Z",
++					revision: 1,
++				},
++			],
++		});
++		(InsightService.getGlossaryTerms as jest.Mock).mockResolvedValue({
++			total: 1,
++			page: 1,
++			pageSize: 20,
++			items: [
++				{
++					id: "metric-1",
++					name: "NBRx Market Share",
++					whatItMeasures: "New prescriptions",
++					whyItMatters: "Commercial momentum",
++					revision: 1,
++					updatedAt: "2026-11-01T00:00:00Z",
++					updatedBy: "Admin",
++				},
++			],
++		});
++		(InsightService.savePromptDraft as jest.Mock).mockResolvedValue({
++			versionId: "draft-1",
++			versionNo: null,
++			versionLabel: "v2-draft",
++			status: "draft",
++			sharedInstructions: "Active shared prompt",
++			roles,
++			changeNote: "Refined prompt instructions",
++			revision: 1,
++			publishedBy: null,
++			publishedAt: null,
++			updatedAt: "2026-11-06T00:00:00Z",
++			updatedBy: "Admin",
++		});
++		(InsightService.publishPromptDraft as jest.Mock).mockResolvedValue({
++			versionId: "version-3",
++			versionNo: 3,
++			versionLabel: "v3",
++			status: "active",
++			sharedInstructions: "Active shared prompt",
++			roles,
++			changeNote: "Refined prompt instructions",
++			revision: 2,
++			publishedBy: "Admin",
++			publishedAt: "2026-11-06T00:00:00Z",
++			updatedAt: "2026-11-06T00:00:00Z",
++			updatedBy: "Admin",
++		});
++		(InsightService.republishPromptVersion as jest.Mock).mockResolvedValue({
++			versionLabel: "v3",
++		});
+ 	});
+ 
+ 	afterEach(() => {
+@@ -193,8 +338,9 @@ describe("PromptManagementTab Component", () => {
+ 		jest.useRealTimers();
+ 	});
+ 
+-	it("renders main banner and sub-tabs correctly", () => {
++	it("renders main banner and sub-tabs correctly", async () => {
+ 		render(<PromptManagementTab />);
++		await screen.findByText("Create draft");
+ 
+ 		expect(screen.getByText("Prompt Management")).toBeInTheDocument();
+ 		expect(screen.getAllByText("Configuration")[0]).toBeInTheDocument();
+@@ -206,7 +352,7 @@ describe("PromptManagementTab Component", () => {
+ 	it("creates a draft, edits change notes, saves draft and discards draft", async () => {
+ 		render(<PromptManagementTab />);
+ 
+-		const createDraftBtn = screen.getByText("Create draft");
++		const createDraftBtn = await screen.findByText("Create draft");
+ 		fireEvent.click(createDraftBtn);
+ 
+ 		expect(screen.getByText("Draft")).toBeInTheDocument();
+@@ -222,11 +368,9 @@ describe("PromptManagementTab Component", () => {
+ 		const saveDraftBtn = screen.getAllByText("Save draft")[0];
+ 		fireEvent.click(saveDraftBtn);
+ 
+-		expect(
+-			screen.getAllByText(
+-				"Draft saved. The active version is unchanged."
+-			)[0]
+-		).toBeInTheDocument();
++		await screen.findByText(
++			"Draft saved. The active version is unchanged."
++		);
+ 
+ 		const discardDraftBtn = screen.getByText("Discard draft");
+ 		fireEvent.click(discardDraftBtn);
+@@ -242,14 +386,14 @@ describe("PromptManagementTab Component", () => {
+ 		});
+ 		fireEvent.click(discardBtns[discardBtns.length - 1]);
+ 
+-		expect(screen.getAllByText("Draft discarded.")[0]).toBeInTheDocument();
++		await screen.findByText("Draft discarded.");
+ 		expect(screen.queryByText("Draft")).not.toBeInTheDocument();
+ 	});
+ 
+ 	it("creates a draft and publishes new version", async () => {
+ 		render(<PromptManagementTab />);
+ 
+-		fireEvent.click(screen.getByText("Create draft"));
++		fireEvent.click(await screen.findByText("Create draft"));
+ 
+ 		const changeNoteInput = screen.getByPlaceholderText(
+ 			"Describe the purpose of this change"
+@@ -268,9 +412,7 @@ describe("PromptManagementTab Component", () => {
+ 		});
+ 		fireEvent.click(confirmPublishBtn);
+ 
+-		expect(
+-			screen.getAllByText("Version v3 is now active.")[0]
+-		).toBeInTheDocument();
++		await screen.findByText("Version v3 is now active.");
+ 	});
+ 
+ 	it("switches to Version History, triggers rollback flow", async () => {
+@@ -279,7 +421,7 @@ describe("PromptManagementTab Component", () => {
+ 		const historyTabBtn = screen.getByText("Version History");
+ 		fireEvent.click(historyTabBtn);
+ 
+-		expect(screen.getByText("Export to Excel")).toBeInTheDocument();
++		await screen.findByText("Export to Excel");
+ 		expect(screen.getAllByText("v2")[0]).toBeInTheDocument();
+ 		expect(screen.getAllByText("v1")[0]).toBeInTheDocument();
+ 
+@@ -303,11 +445,9 @@ describe("PromptManagementTab Component", () => {
+ 		});
+ 		fireEvent.click(confirmRestoreBtn);
+ 
+-		expect(
+-			screen.getAllByText(
+-				/Configuration restored as v3 in this workspace./i
+-			)[0]
+-		).toBeInTheDocument();
++		await screen.findByText(
++			/Configuration restored as v3 in this workspace./i
++		);
+ 	});
+ 
+ 	it("manages metric definitions with add, edit, and delete operations", async () => {
+@@ -316,7 +456,7 @@ describe("PromptManagementTab Component", () => {
+ 		const metricsTabBtn = screen.getByText("Metric Definitions");
+ 		fireEvent.click(metricsTabBtn);
+ 
+-		expect(screen.getByText("Add metric")).toBeInTheDocument();
++		await screen.findByText("Add metric");
+ 		expect(screen.getByText("NBRx Market Share")).toBeInTheDocument();
+ 
+ 		fireEvent.click(screen.getByText("Add metric"));
+@@ -340,11 +480,7 @@ describe("PromptManagementTab Component", () => {
+ 		});
+ 
+ 		fireEvent.click(screen.getByRole("button", { name: "Save" }));
+-		expect(
+-			screen.getAllByText(
+-				'Metric definition "Custom ROI Metric" added.'
+-			)[0]
+-		).toBeInTheDocument();
++		await screen.findByText('Metric definition "Custom ROI Metric" added.');
+ 
+ 		const editButtons = screen.getAllByRole("button", { name: "Edit" });
+ 		fireEvent.click(editButtons[0]);
+@@ -358,7 +494,7 @@ describe("PromptManagementTab Component", () => {
+ 		});
+ 		fireEvent.click(screen.getByRole("button", { name: "Save" }));
+ 
+-		expect(screen.getAllByText(/updated\./i)[0]).toBeInTheDocument();
++		await screen.findByText(/updated\./i);
+ 
+ 		const deleteButtons = screen.getAllByRole("button", { name: "Delete" });
+ 		fireEvent.click(deleteButtons[0]);
+@@ -371,6 +507,6 @@ describe("PromptManagementTab Component", () => {
+ 		});
+ 		fireEvent.click(confirmDeleteBtn);
+ 
+-		expect(screen.getAllByText(/deleted\./i)[0]).toBeInTheDocument();
++		await screen.findByText(/deleted\./i);
+ 	});
+ });
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+index ca15701..4fca3e4 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+@@ -1,4 +1,4 @@
+-import { FC, useState, useMemo } from "react";
++import { FC, useState, useMemo, useEffect, useCallback } from "react";
+ import type { ReactNode } from "react";
+ import {
+ 	EditPenSvgIcon,
+@@ -8,6 +8,12 @@ import {
+ 	Text,
+ 	message,
+ } from "@angen_frontend/components";
++import {
++	InsightService,
++	IPromptRole,
++	IPromptVersionDetail,
++	IPromptVersionListItem,
++} from "@angen_frontend/services";
+ import { ConfigurationPanel } from "./ConfigurationPanel";
+ import { VersionHistoryPanel } from "./VersionHistoryPanel";
+ import { MetricDefinitionsPanel } from "./MetricDefinitionsPanel";
+@@ -43,6 +49,7 @@ export interface IPromptVersion {
+ 	publishedAt: string | null;
+ 	baselineVersionId?: string;
+ 	savedAt?: string;
++	revision?: number;
+ }
+ 
+ export interface IMetricDefinition {
+@@ -51,7 +58,8 @@ export interface IMetricDefinition {
+ 	whatItMeasures: string;
+ 	whyItMatters: string;
+ 	updatedAt: string;
+-	updatedBy: string;
++	updatedBy: string | null;
++	revision?: number;
+ }
+ 
+ export interface IChangedField {
+@@ -497,20 +505,133 @@ export const formatDateTime = (
+ 	return `${y}/${m}/${d} ${h}:${min}:${s}`;
+ };
+ 
++const EMPTY_PROMPT_CONFIG: IPromptConfig = {
++	sharedInstructions: "",
++	roles: {
++		BU_HEAD: {
++			roleCode: "BU Marketing",
++			audienceLens: "",
++			priorities: "",
++			commentaryFocus: "",
++		},
++		SALES_MANAGER: {
++			roleCode: "Sales Manager",
++			audienceLens: "",
++			priorities: "",
++			commentaryFocus: "",
++		},
++		SALES_REP: {
++			roleCode: "Sales Representative",
++			audienceLens: "",
++			priorities: "",
++			commentaryFocus: "",
++		},
++	},
++};
++
++const mapPromptDetail = (detail: IPromptVersionDetail): IPromptVersion => {
++	const roleKeys: Record<
++		IPromptRole["roleCode"],
++		"BU_HEAD" | "SALES_MANAGER" | "SALES_REP"
++	> = {
++		"BU Marketing": "BU_HEAD",
++		"Sales Manager": "SALES_MANAGER",
++		"Sales Representative": "SALES_REP",
++	};
++	const roles = { ...EMPTY_PROMPT_CONFIG.roles };
++	detail.roles.forEach((role) => {
++		roles[roleKeys[role.roleCode]] = {
++			roleCode: role.roleCode,
++			audienceLens: role.audienceLens,
++			priorities: role.priorities,
++			commentaryFocus: role.commentaryFocus,
++		};
++	});
++	return {
++		id: detail.versionId,
++		version: detail.versionNo ?? 0,
++		versionLabel: detail.versionLabel,
++		status: detail.status,
++		config: { sharedInstructions: detail.sharedInstructions, roles },
++		changeNote: detail.changeNote,
++		publishedBy: detail.publishedBy,
++		publishedAt: detail.publishedAt,
++		revision: detail.revision,
++	};
++};
++
++const mapPromptRoles = (config: IPromptConfig): IPromptRole[] => [
++	{
++		roleCode: "BU Marketing",
++		audienceLens: config.roles.BU_HEAD.audienceLens,
++		priorities: config.roles.BU_HEAD.priorities,
++		commentaryFocus: config.roles.BU_HEAD.commentaryFocus,
++	},
++	{
++		roleCode: "Sales Manager",
++		audienceLens: config.roles.SALES_MANAGER.audienceLens,
++		priorities: config.roles.SALES_MANAGER.priorities,
++		commentaryFocus: config.roles.SALES_MANAGER.commentaryFocus,
++	},
++	{
++		roleCode: "Sales Representative",
++		audienceLens: config.roles.SALES_REP.audienceLens,
++		priorities: config.roles.SALES_REP.priorities,
++		commentaryFocus: config.roles.SALES_REP.commentaryFocus,
++	},
++];
++
++const mapPromptListItem = (item: IPromptVersionListItem): IPromptVersion => ({
++	id: item.versionId,
++	version: item.versionNo,
++	versionLabel: item.versionLabel,
++	status: item.status,
++	config: EMPTY_PROMPT_CONFIG,
++	changeNote: item.changeNote,
++	publishedBy: item.publishedBy,
++	publishedAt: item.publishedAt,
++	revision: item.revision,
++});
++
+ export const PromptManagementTab: FC = () => {
+ 	const [activeTab, setActiveTab] = useState<
+ 		"configuration" | "history" | "metrics"
+ 	>("configuration");
+ 
+-	const [versions, setVersions] = useState<IPromptVersion[]>(
+-		INITIAL_PROMPT_VERSIONS
++	const [versions, setVersions] = useState<IPromptVersion[]>([]);
++	const [activePrompt, setActivePrompt] = useState<IPromptVersion | null>(
++		null
+ 	);
+-	const [metrics, setMetrics] =
+-		useState<IMetricDefinition[]>(INITIAL_METRICS);
++	const [versionTotal, setVersionTotal] = useState<number>(0);
++	const [versionPage, setVersionPage] = useState<number>(1);
++	const [versionPageSize, setVersionPageSize] = useState<number>(20);
++	const [metrics, setMetrics] = useState<IMetricDefinition[]>([]);
++	const [metricTotal, setMetricTotal] = useState<number>(0);
++	const [metricPage, setMetricPage] = useState<number>(1);
++	const [metricPageSize, setMetricPageSize] = useState<number>(20);
++	const [metricKeyword, setMetricKeyword] = useState<string>("");
++	const [loading, setLoading] = useState<boolean>(true);
++	const [loadError, setLoadError] = useState<string>("");
++	const [saving, setSaving] = useState<boolean>(false);
++	const [versionsLoading, setVersionsLoading] = useState<boolean>(false);
++	const [metricsLoading, setMetricsLoading] = useState<boolean>(false);
++	const [versionsError, setVersionsError] = useState<string>("");
++	const [metricsError, setMetricsError] = useState<string>("");
+ 
+ 	const activeVersion = useMemo(() => {
+-		return versions.find((v) => v.status === "active") || versions[0];
+-	}, [versions]);
++		return (
++			activePrompt || {
++				id: "",
++				version: 0,
++				versionLabel: "",
++				status: "active" as const,
++				config: EMPTY_PROMPT_CONFIG,
++				publishedBy: null,
++				publishedAt: null,
++				revision: 0,
++			}
++		);
++	}, [activePrompt]);
+ 
+ 	const [draftVersion, setDraftVersion] = useState<IPromptVersion | null>(
+ 		null
+@@ -534,6 +655,9 @@ export const PromptManagementTab: FC = () => {
+ 		null
+ 	);
+ 	const [rollbackReason, setRollbackReason] = useState<string>("");
++	const [versionDetails, setVersionDetails] = useState<
++		Record<string, IPromptVersion>
++	>({});
+ 
+ 	const [toastMsg, setToastMsg] = useState<{
+ 		text: string;
+@@ -553,6 +677,138 @@ export const PromptManagementTab: FC = () => {
+ 		}, TOAST_DURATION_MS);
+ 	};
+ 
++	const loadVersionPage = useCallback(
++		async (page = versionPage, pageSize = versionPageSize) => {
++			setVersionsLoading(true);
++			setVersionsError("");
++			try {
++				const result = await InsightService.getPromptVersions({
++					page,
++					pageSize,
++				});
++				setVersions(
++					result.items.map((item) => {
++						const mapped = mapPromptListItem(item);
++						return activePrompt && mapped.id === activePrompt.id
++							? activePrompt
++							: mapped;
++					})
++				);
++				setVersionTotal(result.total);
++				setVersionPage(result.page);
++				setVersionPageSize(result.pageSize);
++			} catch (error) {
++				setVersionsError((error as Error).message);
++				throw error;
++			} finally {
++				setVersionsLoading(false);
++			}
++		},
++		[versionPage, versionPageSize, activePrompt]
++	);
++
++	const loadMetrics = useCallback(
++		async (
++			keyword = metricKeyword,
++			page = metricPage,
++			pageSize = metricPageSize
++		) => {
++			setMetricsLoading(true);
++			setMetricsError("");
++			try {
++				const result = await InsightService.getGlossaryTerms({
++					keyword,
++					page,
++					pageSize,
++				});
++				setMetrics(result.items);
++				setMetricTotal(result.total);
++				setMetricPage(result.page);
++				setMetricPageSize(result.pageSize);
++			} catch (error) {
++				setMetricsError((error as Error).message);
++				throw error;
++			} finally {
++				setMetricsLoading(false);
++			}
++		},
++		[metricKeyword, metricPage, metricPageSize]
++	);
++
++	const loadInitialData = useCallback(async () => {
++		setLoading(true);
++		setLoadError("");
++		let activeModel: IPromptVersion | null = null;
++		try {
++			const [active, draft] = await Promise.all([
++				InsightService.getPromptVersion(),
++				InsightService.getPromptVersion({ status: "draft" }),
++			]);
++			activeModel = active ? mapPromptDetail(active) : null;
++			setActivePrompt(activeModel);
++			setVersionDetails(
++				activeModel ? { [activeModel.id]: activeModel } : {}
++			);
++			if (draft) {
++				const draftModel = mapPromptDetail(draft);
++				setDraftVersion(draftModel);
++				setDraftChangeNote(draft.changeNote || "");
++				setSavedDraftConfig(
++					JSON.parse(JSON.stringify(draftModel.config))
++				);
++			} else {
++				setDraftVersion(null);
++				setDraftChangeNote("");
++				setSavedDraftConfig(null);
++			}
++		} catch (error) {
++			setLoadError((error as Error).message);
++			setLoading(false);
++			return;
++		}
++		setLoading(false);
++		setVersionsLoading(true);
++		setMetricsLoading(true);
++		await Promise.all([
++			InsightService.getPromptVersions({
++				page: 1,
++				pageSize: 20,
++			})
++				.then((result) => {
++					setVersions(
++						result.items.map((item) => {
++							const listItem = mapPromptListItem(item);
++							return activeModel && activeModel.id === listItem.id
++								? activeModel
++								: listItem;
++						})
++					);
++					setVersionTotal(result.total);
++					setVersionPage(result.page);
++					setVersionPageSize(result.pageSize);
++				})
++				.catch((error) => setVersionsError((error as Error).message))
++				.finally(() => setVersionsLoading(false)),
++			InsightService.getGlossaryTerms({
++				keyword: "",
++				page: 1,
++				pageSize: 20,
++			})
++				.then((result) => {
++					setMetrics(result.items);
++					setMetricTotal(result.total);
++					setMetricPage(result.page);
++					setMetricPageSize(result.pageSize);
++				})
++				.catch((error) => setMetricsError((error as Error).message))
++				.finally(() => setMetricsLoading(false)),
++		]);
++	}, []);
++
++	useEffect(() => {
++		void loadInitialData();
++	}, [loadInitialData]);
++
+ 	const isDirty = useMemo(() => {
+ 		if (!draftVersion || !savedDraftConfig) return false;
+ 		return (
+@@ -568,23 +824,29 @@ export const PromptManagementTab: FC = () => {
+ 	}, [activeVersion, draftVersion]);
+ 
+ 	const nextVersionNumber = useMemo(() => {
+-		const maxV = Math.max(...versions.map((v) => v.version));
++		const maxV = Math.max(
++			0,
++			...versions.map((v) => v.version),
++			...Object.values(versionDetails).map((v) => v.version),
++			activePrompt?.version || 0
++		);
+ 		return maxV + 1;
+-	}, [versions]);
++	}, [versions, versionDetails, activePrompt]);
+ 
+ 	const handleCreateDraft = () => {
+ 		const clonedConfig: IPromptConfig = JSON.parse(
+ 			JSON.stringify(activeVersion.config)
+ 		);
+ 		const newDraft: IPromptVersion = {
+-			id: `ver-${Date.now()}-draft`,
+-			version: nextVersionNumber,
+-			versionLabel: `v${nextVersionNumber}`,
+-			status: "inactive",
++			id: "",
++			version: 0,
++			versionLabel: "Draft",
++			status: "draft",
+ 			changeNote: "",
+ 			config: clonedConfig,
+-			publishedBy: "John Doe",
+-			publishedAt: new Date().toISOString(),
++			publishedBy: null,
++			publishedAt: null,
++			revision: 0,
+ 		};
+ 		setDraftVersion(newDraft);
+ 		setDraftChangeNote("");
+@@ -596,58 +858,106 @@ export const PromptManagementTab: FC = () => {
+ 		showToast("Draft created. You can now edit configurations.");
+ 	};
+ 
+-	const handleSaveDraft = () => {
++	const handleSaveDraft = async () => {
+ 		if (!draftVersion) return;
+-		const updatedDraft = {
+-			...draftVersion,
+-			changeNote: draftChangeNote,
+-		};
+-		setDraftVersion(updatedDraft);
+-		setSavedDraftConfig(JSON.parse(JSON.stringify(draftVersion.config)));
+-		showToast("Draft saved. The active version is unchanged.", "success");
++		setSaving(true);
++		try {
++			const saved = await InsightService.savePromptDraft({
++				sharedInstructions: draftVersion.config.sharedInstructions,
++				roles: mapPromptRoles(draftVersion.config),
++				changeNote: draftChangeNote,
++				...(draftVersion.id && {
++					versionId: draftVersion.id,
++					revision: draftVersion.revision,
++				}),
++			});
++			const model = mapPromptDetail(saved);
++			setDraftVersion(model);
++			setDraftChangeNote(model.changeNote || "");
++			setSavedDraftConfig(JSON.parse(JSON.stringify(model.config)));
++			showToast(
++				"Draft saved. The active version is unchanged.",
++				"success"
++			);
++		} catch (error) {
++			showToast((error as Error).message, "warning");
++		} finally {
++			setSaving(false);
++		}
+ 	};
+ 
+ 	const handleDiscardDraft = () => {
+ 		setDiscardDialogVisible(true);
+ 	};
+ 
+-	const handleConfirmDiscard = () => {
+-		setDraftVersion(null);
+-		setSavedDraftConfig(null);
+-		setDraftChangeNote("");
+-		setDiscardDialogVisible(false);
+-		showToast("Draft discarded.", "warning");
++	const handleConfirmDiscard = async () => {
++		try {
++			if (draftVersion?.id) {
++				await InsightService.deletePromptDraft(draftVersion.id);
++			}
++			setDraftVersion(null);
++			setSavedDraftConfig(null);
++			setDraftChangeNote("");
++			setDiscardDialogVisible(false);
++			showToast("Draft discarded.", "warning");
++		} catch (error) {
++			showToast((error as Error).message, "warning");
++		}
+ 	};
+ 
+-	const handlePublish = () => {
++	const handlePublish = async () => {
+ 		if (!draftVersion) return;
+-		const nowStr = new Date().toISOString();
+-		const newVersion: IPromptVersion = {
+-			id: `ver-${Date.now()}`,
+-			version: nextVersionNumber,
+-			versionLabel: `v${nextVersionNumber}`,
+-			status: "active",
+-			changeNote:
+-				draftChangeNote.trim() || "Regular prompt configuration update",
+-			config: JSON.parse(JSON.stringify(draftVersion.config)),
+-			publishedBy: "John Doe",
+-			publishedAt: nowStr,
+-		};
+-
+-		setVersions((prev) => [
+-			newVersion,
+-			...prev.map((v) => ({ ...v, status: "inactive" as const })),
+-		]);
+-
+-		setDraftVersion(null);
+-		setSavedDraftConfig(null);
+-		setDraftChangeNote("");
+-		setPublishDialogVisible(false);
+-		setActiveTab("history");
+-		showToast(`Version v${newVersion.version} is now active.`, "success");
++		if (!draftChangeNote.trim()) {
++			showToast(
++				"A change note is required before publishing.",
++				"warning"
++			);
++			return;
++		}
++		setSaving(true);
++		try {
++			let currentDraft = draftVersion;
++			if (!currentDraft.id || isDirty) {
++				currentDraft = mapPromptDetail(
++					await InsightService.savePromptDraft({
++						sharedInstructions:
++							currentDraft.config.sharedInstructions,
++						roles: mapPromptRoles(currentDraft.config),
++						changeNote: draftChangeNote,
++						...(currentDraft.id && {
++							versionId: currentDraft.id,
++							revision: currentDraft.revision,
++						}),
++					})
++				);
++			}
++			if (!currentDraft.id || currentDraft.revision === undefined) {
++				throw new Error("The saved draft revision is unavailable.");
++			}
++			const published = await InsightService.publishPromptDraft({
++				versionId: currentDraft.id,
++				revision: currentDraft.revision,
++				changeNote: draftChangeNote.trim(),
++			});
++			const model = mapPromptDetail(published);
++			setDraftVersion(null);
++			setSavedDraftConfig(null);
++			setDraftChangeNote("");
++			setPublishDialogVisible(false);
++			setActiveTab("history");
++			await loadInitialData();
++			showToast(
++				`Version ${model.versionLabel} is now active.`,
++				"success"
++			);
++		} catch (error) {
++			showToast((error as Error).message, "warning");
++		} finally {
++			setSaving(false);
++		}
+ 	};
+ 
+-	const handlePrepareRestore = (v: IPromptVersion) => {
++	const handlePrepareRestore = async (v: IPromptVersion) => {
+ 		if (draftVersion) {
+ 			showToast(
+ 				"Please publish or discard the current draft before restoring.",
+@@ -655,43 +965,93 @@ export const PromptManagementTab: FC = () => {
+ 			);
+ 			return;
+ 		}
+-		setRollbackTarget(v);
++		if (v.status !== "inactive") {
++			showToast("Only inactive versions can be restored.", "warning");
++			return;
++		}
++		try {
++			const detail = await InsightService.getPromptVersion({
++				versionId: v.id,
++			});
++			if (!detail || detail.status !== "inactive") {
++				showToast(
++					"The selected version is no longer inactive.",
++					"warning"
++				);
++				return;
++			}
++			const versionDetail = mapPromptDetail(detail);
++			if (versionDetail.revision === undefined) {
++				showToast(
++					"The selected version revision is unavailable.",
++					"warning"
++				);
++				return;
++			}
++			setRollbackTarget(versionDetail);
++		} catch (error) {
++			showToast((error as Error).message, "warning");
++			return;
++		}
+ 		setRollbackReason("");
+ 	};
+ 
+-	const handleConfirmRestore = () => {
++	const handleConfirmRestore = async () => {
+ 		if (!rollbackTarget) return;
+-		const nowStr = new Date().toISOString();
+-		const restoredVersion: IPromptVersion = {
+-			id: `ver-${Date.now()}`,
+-			version: nextVersionNumber,
+-			versionLabel: `v${nextVersionNumber}`,
+-			status: "active",
+-			changeNote: `Restored from v${rollbackTarget.version}: ${
+-				rollbackReason.trim() || "Rollback"
+-			}`,
+-			config: JSON.parse(JSON.stringify(rollbackTarget.config)),
+-			publishedBy: "John Doe",
+-			publishedAt: nowStr,
+-		};
+-
+-		setVersions((prev) => [
+-			restoredVersion,
+-			...prev.map((v) => ({ ...v, status: "inactive" as const })),
+-		]);
+-		setRollbackTarget(null);
+-		setRollbackReason("");
+-		showToast(
+-			`Configuration restored as v${nextVersionNumber} in this workspace.`,
+-			"success"
+-		);
++		if (!rollbackReason.trim()) {
++			showToast("A restore reason is required.", "warning");
++			return;
++		}
++		if (rollbackTarget.revision === undefined) {
++			showToast(
++				"The selected version revision is unavailable.",
++				"warning"
++			);
++			return;
++		}
++		try {
++			const restored = await InsightService.republishPromptVersion(
++				rollbackTarget.id,
++				{
++					revision: rollbackTarget.revision,
++					changeNote: rollbackReason.trim(),
++				}
++			);
++			setRollbackTarget(null);
++			setRollbackReason("");
++			await loadInitialData();
++			showToast(
++				`Configuration restored as ${restored.versionLabel} in this workspace.`,
++				"success"
++			);
++		} catch (error) {
++			showToast((error as Error).message, "warning");
++		}
+ 	};
+ 
+-	const handleOpenEditor = (
++	const handleOpenEditor = async (
+ 		scope: PromptScope = "SHARED",
+ 		versionToInspect: IPromptVersion | null = null
+ 	) => {
+ 		setDrawerScope(scope);
++		if (versionToInspect) {
++			try {
++				const detail = await InsightService.getPromptVersion({
++					versionId: versionToInspect.id,
++				});
++				if (detail) {
++					const inspected = mapPromptDetail(detail);
++					versionToInspect = inspected;
++					setVersionDetails((current) => ({
++						...current,
++						[inspected.id]: inspected,
++					}));
++				}
++			} catch (error) {
++				showToast((error as Error).message, "warning");
++				return;
++			}
++		}
+ 		setInspectedVersion(versionToInspect);
+ 		setDrawerVisible(true);
+ 	};
+@@ -728,47 +1088,71 @@ export const PromptManagementTab: FC = () => {
+ 		});
+ 	};
+ 
+-	const handleSaveMetric = (
++	const handleSaveMetric = async (
+ 		metric: Omit<IMetricDefinition, "updatedAt" | "updatedBy">,
+ 		isEdit: boolean
+ 	) => {
+-		const nowStr = new Date().toISOString();
+-		if (isEdit) {
+-			setMetrics((prev) =>
+-				prev.map((m) =>
+-					m.id === metric.id
+-						? {
+-								...m,
+-								name: metric.name,
+-								whatItMeasures: metric.whatItMeasures,
+-								whyItMatters: metric.whyItMatters,
+-								updatedAt: nowStr,
+-								updatedBy: "John Doe",
+-						  }
+-						: m
+-				)
+-			);
+-			showToast(`Metric definition "${metric.name}" updated.`, "success");
+-		} else {
+-			const newMetric: IMetricDefinition = {
+-				id: metric.id,
++		try {
++			const existing = metrics.find((item) => item.id === metric.id);
++			if (isEdit && (!existing || existing.revision === undefined)) {
++				throw new Error("The metric revision is unavailable.");
++			}
++			await InsightService.saveGlossaryTerm({
+ 				name: metric.name,
+ 				whatItMeasures: metric.whatItMeasures,
+ 				whyItMatters: metric.whyItMatters,
+-				updatedAt: nowStr,
+-				updatedBy: "John Doe",
+-			};
+-			setMetrics((prev) => [newMetric, ...prev]);
+-			showToast(`Metric definition "${metric.name}" added.`, "success");
++				...(isEdit &&
++					existing && {
++						id: existing.id,
++						revision: existing.revision,
++					}),
++			});
++			await loadMetrics(metricKeyword, 1, metricPageSize);
++			showToast(
++				`Metric definition "${metric.name}" ${
++					isEdit ? "updated" : "added"
++				}.`,
++				"success"
++			);
++		} catch (error) {
++			showToast((error as Error).message, "warning");
++			throw error;
+ 		}
+ 	};
+ 
+-	const handleDeleteMetric = (id: string) => {
+-		const target = metrics.find((m) => m.id === id);
+-		setMetrics((prev) => prev.filter((m) => m.id !== id));
+-		showToast(
+-			`Metric definition "${target?.name || id}" deleted.`,
+-			"success"
++	const handleDeleteMetric = async (id: string) => {
++		try {
++			const target = metrics.find((item) => item.id === id);
++			if (!target) return;
++			if (target.revision === undefined) {
++				throw new Error("The metric revision is unavailable.");
++			}
++			await InsightService.deleteGlossaryTerm({
++				id,
++				revision: target.revision,
++			});
++			await loadMetrics(metricKeyword, metricPage, metricPageSize);
++			showToast(`Metric definition "${target.name}" deleted.`, "success");
++		} catch (error) {
++			showToast((error as Error).message, "warning");
++			throw error;
++		}
++	};
++
++	const handleMetricSearch = (keyword: string) => {
++		setMetricKeyword(keyword);
++		void loadMetrics(keyword, 1, metricPageSize).catch(() => {});
++	};
++
++	const handleVersionPageChange = (page: number, pageSize: number) => {
++		void loadVersionPage(page, pageSize).catch((error) =>
++			showToast((error as Error).message, "warning")
++		);
++	};
++
++	const handleMetricPageChange = (page: number, pageSize: number) => {
++		void loadMetrics(metricKeyword, page, pageSize).catch((error) =>
++			showToast((error as Error).message, "warning")
+ 		);
+ 	};
+ 
+@@ -800,31 +1184,56 @@ export const PromptManagementTab: FC = () => {
+ 						<Text entry={{ "cothinker.prompt.subtitle": {} }} />
+ 					</p>
+ 				</div>
+-				{activeTab !== "metrics" && !draftVersion && (
+-					<GenericButtonV2
+-						type="primary"
+-						className="el-btn-primary create-draft-btn"
+-						prefixIcon={<EditPenSvgIcon size={14} />}
+-						onClick={handleCreateDraft}
+-					>
+-						<Text entry={{ "cothinker.prompt.createDraft": {} }} />
+-					</GenericButtonV2>
+-				)}
+-				{activeTab !== "metrics" && draftVersion && (
+-					<GenericButtonV2
+-						type="default"
+-						className="el-btn-default create-draft-btn"
+-						prefixIcon={<EditPenSvgIcon size={14} />}
+-						onClick={() => handleOpenEditor()}
+-					>
+-						<Text
+-							entry={{ "cothinker.prompt.continueEditing": {} }}
+-						/>
+-					</GenericButtonV2>
+-				)}
++				{!loading &&
++					!loadError &&
++					activeTab !== "metrics" &&
++					!draftVersion && (
++						<GenericButtonV2
++							type="primary"
++							className="el-btn-primary create-draft-btn"
++							prefixIcon={<EditPenSvgIcon size={14} />}
++							onClick={handleCreateDraft}
++						>
++							<Text
++								entry={{ "cothinker.prompt.createDraft": {} }}
++							/>
++						</GenericButtonV2>
++					)}
++				{!loading &&
++					!loadError &&
++					activeTab !== "metrics" &&
++					draftVersion && (
++						<GenericButtonV2
++							type="default"
++							className="el-btn-default create-draft-btn"
++							prefixIcon={<EditPenSvgIcon size={14} />}
++							onClick={() => handleOpenEditor()}
++						>
++							<Text
++								entry={{
++									"cothinker.prompt.continueEditing": {},
++								}}
++							/>
++						</GenericButtonV2>
++					)}
+ 			</header>
+ 
+-			{activeTab !== "metrics" ? (
++			{loading && (
++				<div className="panel-loading">Loading prompt data...</div>
++			)}
++			{loadError && (
++				<div className="panel-error" role="alert">
++					<span>{loadError}</span>
++					<button
++						type="button"
++						onClick={() => void loadInitialData()}
++					>
++						Retry
++					</button>
++				</div>
++			)}
++
++			{!loading && !loadError && activeTab !== "metrics" ? (
+ 				<section
+ 					className="version-banner"
+ 					aria-label="Current active configuration"
+@@ -863,7 +1272,7 @@ export const PromptManagementTab: FC = () => {
+ 						</span>
+ 					</div>
+ 				</section>
+-			) : (
++			) : !loading && !loadError ? (
+ 				<section
+ 					className="version-banner"
+ 					aria-label="Metric definitions context"
+@@ -887,10 +1296,10 @@ export const PromptManagementTab: FC = () => {
+ 						</p>
+ 					</div>
+ 				</section>
+-			)}
++			) : null}
+ 
+ 			{renderIf(
+-				activeTab !== "metrics",
++				!loading && !loadError && activeTab !== "metrics",
+ 				renderIf(
+ 					Boolean(draftVersion),
+ 					<section className="draft-bar" aria-label="Draft workspace">
+@@ -952,6 +1361,7 @@ export const PromptManagementTab: FC = () => {
+ 							<GenericButtonV2
+ 								type="default"
+ 								className="el-btn-default"
++								disabled={saving}
+ 								onClick={handleSaveDraft}
+ 							>
+ 								<Text
+@@ -961,6 +1371,7 @@ export const PromptManagementTab: FC = () => {
+ 							<GenericButtonV2
+ 								type="primary"
+ 								className="el-btn-primary"
++								disabled={saving || !draftChangeNote.trim()}
+ 								onClick={() => setPublishDialogVisible(true)}
+ 							>
+ 								<Text
+@@ -1005,33 +1416,89 @@ export const PromptManagementTab: FC = () => {
+ 					</button>
+ 				</div>
+ 
+-				<div className="workspace-tab-body">
+-					{activeTab === "configuration" && (
+-						<ConfigurationPanel
+-							hasDraft={!!draftVersion}
+-							activeVersion={activeVersion}
+-							onOpenEditor={handleOpenEditor}
+-						/>
+-					)}
++				{!loading && !loadError && (
++					<div className="workspace-tab-body">
++						{activeTab === "configuration" && (
++							<ConfigurationPanel
++								hasDraft={!!draftVersion}
++								activeVersion={activeVersion}
++								onOpenEditor={handleOpenEditor}
++							/>
++						)}
+ 
+-					{activeTab === "history" && (
+-						<VersionHistoryPanel
+-							versions={versions}
+-							activeVersionId={activeVersion.id}
+-							hasDraft={!!draftVersion}
+-							onInspect={(v) => handleOpenEditor("SHARED", v)}
+-							onRollback={handlePrepareRestore}
+-						/>
+-					)}
++						{activeTab === "history" && (
++							<>
++								{versionsError && (
++									<div className="panel-error" role="alert">
++										<span>{versionsError}</span>
++										<button
++											type="button"
++											onClick={() =>
++												void loadVersionPage()
++											}
++										>
++											Retry
++										</button>
++									</div>
++								)}
++								{versionsLoading ? (
++									<div className="panel-loading">
++										Loading versions...
++									</div>
++								) : (
++									<VersionHistoryPanel
++										versions={versions}
++										activeVersionId={activeVersion.id}
++										hasDraft={!!draftVersion}
++										total={versionTotal}
++										currentPage={versionPage}
++										pageSize={versionPageSize}
++										onPageChange={handleVersionPageChange}
++										onExport={() =>
++											InsightService.exportPromptVersions()
++										}
++										onInspect={(v) =>
++											handleOpenEditor("SHARED", v)
++										}
++										onRollback={handlePrepareRestore}
++									/>
++								)}
++							</>
++						)}
+ 
+-					{activeTab === "metrics" && (
+-						<MetricDefinitionsPanel
+-							metrics={metrics}
+-							onSaveMetric={handleSaveMetric}
+-							onDeleteMetric={handleDeleteMetric}
+-						/>
+-					)}
+-				</div>
++						{activeTab === "metrics" && (
++							<>
++								{metricsError && (
++									<div className="panel-error" role="alert">
++										<span>{metricsError}</span>
++										<button
++											type="button"
++											onClick={() => void loadMetrics()}
++										>
++											Retry
++										</button>
++									</div>
++								)}
++								{metricsLoading ? (
++									<div className="panel-loading">
++										Loading glossary terms...
++									</div>
++								) : (
++									<MetricDefinitionsPanel
++										metrics={metrics}
++										total={metricTotal}
++										currentPage={metricPage}
++										pageSize={metricPageSize}
++										onPageChange={handleMetricPageChange}
++										onSearch={handleMetricSearch}
++										onSaveMetric={handleSaveMetric}
++										onDeleteMetric={handleDeleteMetric}
++									/>
++								)}
++							</>
++						)}
++					</div>
++				)}
+ 			</div>
+ 
+ 			<PromptEditorDrawer
+@@ -1145,6 +1612,7 @@ export const PromptManagementTab: FC = () => {
+ 							<GenericButtonV2
+ 								type="primary"
+ 								className="el-btn-primary"
++								disabled={saving || !draftChangeNote.trim()}
+ 								onClick={handlePublish}
+ 							>
+ 								Publish v{nextVersionNumber}
+@@ -1245,6 +1713,7 @@ export const PromptManagementTab: FC = () => {
+ 							<GenericButtonV2
+ 								type="primary"
+ 								className="el-btn-primary"
++								disabled={!rollbackReason.trim()}
+ 								onClick={handleConfirmRestore}
+ 							>
+ 								Restore as v{nextVersionNumber}
+diff --git a/packages/web/src/pages/coThinkerAdmin/index.tsx b/packages/web/src/pages/coThinkerAdmin/index.tsx
+index 2ee4750..3ef8318 100644
+--- a/packages/web/src/pages/coThinkerAdmin/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/index.tsx
+@@ -26,7 +26,6 @@ interface ITabItem {
+ 	key: TabKey;
+ 	labelEntry: TranslationEntry;
+ 	icon: FC<IIconProps>;
+-	hidden?: boolean;
+ }
+ 
+ const TABS: ITabItem[] = [
+@@ -44,13 +43,11 @@ const TABS: ITabItem[] = [
+ 		key: "promptManagement",
+ 		labelEntry: { "cothinker.nav.promptManagement": {} },
+ 		icon: CoThinkerEditSvgIcon,
+-		hidden: true,
+ 	},
+ 	{
+ 		key: "knowledgeDoc",
+ 		labelEntry: { "cothinker.nav.knowledgeDoc": {} },
+ 		icon: FolderOpenedSvgIcon,
+-		hidden: true,
+ 	},
+ ];
+ 
+@@ -70,7 +67,7 @@ export const CoThinkerAdmin: FC = () => {
+ 					</div>
+ 
+ 					<nav className="headerNav">
+-						{TABS.filter((tab) => !tab.hidden).map((tab) => {
++						{TABS.map((tab) => {
+ 							const IconComponent = tab.icon;
+ 							return (
+ 								<button
