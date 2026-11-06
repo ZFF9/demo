@@ -1,0 +1,497 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+index f1a199f..ceb198c 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+@@ -163,4 +163,30 @@ describe("KnowledgeDocumentDetail Component", () => {
+ 
+ 		expect(container).toBeEmptyDOMElement();
+ 	});
++
++	it("blocks activation while document processing has failed", () => {
++		render(
++			<KnowledgeDocumentDetail
++				visible={true}
++				document={{
++					...mockDoc,
++					status: "INACTIVE",
++					processingStatus: "FAILED",
++				}}
++				onClose={jest.fn()}
++				onEdit={jest.fn()}
++				onChangeStatus={jest.fn()}
++				onRetry={jest.fn()}
++			/>
++		);
++
++		const activateButton = screen.getByRole("button", {
++			name: "Activate",
++		});
++		expect(activateButton).toBeDisabled();
++		expect(activateButton.parentElement).toHaveAttribute(
++			"title",
++			"Processing must complete before activation."
++		);
++	});
+ });
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+index 9a8b4b6..4733f28 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+@@ -11,6 +11,7 @@ import {
+ 	formatDocumentTimestamp,
+ 	getDocumentAvailability,
+ 	isDocumentRetrievable,
++	canActivateKnowledgeDocument,
+ } from "../index";
+ 
+ interface IKnowledgeDocumentDetailProps {
+@@ -323,35 +324,44 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 					>
+ 						<Text entry={{ "cothinker.common.edit": {} }} />
+ 					</GenericButtonV2>
+-					<GenericButtonV2
+-						type="primary"
+-						className={
+-							doc.status === "ACTIVE"
+-								? "el-btn-warning"
+-								: "el-btn-primary"
+-						}
+-						disabled={
+-							doc.processingStatus !== "READY" &&
+-							doc.status !== "ACTIVE"
++					<span
++						title={
++							doc.status === "INACTIVE" &&
++							!canActivateKnowledgeDocument(doc)
++								? "Processing must complete before activation."
++								: undefined
+ 						}
+-						onClick={() => onChangeStatus(doc)}
+ 					>
+-						{doc.status === "ACTIVE" ? (
+-							<Text
+-								entry={{
+-									"cothinker.knowledgeDoc.action.deactivate":
+-										{},
+-								}}
+-							/>
+-						) : (
+-							<Text
+-								entry={{
+-									"cothinker.knowledgeDoc.action.activate":
+-										{},
+-								}}
+-							/>
+-						)}
+-					</GenericButtonV2>
++						<GenericButtonV2
++							type="primary"
++							className={
++								doc.status === "ACTIVE"
++									? "el-btn-warning"
++									: "el-btn-primary"
++							}
++							disabled={
++								doc.status !== "ACTIVE" &&
++								!canActivateKnowledgeDocument(doc)
++							}
++							onClick={() => onChangeStatus(doc)}
++						>
++							{doc.status === "ACTIVE" ? (
++								<Text
++									entry={{
++										"cothinker.knowledgeDoc.action.deactivate":
++											{},
++									}}
++								/>
++							) : (
++								<Text
++									entry={{
++										"cothinker.knowledgeDoc.action.activate":
++											{},
++									}}
++								/>
++							)}
++						</GenericButtonV2>
++					</span>
+ 				</div>
+ 			</div>
+ 		</GenericSideDrawer>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+index 2b3d000..3f6664e 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+@@ -186,6 +186,9 @@ describe("KnowledgeDocumentEditor Component", () => {
+ 		expect(screen.getAllByText(/Upload Document/i).length).toBeGreaterThan(
+ 			0
+ 		);
++		expect(screen.getByTestId("doc-brand")).toHaveClass(
++			"knowledge-brand-select"
++		);
+ 		fireEvent.click(screen.getByText("Cancel"));
+ 		expect(handleClose).toHaveBeenCalledTimes(1);
+ 
+@@ -314,6 +317,9 @@ describe("KnowledgeDocumentEditor Component", () => {
+ 
+ 		expect(screen.getByText(/Edit document metadata/i)).toBeInTheDocument();
+ 		expect(screen.getByText("sample.pdf")).toBeInTheDocument();
++		expect(screen.getByTestId("doc-brand")).toHaveClass(
++			"knowledge-brand-select"
++		);
+ 		expect(
+ 			screen.getByDisplayValue("Sample description")
+ 		).toBeInTheDocument();
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+index da4aef2..8c01635 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+@@ -194,7 +194,7 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 						</label>
+ 						<Select
+ 							id="doc-brand"
+-							className="form-select ant-select-full"
++							className="knowledge-brand-select"
+ 							value={brand}
+ 							onChange={(val) => setBrand(val)}
+ 							options={(brandOptions || []).map((b) => ({
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+index c43b99b..1c08f0c 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+@@ -1,4 +1,4 @@
+-import { render, screen, fireEvent } from "@testing-library/react";
++import { render, screen, fireEvent, within } from "@testing-library/react";
+ import "@testing-library/jest-dom";
+ import type { ComponentProps, ReactNode } from "react";
+ import type {
+@@ -134,6 +134,45 @@ jest.mock("@angen_frontend/components", () => ({
+ }));
+ 
+ describe("KnowledgeDocumentTable Component", () => {
++	const createDocument = (
++		overrides: Partial<IKnowledgeDocument> = {}
++	): IKnowledgeDocument => ({
++		id: "doc-1",
++		fileName: "guidelines.pdf",
++		fileType: "PDF",
++		fileSize: "1 MB",
++		fileSizeBytes: 1048576,
++		brand: "Brand B",
++		effectiveFrom: "2026-01-01",
++		effectiveTo: "2026-12-31",
++		description: "Guidelines description",
++		uploadedBy: "John Doe",
++		uploadedAt: "2026-01-15T10:00:00Z",
++		status: "INACTIVE",
++		processingStatus: "READY",
++		...overrides,
++	});
++
++	const renderTable = (
++		documents: IKnowledgeDocument[],
++		onView = jest.fn(),
++		onChangeStatus = jest.fn()
++	) => {
++		render(
++			<KnowledgeDocumentTable
++				documents={documents}
++				total={documents.length}
++				pageSize={5}
++				currentPage={1}
++				onPageChange={jest.fn()}
++				onView={onView}
++				onEdit={jest.fn()}
++				onChangeStatus={onChangeStatus}
++			/>
++		);
++		return { onView, onChangeStatus };
++	};
++
+ 	it("renders table column headers and document rows correctly", () => {
+ 		const mockDocs: IKnowledgeDocument[] = [
+ 			{
+@@ -183,6 +222,61 @@ describe("KnowledgeDocumentTable Component", () => {
+ 		expect(handlePageChange).toHaveBeenCalledWith(1, 10);
+ 	});
+ 
++	it("shows failed processing in the document column and opens details", () => {
++		const documentItem = createDocument({ processingStatus: "FAILED" });
++		const { onView, onChangeStatus } = renderTable([documentItem]);
++		const failedLink = screen.getByRole("button", {
++			name: /Processing failed.*view details/i,
++		});
++		const firstCell = failedLink.closest("td");
++		const statusCell = screen.getByText("Inactive").closest(".status-cell");
++		const activateButton = screen.getByRole("button", { name: "Activate" });
++
++		expect(firstCell).toContainElement(failedLink);
++		expect(statusCell).not.toHaveTextContent("Processing failed");
++		expect(activateButton).toBeDisabled();
++		expect(activateButton.parentElement).toHaveAttribute(
++			"title",
++			"Processing must complete before activation."
++		);
++
++		fireEvent.click(failedLink);
++		expect(onView).toHaveBeenCalledWith(documentItem);
++		expect(onChangeStatus).not.toHaveBeenCalled();
++	});
++
++	it("shows processing state below the document name", () => {
++		const documentItem = createDocument({
++			processingStatus: "PROCESSING",
++		});
++		renderTable([documentItem]);
++
++		const processingNote = screen.getByText("Processing…");
++		expect(processingNote.closest("td")).toContainElement(processingNote);
++		expect(screen.getByRole("button", { name: "Activate" })).toBeDisabled();
++	});
++
++	it("shows availability details only for active documents that are unavailable", () => {
++		const documentItem = createDocument({
++			status: "ACTIVE",
++			availabilityHint: "Expired",
++		});
++		renderTable([documentItem]);
++
++		const row = screen.getByText("guidelines.pdf").closest("tr");
++		expect(
++			within(row as HTMLElement).getByText("Active")
++		).toBeInTheDocument();
++		expect(
++			within(row as HTMLElement).getByText("Expired")
++		).toBeInTheDocument();
++		expect(
++			within(row as HTMLElement).getByRole("button", {
++				name: "Deactivate",
++			})
++		).toBeEnabled();
++	});
++
+ 	it("renders empty state when document list is empty", () => {
+ 		render(
+ 			<KnowledgeDocumentTable
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
+index 65df3cf..962d481 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
+@@ -10,6 +10,7 @@ import {
+ 	documentFormat,
+ 	formatDocumentTimestamp,
+ 	getDocumentAvailability,
++	canActivateKnowledgeDocument,
+ } from "../index";
+ 
+ interface IKnowledgeDocumentTableProps {
+@@ -73,6 +74,20 @@ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 								{documentFormat(row.fileName)} ·{" "}
+ 								{formatDocumentSize(row.fileSizeBytes)}
+ 							</span>
++							{row.processingStatus === "PROCESSING" && (
++								<span className="processing-note">
++									Processing…
++								</span>
++							)}
++							{row.processingStatus === "FAILED" && (
++								<button
++									type="button"
++									className="processing-failed-link"
++									onClick={() => onView(row)}
++								>
++									Processing failed — view details
++								</button>
++							)}
+ 						</div>
+ 					</div>
+ 				),
+@@ -104,9 +119,12 @@ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 										: "Inactive"
+ 								}
+ 							/>
+-							<span className="availability-hint">
+-								{availability}
+-							</span>
++							{row.status === "ACTIVE" &&
++								availability !== "Available for retrieval" && (
++									<span className="availability-hint">
++										{availability}
++									</span>
++								)}
+ 						</div>
+ 					);
+ 				},
+@@ -136,37 +154,47 @@ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 			{
+ 				title: "ACTIONS",
+ 				key: "actions",
+-				render: (_: unknown, row: IKnowledgeDocument) => (
+-					<div className="actions-cell">
+-						<button
+-							type="button"
+-							className="action-link"
+-							onClick={() => onView(row)}
+-						>
+-							View
+-						</button>
+-						<button
+-							type="button"
+-							className="action-link"
+-							onClick={() => onEdit(row)}
+-						>
+-							Edit
+-						</button>
+-						<button
+-							type="button"
+-							className="action-link"
+-							disabled={
+-								row.status !== "ACTIVE" &&
+-								row.processingStatus !== "READY"
+-							}
+-							onClick={() => onChangeStatus(row)}
+-						>
+-							{row.status === "ACTIVE"
+-								? "Deactivate"
+-								: "Activate"}
+-						</button>
+-					</div>
+-				),
++				render: (_: unknown, row: IKnowledgeDocument) => {
++					const activationBlocked =
++						row.status === "INACTIVE" &&
++						!canActivateKnowledgeDocument(row);
++					return (
++						<div className="actions-cell">
++							<button
++								type="button"
++								className="action-link"
++								onClick={() => onView(row)}
++							>
++								View
++							</button>
++							<button
++								type="button"
++								className="action-link"
++								onClick={() => onEdit(row)}
++							>
++								Edit
++							</button>
++							<span
++								title={
++									activationBlocked
++										? "Processing must complete before activation."
++										: undefined
++								}
++							>
++								<button
++									type="button"
++									className="action-link"
++									disabled={activationBlocked}
++									onClick={() => onChangeStatus(row)}
++								>
++									{row.status === "ACTIVE"
++										? "Deactivate"
++										: "Activate"}
++								</button>
++							</span>
++						</div>
++					);
++				},
+ 			},
+ 		],
+ 		[onView, onEdit, onChangeStatus]
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
+index 0cb6a71..b7c8362 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
+@@ -295,6 +295,11 @@
+ 									&:hover {
+ 										text-decoration: underline;
+ 									}
++
++									&:focus-visible {
++										outline: 2px solid #d5171e;
++										outline-offset: 2px;
++									}
+ 								}
+ 
+ 								.processing-note {
+@@ -763,7 +768,6 @@
+ 			}
+ 
+ 			.form-control,
+-			.form-select,
+ 			.form-input,
+ 			.form-textarea {
+ 				padding: 8px 12px;
+@@ -779,6 +783,32 @@
+ 				}
+ 			}
+ 
++			.knowledge-brand-select {
++				width: 100%;
++				height: 40px;
++				padding: 0;
++				border: 0;
++				background: transparent;
++
++				.ant-select-selector {
++					height: 40px;
++					padding: 4px 11px;
++					border: 1px solid #d9d9d9;
++					border-radius: 6px;
++					box-shadow: none;
++					font-size: 13px;
++				}
++
++				&.ant-select-focused .ant-select-selector {
++					border-color: #d5171e;
++					box-shadow: 0 0 0 2px rgba(213, 23, 30, 0.1);
++				}
++
++				.ant-select-selection-item {
++					color: #334155;
++				}
++			}
++
+ 			.form-textarea,
+ 			.form-control.textarea {
+ 				resize: vertical;
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+index 06fa6a3..f61439a 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+@@ -176,6 +176,12 @@ export function isDocumentRetrievable(document: IKnowledgeDocument): boolean {
+ 	);
+ }
+ 
++export function canActivateKnowledgeDocument(
++	document: IKnowledgeDocument
++): boolean {
++	return document.processingStatus === "READY";
++}
++
+ export function initialKnowledgeDocuments(
+ 	now = new Date()
+ ): IKnowledgeDocument[] {
+@@ -509,6 +515,9 @@ export const KnowledgeDocTab: FC = () => {
+ 	};
+ 
+ 	const handleChangeStatusClick = (doc: IKnowledgeDocument) => {
++		if (doc.status === "INACTIVE" && !canActivateKnowledgeDocument(doc)) {
++			return;
++		}
+ 		setConfirmTarget(doc);
+ 		setConfirmModalVisible(true);
+ 	};
+@@ -516,6 +525,10 @@ export const KnowledgeDocTab: FC = () => {
+ 	const handleConfirmStatusChange = async () => {
+ 		if (!confirmTarget) return;
+ 		const activating = confirmTarget.status === "INACTIVE";
++		if (activating && !canActivateKnowledgeDocument(confirmTarget)) {
++			setConfirmModalVisible(false);
++			return;
++		}
+ 		try {
+ 			if (confirmTarget.revision === undefined) {
+ 				throw new Error("The document revision is unavailable.");
