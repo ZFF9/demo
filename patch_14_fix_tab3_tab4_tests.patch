@@ -1,0 +1,293 @@
+diff --git a/packages/services/src/HttpService/service.spec.ts b/packages/services/src/HttpService/service.spec.ts
+index 017133f89a1c49bb9a62f896bc50d7d1fab64eb3..043aca0f96476dfb684b52d8d1bbd33a7d4abba2 100644
+--- a/packages/services/src/HttpService/service.spec.ts
++++ b/packages/services/src/HttpService/service.spec.ts
+@@ -269,6 +269,10 @@ describe("service", () => {
+ 		});
+ 
+ 		it("sends FormData without serializing it or setting a multipart content type", async () => {
++			const { ulid } = require("ulid") as {
++				ulid: jest.Mock<string, []>;
++			};
++			ulid.mockReturnValue("SAMPLEULID");
+ 			const formData = new FormData();
+ 			formData.append("brandName", "Brand A");
+ 			const headers = new Headers({
+diff --git a/packages/services/src/InsightService/index.ts b/packages/services/src/InsightService/index.ts
+index 034187db0fdb261d431251d18fb4d8b3c26ad0b6..54fc0c5d1adcd8aa83de99556f48508cabbba3ca 100644
+--- a/packages/services/src/InsightService/index.ts
++++ b/packages/services/src/InsightService/index.ts
+@@ -397,7 +397,7 @@ async function portalPost<T, P extends Record<string, unknown>>(
+ }
+ 
+ function pagePath(
+-	basePath: string,
++	basePath: `/${string}`,
+ 	params: Record<string, string | number | undefined>
+ ): `/${string}` {
+ 	const query = new URLSearchParams();
+@@ -405,7 +405,7 @@ function pagePath(
+ 		if (value !== undefined && value !== "") query.set(key, String(value));
+ 	});
+ 	const qs = query.toString();
+-	return `${basePath}${qs ? `?${qs}` : ""}`;
++	return `${basePath}${qs ? `?${qs}` : ""}` as `/${string}`;
+ }
+ 
+ async function getPromptVersion(
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+index be66904f03551b79165fe4dfa055a6fb6c16bfb8..2b3d000519a9e5f23276e1ff9288dec04beec1a7 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+@@ -239,6 +239,7 @@ describe("KnowledgeDocumentEditor Component", () => {
+ 			<KnowledgeDocumentEditor
+ 				visible={true}
+ 				initialDoc={null}
++				brandOptions={["STELARA"]}
+ 				onClose={jest.fn()}
+ 				onSave={handleSave}
+ 			/>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+index 91ae44bc7642caa4d59edc40416425a756a0d7aa..c43b99b7aea949cfbea37e3e786157ddb28363e1 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+@@ -180,7 +180,7 @@ describe("KnowledgeDocumentTable Component", () => {
+ 		) as HTMLInputElement;
+ 		fireEvent.change(jumperInput, { target: { value: "1" } });
+ 		fireEvent.keyDown(jumperInput, { key: "", keyCode: 13 });
+-		expect(handlePageChange).toHaveBeenCalledWith(1);
++		expect(handlePageChange).toHaveBeenCalledWith(1, 10);
+ 	});
+ 
+ 	it("renders empty state when document list is empty", () => {
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+index 4af4df980701583c9a784257e562d3b0d1e04201..f8cfd07e7cfcb3fb6b4fa1a77803216dab122443 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+@@ -1,4 +1,4 @@
+-import { render, screen, fireEvent } from "@testing-library/react";
++import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+ import "@testing-library/jest-dom";
+ import type React from "react";
+ import type { ComponentProps } from "react";
+@@ -665,7 +665,11 @@ describe("KnowledgeDocTab Component", () => {
+ 		const nextBtn = screen.getByRole("button", { name: "Next page" });
+ 		fireEvent.click(nextBtn);
+ 		await screen.findByRole("button", { name: "2" });
+-		expect(screen.getByRole("button", { name: "2" })).toHaveClass("active");
++		await waitFor(() =>
++			expect(screen.getByRole("button", { name: "2" })).toHaveClass(
++				"active"
++			)
++		);
+ 	});
+ 
+ 	it("refreshes only processing documents on the current page when requested", async () => {
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+index ce54d0d28ebc677fdd09be3ef8864b7981b80152..29080823d79657760fe4ab61b556b685cbff17c1 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+@@ -161,10 +161,7 @@ export function formatDocumentTimestamp(isoString: string): string {
+ 	return `${day} ${month} ${year}, ${hours}:${minutes}`;
+ }
+ 
+-export function getDocumentAvailability(
+-	document: IKnowledgeDocument,
+-	now = new Date()
+-): string {
++export function getDocumentAvailability(document: IKnowledgeDocument): string {
+ 	if (document.processingStatus === "PROCESSING") return "Processing";
+ 	if (document.processingStatus === "FAILED") return "Processing failed";
+ 	if (document.availabilityHint) return document.availabilityHint;
+@@ -172,14 +169,11 @@ export function getDocumentAvailability(
+ 	return "Available for retrieval";
+ }
+ 
+-export function isDocumentRetrievable(
+-	document: IKnowledgeDocument,
+-	now = new Date()
+-): boolean {
++export function isDocumentRetrievable(document: IKnowledgeDocument): boolean {
+ 	return (
+ 		document.status === "ACTIVE" &&
+ 		document.processingStatus === "READY" &&
+-		getDocumentAvailability(document, now) === "Available for retrieval"
++		getDocumentAvailability(document) === "Available for retrieval"
+ 	);
+ }
+ 
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+index 1ee3aa7ca2b1596439af30deb9b23e588926b448..3d8f1417c2ad7db72e01cf97ca81c866e2ed7427 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+@@ -1,4 +1,10 @@
+-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
++import {
++	render,
++	screen,
++	fireEvent,
++	cleanup,
++	waitFor,
++} from "@testing-library/react";
+ import "@testing-library/jest-dom";
+ import type { ComponentProps, ReactNode } from "react";
+ import type {
+@@ -248,7 +254,7 @@ describe("MetricDefinitionsPanel Component", () => {
+ 		expect(onSearch).toHaveBeenLastCalledWith("");
+ 	});
+ 
+-	it("handles add metric flow with validation errors and success save", () => {
++	it("handles add metric flow with validation errors and success save", async () => {
+ 		const handleSave = jest.fn();
+ 		render(
+ 			<MetricDefinitionsPanel
+@@ -306,7 +312,9 @@ describe("MetricDefinitionsPanel Component", () => {
+ 			}),
+ 			false
+ 		);
+-		expect(screen.queryByText("Add Metric")).not.toBeInTheDocument();
++		await waitFor(() =>
++			expect(screen.queryByText("Add Metric")).not.toBeInTheDocument()
++		);
+ 	});
+ 
+ 	it("handles edit metric flow", () => {
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+index bda8bd98206983a588f70ecdbbb7f65c8047deda..e611b4961306574ebd3fef838b1d1d06c5b2c196 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+@@ -42,6 +42,9 @@ type MockDataTableProps = {
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+ 	CoThinkerDownloadSvgIcon: () => <span data-testid="download-icon" />,
++	message: {
++		error: jest.fn(),
++	},
+ 	Text: ({ entry, children }: MockTextProps) => {
+ 		if (entry?.defaultMessage) return <span>{entry.defaultMessage}</span>;
+ 		const key = entry ? Object.keys(entry)[0] : "";
+@@ -199,9 +202,13 @@ describe("VersionHistoryPanel Component", () => {
+ 		expect(screen.getByText("Inactive")).toBeInTheDocument();
+ 	});
+ 
+-	it("handles export to excel file flow", () => {
++	it("handles export to excel file flow", async () => {
+ 		const originalCreateObjectURL = window.URL.createObjectURL;
+ 		const originalRevokeObjectURL = window.URL.revokeObjectURL;
++		const onExport = jest.fn().mockResolvedValue({
++			blob: new Blob(["test"]),
++			filename: "versions.xlsx",
++		});
+ 		window.URL.createObjectURL = jest.fn().mockReturnValue("blob:mock-url");
+ 		window.URL.revokeObjectURL = jest.fn();
+ 
+@@ -210,13 +217,17 @@ describe("VersionHistoryPanel Component", () => {
+ 				versions={mockVersions}
+ 				activeVersionId="v-2"
+ 				hasDraft={false}
++				onExport={onExport}
+ 			/>
+ 		);
+ 
+ 		const exportBtn = screen.getByRole("button", {
+ 			name: /Export to Excel/i,
+ 		});
+-		fireEvent.click(exportBtn);
++		await act(async () => {
++			fireEvent.click(exportBtn);
++			await onExport.mock.results[0]?.value;
++		});
+ 
+ 		expect(screen.getByText(/Exporting/i)).toBeInTheDocument();
+ 
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+index e6283caefd268988b97e27f68a7d70c5c313d06b..0670a5e7f117e30f171a39d88ca55c65ea87a343 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+@@ -1,4 +1,10 @@
+-import { act, render, screen, fireEvent } from "@testing-library/react";
++import {
++	act,
++	render,
++	screen,
++	fireEvent,
++	waitFor,
++} from "@testing-library/react";
+ import "@testing-library/jest-dom";
+ import type { ComponentProps, ReactNode } from "react";
+ import type {
+@@ -431,9 +437,7 @@ describe("PromptManagementTab Component", () => {
+ 		expect(restoreBtns.length).toBeGreaterThan(0);
+ 		fireEvent.click(restoreBtns[0]);
+ 
+-		expect(
+-			screen.getByText(/Restore configuration from v/i)
+-		).toBeInTheDocument();
++		await screen.findByText(/Restore configuration from v/i);
+ 
+ 		const reasonInput = screen.getByPlaceholderText(
+ 			"Explain why this version should be restored"
+@@ -586,8 +590,9 @@ describe("PromptManagementTab Component", () => {
+ 				updatedBy: string;
+ 			}>;
+ 		};
+-		let resolveOldSearch: (page: MetricPage) => void = () => {};
+-		let resolveLatestSearch: (page: MetricPage) => void = () => {};
++		const pendingResolver = () => {};
++		let resolveOldSearch: (page: MetricPage) => void = pendingResolver;
++		let resolveLatestSearch: (page: MetricPage) => void = pendingResolver;
+ 		const metric = (
+ 			id: string,
+ 			name: string
+@@ -631,10 +636,14 @@ describe("PromptManagementTab Component", () => {
+ 		await act(async () => {
+ 			jest.advanceTimersByTime(METRIC_SEARCH_DEBOUNCE_MS);
+ 		});
++		await waitFor(() => expect(resolveOldSearch).not.toBe(pendingResolver));
+ 		fireEvent.change(searchInput, { target: { value: "latest" } });
+ 		await act(async () => {
+ 			jest.advanceTimersByTime(METRIC_SEARCH_DEBOUNCE_MS);
+ 		});
++		await waitFor(() =>
++			expect(resolveLatestSearch).not.toBe(pendingResolver)
++		);
+ 
+ 		await act(async () => {
+ 			resolveLatestSearch({
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+index 34c42fec86ea81b17e28267f18023d1569259a7c..fe1b47858afe3a8a850bbb2ca4828040775bd556 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+@@ -617,6 +617,7 @@ export const PromptManagementTab: FC = () => {
+ 	const [saving, setSaving] = useState<boolean>(false);
+ 	const [versionsLoading, setVersionsLoading] = useState<boolean>(false);
+ 	const [metricsLoading, setMetricsLoading] = useState<boolean>(false);
++	const [metricsLoaded, setMetricsLoaded] = useState<boolean>(false);
+ 	const [versionsError, setVersionsError] = useState<string>("");
+ 	const [metricsError, setMetricsError] = useState<string>("");
+ 	const metricRequestId = useRef<number>(0);
+@@ -727,6 +728,7 @@ export const PromptManagementTab: FC = () => {
+ 				});
+ 				if (requestId !== metricRequestId.current) return;
+ 				setMetrics(result.items);
++				setMetricsLoaded(true);
+ 				setMetricTotal(result.total);
+ 				if (!keyword.trim()) {
+ 					setMetricUnfilteredTotal(result.total);
+@@ -813,6 +815,7 @@ export const PromptManagementTab: FC = () => {
+ 						return;
+ 					}
+ 					setMetrics(result.items);
++					setMetricsLoaded(true);
+ 					setMetricTotal(result.total);
+ 					setMetricPage(result.page);
+ 					setMetricPageSize(result.pageSize);
+@@ -1508,7 +1511,7 @@ export const PromptManagementTab: FC = () => {
+ 										</button>
+ 									</div>
+ 								)}
+-								{metricsLoading ? (
++								{metricsLoading && !metricsLoaded ? (
+ 									<div className="panel-loading">
+ 										Loading glossary terms...
+ 									</div>
