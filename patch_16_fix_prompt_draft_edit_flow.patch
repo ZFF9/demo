@@ -1,0 +1,712 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
+index b208c72..1481e0e 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
+@@ -151,7 +151,6 @@ describe("PromptEditorDrawer Component", () => {
+ 				config={mockConfig}
+ 				onClose={handleClose}
+ 				onSaveDraft={jest.fn()}
+-				onCreateDraft={jest.fn()}
+ 				onUpdateShared={jest.fn()}
+ 				onUpdateRoleField={jest.fn()}
+ 			/>
+@@ -177,7 +176,6 @@ describe("PromptEditorDrawer Component", () => {
+ 				config={mockConfig}
+ 				onClose={jest.fn()}
+ 				onSaveDraft={jest.fn()}
+-				onCreateDraft={jest.fn()}
+ 				onUpdateShared={jest.fn()}
+ 				onUpdateRoleField={jest.fn()}
+ 			/>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+index 7dea1e7..c162fd1 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+@@ -23,7 +23,6 @@ interface IProps {
+ 	config: IPromptConfig;
+ 	onClose: () => void;
+ 	onSaveDraft: () => void;
+-	onCreateDraft: () => void;
+ 	onUpdateShared: (newText: string) => void;
+ 	onUpdateRoleField: (
+ 		roleKey: "BU_HEAD" | "SALES_MANAGER" | "SALES_REP",
+@@ -41,7 +40,6 @@ export const PromptEditorDrawer: FC<IProps> = ({
+ 	config,
+ 	onClose,
+ 	onSaveDraft,
+-	onCreateDraft,
+ 	onUpdateShared,
+ 	onUpdateRoleField,
+ }) => {
+@@ -289,7 +287,7 @@ export const PromptEditorDrawer: FC<IProps> = ({
+ 					>
+ 						<Text entry={{ "cothinker.common.close": {} }} />
+ 					</GenericButtonV2>
+-					{editable ? (
++					{editable && (
+ 						<GenericButtonV2
+ 							type="primary"
+ 							className="el-btn-primary"
+@@ -299,22 +297,6 @@ export const PromptEditorDrawer: FC<IProps> = ({
+ 								entry={{ "cothinker.prompt.saveDraft": {} }}
+ 							/>
+ 						</GenericButtonV2>
+-					) : (
+-						!inspectedVersion && (
+-							<GenericButtonV2
+-								type="primary"
+-								className="el-btn-primary"
+-								onClick={() => {
+-									onCreateDraft();
+-								}}
+-							>
+-								<Text
+-									entry={{
+-										"cothinker.prompt.createDraft": {},
+-									}}
+-								/>
+-							</GenericButtonV2>
+-						)
+ 					)}
+ 				</div>
+ 			</div>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+index f75c2d9..2fe6ce1 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+@@ -2,6 +2,7 @@ import {
+ 	act,
+ 	render,
+ 	screen,
++	within,
+ 	fireEvent,
+ 	waitFor,
+ } from "@testing-library/react";
+@@ -358,32 +359,71 @@ describe("PromptManagementTab Component", () => {
+ 		expect(screen.getByText("Create draft")).toBeInTheDocument();
+ 	});
+ 
+-	it("creates a draft, edits change notes, saves draft and discards draft", async () => {
++	it("cancels a new draft when the editor is closed before saving", async () => {
+ 		render(<PromptManagementTab />);
+ 
+-		const createDraftBtn = await screen.findByText("Create draft");
+-		fireEvent.click(createDraftBtn);
++		fireEvent.click(await screen.findByText("Create draft"));
+ 
+-		expect(screen.getByText("Draft")).toBeInTheDocument();
+-		expect(screen.getAllByText("Save draft")[0]).toBeInTheDocument();
++		expect(screen.getByTestId("generic-side-drawer")).toBeInTheDocument();
++		expect(screen.getByLabelText("Shared instructions")).toHaveValue(
++			"Active shared prompt"
++		);
++		expect(
++			screen.queryByRole("region", { name: "Draft workspace" })
++		).not.toBeInTheDocument();
+ 
+-		const changeNoteInput = screen.getByPlaceholderText(
+-			"Describe the purpose of this change"
++		fireEvent.click(screen.getByRole("button", { name: "Close" }));
++
++		expect(InsightService.savePromptDraft).not.toHaveBeenCalled();
++		expect(screen.queryByTestId("generic-side-drawer")).toBeNull();
++		expect(
++			screen.queryByRole("region", { name: "Draft workspace" })
++		).not.toBeInTheDocument();
++		expect(screen.getByText("Create draft")).toBeInTheDocument();
++
++		fireEvent.click(screen.getByText("Create draft"));
++		expect(screen.getByLabelText("Shared instructions")).toHaveValue(
++			"Active shared prompt"
+ 		);
+-		fireEvent.change(changeNoteInput, {
+-			target: { value: "Updated shared prompt note" },
+-		});
++	});
+ 
+-		const saveDraftBtn = screen.getAllByText("Save draft")[0];
+-		fireEvent.click(saveDraftBtn);
++	it("saves edited configuration from the drawer, then discards the saved draft", async () => {
++		render(<PromptManagementTab />);
++
++		fireEvent.click(await screen.findByText("Create draft"));
++		fireEvent.change(screen.getByLabelText("Shared instructions"), {
++			target: { value: "Updated shared prompt" },
++		});
++		fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+ 
+-		await waitFor(() => expect(message.success).toHaveBeenCalledTimes(1));
++		await waitFor(() => {
++			expect(InsightService.savePromptDraft).toHaveBeenCalledTimes(1);
++			expect(screen.queryByTestId("generic-side-drawer")).toBeNull();
++		});
++		expect(InsightService.savePromptDraft).toHaveBeenCalledWith(
++			expect.objectContaining({
++				sharedInstructions: "Updated shared prompt",
++				changeNote: "",
++			})
++		);
+ 		expect(message.success).toHaveBeenCalledWith(
+ 			"Draft saved. The active version is unchanged."
+ 		);
++		expect(
++			screen.getByRole("region", { name: "Draft workspace" })
++		).toBeInTheDocument();
++
++		fireEvent.change(
++			screen.getByPlaceholderText("Describe the purpose of this change"),
++			{ target: { value: "Updated shared prompt note" } }
++		);
++		fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
++		await waitFor(() => {
++			expect(InsightService.savePromptDraft).toHaveBeenCalledTimes(2);
++			expect(message.success).toHaveBeenCalledTimes(2);
++		});
+ 
+-		const discardDraftBtn = screen.getByText("Discard draft");
+-		fireEvent.click(discardDraftBtn);
++		fireEvent.click(screen.getByText("Discard draft"));
+ 
+ 		expect(
+ 			screen.getByText(
+@@ -397,19 +437,29 @@ describe("PromptManagementTab Component", () => {
+ 		fireEvent.click(discardBtns[discardBtns.length - 1]);
+ 
+ 		await waitFor(() => {
++			expect(InsightService.deletePromptDraft).toHaveBeenCalledWith(
++				"draft-1"
++			);
+ 			expect(message.warning).toHaveBeenCalledTimes(1);
+ 			expect(message.warning).toHaveBeenCalledWith("Draft discarded.");
+ 		});
+ 		expect(
+ 			document.querySelector(".page-toast-alert")
+ 		).not.toBeInTheDocument();
+-		expect(screen.queryByText("Draft")).not.toBeInTheDocument();
++		await waitFor(() =>
++			expect(
++				screen.queryByRole("region", { name: "Draft workspace" })
++			).not.toBeInTheDocument()
++		);
+ 	});
+ 
+ 	it("creates a draft and publishes new version", async () => {
+ 		render(<PromptManagementTab />);
+ 
+ 		fireEvent.click(await screen.findByText("Create draft"));
++		fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
++		await screen.findByRole("region", { name: "Draft workspace" });
++		expect(InsightService.savePromptDraft).toHaveBeenCalledTimes(1);
+ 
+ 		const changeNoteInput = screen.getByPlaceholderText(
+ 			"Describe the purpose of this change"
+@@ -429,13 +479,195 @@ describe("PromptManagementTab Component", () => {
+ 		fireEvent.click(confirmPublishBtn);
+ 
+ 		await waitFor(() => {
+-			expect(message.success).toHaveBeenCalledTimes(1);
++			expect(InsightService.publishPromptDraft).toHaveBeenCalledTimes(1);
+ 			expect(message.success).toHaveBeenCalledWith(
+ 				"Version v3 is now active."
+ 			);
+ 		});
+ 	});
+ 
++	it("discards unsaved editor changes when closing an existing draft", async () => {
++		const savedDraftRoles = [
++			{
++				roleCode: "BU Marketing",
++				audienceLens: "Saved marketing audience",
++				priorities: "Saved brand growth",
++				commentaryFocus: "Saved brand momentum",
++			},
++			{
++				roleCode: "Sales Manager",
++				audienceLens: "Manager audience",
++				priorities: "Team growth",
++				commentaryFocus: "Territory focus",
++			},
++			{
++				roleCode: "Sales Representative",
++				audienceLens: "Representative audience",
++				priorities: "Account growth",
++				commentaryFocus: "Call planning",
++			},
++		];
++		(InsightService.getPromptVersion as jest.Mock).mockImplementation(
++			(params?: { status?: string; versionId?: string }) =>
++				Promise.resolve(
++					params?.status === "draft"
++						? {
++								versionId: "draft-1",
++								versionNo: null,
++								versionLabel: "Draft",
++								status: "draft",
++								sharedInstructions: "Saved draft instructions",
++								roles: savedDraftRoles,
++								changeNote: "Saved note",
++								revision: 3,
++								publishedBy: null,
++								publishedAt: null,
++								updatedAt: "2026-11-06T00:00:00Z",
++								updatedBy: "Admin",
++						  }
++						: {
++								versionId:
++									params?.versionId === "version-1"
++										? "version-1"
++										: "version-2",
++								versionNo:
++									params?.versionId === "version-1" ? 1 : 2,
++								versionLabel:
++									params?.versionId === "version-1"
++										? "v1"
++										: "v2",
++								status:
++									params?.versionId === "version-1"
++										? "inactive"
++										: "active",
++								sharedInstructions: "Active shared prompt",
++								roles: savedDraftRoles,
++								changeNote:
++									params?.versionId === "version-1"
++										? "Initial prompt"
++										: "Current prompt",
++								revision:
++									params?.versionId === "version-1" ? 1 : 2,
++								publishedBy: "Admin",
++								publishedAt: "2026-11-01T00:00:00Z",
++								updatedAt: "2026-11-01T00:00:00Z",
++								updatedBy: "Admin",
++						  }
++				)
++		);
++		render(<PromptManagementTab />);
++
++		fireEvent.click(await screen.findByText("Continue editing draft"));
++		expect(screen.getByLabelText("Shared instructions")).toHaveValue(
++			"Saved draft instructions"
++		);
++		fireEvent.change(screen.getByLabelText("Shared instructions"), {
++			target: { value: "Unsaved editor change" },
++		});
++		fireEvent.click(screen.getByRole("button", { name: "Close" }));
++
++		expect(InsightService.savePromptDraft).not.toHaveBeenCalled();
++		fireEvent.click(screen.getByText("Continue editing draft"));
++		expect(screen.getByLabelText("Shared instructions")).toHaveValue(
++			"Saved draft instructions"
++		);
++	});
++
++	it("keeps the editor open with its values when saving a new draft fails", async () => {
++		(InsightService.savePromptDraft as jest.Mock).mockRejectedValueOnce(
++			new Error("Draft save failed")
++		);
++		render(<PromptManagementTab />);
++
++		fireEvent.click(await screen.findByText("Create draft"));
++		fireEvent.change(screen.getByLabelText("Shared instructions"), {
++			target: { value: "Unsaved shared prompt" },
++		});
++		fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
++
++		await waitFor(() =>
++			expect(message.warning).toHaveBeenCalledWith("Draft save failed")
++		);
++		expect(screen.getByTestId("generic-side-drawer")).toBeInTheDocument();
++		expect(screen.getByLabelText("Shared instructions")).toHaveValue(
++			"Unsaved shared prompt"
++		);
++		expect(
++			screen.queryByRole("region", { name: "Draft workspace" })
++		).not.toBeInTheDocument();
++	});
++
++	it("shows changes from the saved left-side prompt inputs only", async () => {
++		const updatedRoles = [
++			{
++				roleCode: "BU Marketing",
++				audienceLens: "Updated marketing audience",
++				priorities: "Brand growth",
++				commentaryFocus: "Brand momentum",
++			},
++			{
++				roleCode: "Sales Manager",
++				audienceLens: "Manager audience",
++				priorities: "Team growth",
++				commentaryFocus: "Territory focus",
++			},
++			{
++				roleCode: "Sales Representative",
++				audienceLens: "Representative audience",
++				priorities: "Account growth",
++				commentaryFocus: "Call planning",
++			},
++		];
++		(InsightService.savePromptDraft as jest.Mock).mockResolvedValueOnce({
++			versionId: "draft-1",
++			versionNo: null,
++			versionLabel: "Draft",
++			status: "draft",
++			sharedInstructions: "Updated shared instructions",
++			roles: updatedRoles,
++			changeNote: "",
++			revision: 1,
++			publishedBy: null,
++			publishedAt: null,
++			updatedAt: "2026-11-06T00:00:00Z",
++			updatedBy: "Admin",
++		});
++		render(<PromptManagementTab />);
++
++		fireEvent.click(await screen.findByText("Create draft"));
++		fireEvent.change(screen.getByLabelText("Shared instructions"), {
++			target: { value: "Updated shared instructions" },
++		});
++		fireEvent.click(
++			within(screen.getByLabelText("Configuration item")).getByRole(
++				"button",
++				{ name: "BU Marketing framing" }
++			)
++		);
++		fireEvent.change(screen.getByLabelText("Audience lens"), {
++			target: { value: "Updated marketing audience" },
++		});
++		fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
++		await waitFor(() =>
++			expect(screen.queryByTestId("generic-side-drawer")).toBeNull()
++		);
++
++		fireEvent.change(
++			screen.getByPlaceholderText("Describe the purpose of this change"),
++			{ target: { value: "Change note is not a prompt field" } }
++		);
++		fireEvent.click(screen.getByRole("button", { name: "View changes" }));
++
++		const diffModal = screen.getByTestId("generic-modal");
++		expect(diffModal).toHaveTextContent("Shared instructions");
++		expect(diffModal).toHaveTextContent("Active shared prompt");
++		expect(diffModal).toHaveTextContent("Updated shared instructions");
++		expect(diffModal).toHaveTextContent("BU Marketing · Audience lens");
++		expect(diffModal).toHaveTextContent("Marketing audience");
++		expect(diffModal).toHaveTextContent("Updated marketing audience");
++		expect(diffModal).not.toHaveTextContent("Change note");
++	});
++
+ 	it("switches to Version History, triggers rollback flow", async () => {
+ 		render(<PromptManagementTab />);
+ 
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+index f2557de..84346a5 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+@@ -639,11 +639,13 @@ export const PromptManagementTab: FC = () => {
+ 		null
+ 	);
+ 	const [draftChangeNote, setDraftChangeNote] = useState<string>("");
+-	const [savedDraftConfig, setSavedDraftConfig] =
+-		useState<IPromptConfig | null>(null);
+ 
+ 	const [drawerVisible, setDrawerVisible] = useState<boolean>(false);
+ 	const [drawerScope, setDrawerScope] = useState<PromptScope>("SHARED");
++	const [editorConfig, setEditorConfig] = useState<IPromptConfig | null>(
++		null
++	);
++	const [editorDraftMode, setEditorDraftMode] = useState<boolean>(false);
+ 	const [inspectedVersion, setInspectedVersion] =
+ 		useState<IPromptVersion | null>(null);
+ 
+@@ -756,14 +758,12 @@ export const PromptManagementTab: FC = () => {
+ 				const draftModel = mapPromptDetail(draft);
+ 				setDraftVersion(draftModel);
+ 				setDraftChangeNote(draft.changeNote || "");
+-				setSavedDraftConfig(
+-					JSON.parse(JSON.stringify(draftModel.config))
+-				);
+ 			} else {
+ 				setDraftVersion(null);
+ 				setDraftChangeNote("");
+-				setSavedDraftConfig(null);
+ 			}
++			setEditorConfig(null);
++			setEditorDraftMode(false);
+ 		} catch (error) {
+ 			setLoadError((error as Error).message);
+ 			setLoading(false);
+@@ -827,13 +827,21 @@ export const PromptManagementTab: FC = () => {
+ 	}, [loadInitialData]);
+ 
+ 	const isDirty = useMemo(() => {
+-		if (!draftVersion || !savedDraftConfig) return false;
+-		return (
+-			JSON.stringify(draftVersion.config) !==
+-				JSON.stringify(savedDraftConfig) ||
+-			draftChangeNote !== (draftVersion.changeNote || "")
++		if (!draftVersion) return false;
++		return draftChangeNote !== (draftVersion.changeNote || "");
++	}, [draftVersion, draftChangeNote]);
++
++	const editorBaseConfig =
++		editorDraftMode && draftVersion
++			? draftVersion.config
++			: activeVersion.config;
++	const editorIsDirty =
++		(editorDraftMode && !draftVersion) ||
++		Boolean(
++			editorConfig &&
++				JSON.stringify(editorConfig) !==
++					JSON.stringify(editorBaseConfig)
+ 		);
+-	}, [draftVersion, savedDraftConfig, draftChangeNote]);
+ 
+ 	const changedFields = useMemo<IChangedField[]>(() => {
+ 		if (!draftVersion) return [];
+@@ -854,44 +862,43 @@ export const PromptManagementTab: FC = () => {
+ 		const clonedConfig: IPromptConfig = JSON.parse(
+ 			JSON.stringify(activeVersion.config)
+ 		);
+-		const newDraft: IPromptVersion = {
+-			id: "",
+-			version: 0,
+-			versionLabel: "Draft",
+-			status: "draft",
+-			changeNote: "",
+-			config: clonedConfig,
+-			publishedBy: null,
+-			publishedAt: null,
+-			revision: 0,
+-		};
+-		setDraftVersion(newDraft);
++		setEditorConfig(clonedConfig);
++		setEditorDraftMode(true);
+ 		setDraftChangeNote("");
+-		setSavedDraftConfig(JSON.parse(JSON.stringify(clonedConfig)));
+ 		setActiveTab("configuration");
+ 		setDrawerScope("SHARED");
+ 		setInspectedVersion(null);
+ 		setDrawerVisible(true);
+-		showToast("Draft created. You can now edit configurations.");
++	};
++
++	const persistDraft = async (
++		config: IPromptConfig,
++		changeNote: string,
++		currentDraft: IPromptVersion | null
++	) => {
++		const saved = await InsightService.savePromptDraft({
++			sharedInstructions: config.sharedInstructions,
++			roles: mapPromptRoles(config),
++			changeNote,
++			...(currentDraft?.id && {
++				versionId: currentDraft.id,
++				revision: currentDraft.revision,
++			}),
++		});
++		return mapPromptDetail(saved);
+ 	};
+ 
+ 	const handleSaveDraft = async () => {
+ 		if (!draftVersion) return;
+ 		setSaving(true);
+ 		try {
+-			const saved = await InsightService.savePromptDraft({
+-				sharedInstructions: draftVersion.config.sharedInstructions,
+-				roles: mapPromptRoles(draftVersion.config),
+-				changeNote: draftChangeNote,
+-				...(draftVersion.id && {
+-					versionId: draftVersion.id,
+-					revision: draftVersion.revision,
+-				}),
+-			});
+-			const model = mapPromptDetail(saved);
++			const model = await persistDraft(
++				draftVersion.config,
++				draftChangeNote,
++				draftVersion
++			);
+ 			setDraftVersion(model);
+ 			setDraftChangeNote(model.changeNote || "");
+-			setSavedDraftConfig(JSON.parse(JSON.stringify(model.config)));
+ 			showToast(
+ 				"Draft saved. The active version is unchanged.",
+ 				"success"
+@@ -903,6 +910,39 @@ export const PromptManagementTab: FC = () => {
+ 		}
+ 	};
+ 
++	const handleSaveDrawerDraft = async () => {
++		if (!editorDraftMode || !editorConfig) return;
++		setSaving(true);
++		try {
++			const model = await persistDraft(
++				editorConfig,
++				draftChangeNote,
++				draftVersion
++			);
++			setDraftVersion(model);
++			setDraftChangeNote(model.changeNote || "");
++			setDrawerVisible(false);
++			setEditorConfig(null);
++			setEditorDraftMode(false);
++			setInspectedVersion(null);
++			showToast(
++				"Draft saved. The active version is unchanged.",
++				"success"
++			);
++		} catch (error) {
++			showToast((error as Error).message, "warning");
++		} finally {
++			setSaving(false);
++		}
++	};
++
++	const handleCloseEditor = () => {
++		setDrawerVisible(false);
++		setEditorConfig(null);
++		setEditorDraftMode(false);
++		setInspectedVersion(null);
++	};
++
+ 	const handleDiscardDraft = () => {
+ 		setDiscardDialogVisible(true);
+ 	};
+@@ -913,8 +953,9 @@ export const PromptManagementTab: FC = () => {
+ 				await InsightService.deletePromptDraft(draftVersion.id);
+ 			}
+ 			setDraftVersion(null);
+-			setSavedDraftConfig(null);
+ 			setDraftChangeNote("");
++			setEditorConfig(null);
++			setEditorDraftMode(false);
+ 			setDiscardDialogVisible(false);
+ 			showToast("Draft discarded.", "warning");
+ 		} catch (error) {
+@@ -958,8 +999,9 @@ export const PromptManagementTab: FC = () => {
+ 			});
+ 			const model = mapPromptDetail(published);
+ 			setDraftVersion(null);
+-			setSavedDraftConfig(null);
+ 			setDraftChangeNote("");
++			setEditorConfig(null);
++			setEditorDraftMode(false);
+ 			setPublishDialogVisible(false);
+ 			setActiveTab("history");
+ 			await loadInitialData();
+@@ -1059,6 +1101,7 @@ export const PromptManagementTab: FC = () => {
+ 				if (detail) {
+ 					const inspected = mapPromptDetail(detail);
+ 					versionToInspect = inspected;
++					setEditorConfig(inspected.config);
+ 					setVersionDetails((current) => ({
+ 						...current,
+ 						[inspected.id]: inspected,
+@@ -1068,19 +1111,22 @@ export const PromptManagementTab: FC = () => {
+ 				showToast((error as Error).message, "warning");
+ 				return;
+ 			}
++			setEditorConfig(versionToInspect.config);
++		} else if (draftVersion) {
++			setEditorConfig(JSON.parse(JSON.stringify(draftVersion.config)));
++		} else {
++			setEditorConfig(JSON.parse(JSON.stringify(activeVersion.config)));
+ 		}
++		setEditorDraftMode(Boolean(draftVersion && !versionToInspect));
+ 		setInspectedVersion(versionToInspect);
+ 		setDrawerVisible(true);
+ 	};
+ 
+ 	const handleUpdateShared = (newText: string) => {
+-		if (!draftVersion) return;
+-		setDraftVersion({
+-			...draftVersion,
+-			config: {
+-				...draftVersion.config,
+-				sharedInstructions: newText,
+-			},
++		if (!editorDraftMode || !editorConfig) return;
++		setEditorConfig({
++			...editorConfig,
++			sharedInstructions: newText,
+ 		});
+ 	};
+ 
+@@ -1089,17 +1135,14 @@ export const PromptManagementTab: FC = () => {
+ 		field: "audienceLens" | "priorities" | "commentaryFocus",
+ 		val: string
+ 	) => {
+-		if (!draftVersion) return;
+-		setDraftVersion({
+-			...draftVersion,
+-			config: {
+-				...draftVersion.config,
+-				roles: {
+-					...draftVersion.config.roles,
+-					[roleKey]: {
+-						...draftVersion.config.roles[roleKey],
+-						[field]: val,
+-					},
++		if (!editorDraftMode || !editorConfig) return;
++		setEditorConfig({
++			...editorConfig,
++			roles: {
++				...editorConfig.roles,
++				[roleKey]: {
++					...editorConfig.roles[roleKey],
++					[field]: val,
+ 				},
+ 			},
+ 		});
+@@ -1177,13 +1220,11 @@ export const PromptManagementTab: FC = () => {
+ 		);
+ 	};
+ 
+-	let currentEditorConfig = activeVersion.config;
+-	if (draftVersion) {
+-		currentEditorConfig = draftVersion.config;
+-	}
+-	if (inspectedVersion) {
+-		currentEditorConfig = inspectedVersion.config;
+-	}
++	const currentEditorConfig =
++		editorConfig ||
++		inspectedVersion?.config ||
++		draftVersion?.config ||
++		activeVersion.config;
+ 
+ 	const renderPageContent = () => (
+ 		<div className="prompt-workspace">
+@@ -1338,6 +1379,7 @@ export const PromptManagementTab: FC = () => {
+ 							<button
+ 								type="button"
+ 								className="discard-link"
++								disabled={saving}
+ 								onClick={handleDiscardDraft}
+ 							>
+ 								Discard draft
+@@ -1520,12 +1562,11 @@ export const PromptManagementTab: FC = () => {
+ 				visible={drawerVisible}
+ 				initialScope={drawerScope}
+ 				inspectedVersion={inspectedVersion}
+-				isDraft={!!draftVersion && !inspectedVersion}
+-				isDirty={isDirty}
++				isDraft={editorDraftMode && !inspectedVersion}
++				isDirty={editorIsDirty}
+ 				config={currentEditorConfig}
+-				onClose={() => setDrawerVisible(false)}
+-				onSaveDraft={handleSaveDraft}
+-				onCreateDraft={handleCreateDraft}
++				onClose={handleCloseEditor}
++				onSaveDraft={handleSaveDrawerDraft}
+ 				onUpdateShared={handleUpdateShared}
+ 				onUpdateRoleField={handleUpdateRoleField}
+ 			/>
+@@ -1592,7 +1633,7 @@ export const PromptManagementTab: FC = () => {
+ 								<tbody>
+ 									{changedFields.map((f, i) => (
+ 										<tr key={i}>
+-											<td>{f.field}</td>
++											<td>{f.label}</td>
+ 											<td className="diff-old">
+ 												{f.oldValue || "(Empty)"}
+ 											</td>
