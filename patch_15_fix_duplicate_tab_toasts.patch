@@ -1,0 +1,362 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
+index 76cc9b1..0cb6a71 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
+@@ -6,37 +6,6 @@
+ 	color: #1e293b;
+ 	font-family: inherit;
+ 
+-	.page-toast-alert {
+-		position: fixed;
+-		top: 24px;
+-		left: 50%;
+-		transform: translateX(-50%);
+-		z-index: 3000;
+-		padding: 10px 20px;
+-		border-radius: 6px;
+-		font-size: 13px;
+-		font-weight: 500;
+-		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+-
+-		&.alert-success {
+-			background: #f6ffed;
+-			border: 1px solid #b7eb8f;
+-			color: #389e0d;
+-		}
+-
+-		&.alert-warning {
+-			background: #fffbe6;
+-			border: 1px solid #ffe58f;
+-			color: #d46b08;
+-		}
+-
+-		&.alert-error {
+-			background: #fff2f0;
+-			border: 1px solid #ffccc7;
+-			color: #cf1322;
+-		}
+-	}
+-
+ 	.page-heading {
+ 		display: flex;
+ 		justify-content: space-between;
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+index f8cfd07..cb5ab64 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+@@ -1,5 +1,6 @@
+ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+ import "@testing-library/jest-dom";
++import { message } from "@angen_frontend/components";
+ import type React from "react";
+ import type { ComponentProps } from "react";
+ import type {
+@@ -588,7 +589,15 @@ describe("KnowledgeDocTab Component", () => {
+ 		const saveBtn = screen.getByRole("button", { name: "Save changes" });
+ 		fireEvent.click(saveBtn);
+ 
+-		await screen.findByText("Document metadata saved.");
++		await waitFor(() => {
++			expect(message.success).toHaveBeenCalledTimes(1);
++			expect(message.success).toHaveBeenCalledWith(
++				"Document metadata saved."
++			);
++		});
++		expect(
++			document.querySelector(".page-toast-alert")
++		).not.toBeInTheDocument();
+ 	});
+ 
+ 	it("uploads a new document and adds it to document list", async () => {
+@@ -624,9 +633,12 @@ describe("KnowledgeDocTab Component", () => {
+ 		});
+ 		fireEvent.click(submitBtns[submitBtns.length - 1]);
+ 
+-		await screen.findByText(
+-			"Document uploaded. Processing has started; status remains Inactive."
+-		);
++		await waitFor(() => {
++			expect(message.success).toHaveBeenCalledTimes(1);
++			expect(message.success).toHaveBeenCalledWith(
++				"Document uploaded. Processing has started; status remains Inactive."
++			);
++		});
+ 		await screen.findByText("new_clinical_trial.pdf");
+ 	});
+ 
+@@ -650,7 +662,12 @@ describe("KnowledgeDocTab Component", () => {
+ 		) as HTMLButtonElement;
+ 		fireEvent.click(modalConfirmBtn);
+ 
+-		await screen.findByText(/Document (activated|deactivated)\./i);
++		await waitFor(() => {
++			expect(message.success).toHaveBeenCalledTimes(1);
++			expect(message.success).toHaveBeenCalledWith(
++				expect.stringMatching(/Document (activated|deactivated)\./i)
++			);
++		});
+ 	});
+ 
+ 	it("changes pagination page and page size", async () => {
+@@ -681,7 +698,12 @@ describe("KnowledgeDocTab Component", () => {
+ 			screen.getByRole("button", { name: "Refresh documents" })
+ 		);
+ 
+-		await screen.findByText("Documents list refreshed.");
++		await waitFor(() => {
++			expect(message.success).toHaveBeenCalledTimes(1);
++			expect(message.success).toHaveBeenCalledWith(
++				"Documents list refreshed."
++			);
++		});
+ 		expect(InsightService.refreshKnowledgeDocuments).toHaveBeenCalledWith([
+ 			mockKnowledgeDocs[0].id,
+ 		]);
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+index 2908082..06fa6a3 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+@@ -116,7 +116,6 @@ const SAMPLE_UPLOADER_COUNT = 3;
+ const EFFECTIVE_TO_FORMAT_INDEX = 5;
+ const EXPIRED_OFFSET_DAYS = -1;
+ const DEFAULT_PAGE_SIZE = 5;
+-const TOAST_DURATION_MS = 3000;
+ export function documentDate(date = new Date()): string {
+ 	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+ 		2,
+@@ -325,22 +324,13 @@ export const KnowledgeDocTab: FC = () => {
+ 	const [confirmModalVisible, setConfirmModalVisible] =
+ 		useState<boolean>(false);
+ 
+-	const [toastMsg, setToastMsg] = useState<{
+-		text: string;
+-		type: "info" | "success" | "warning";
+-	} | null>(null);
+-
+ 	const showToast = (
+ 		text: string,
+ 		type: "info" | "success" | "warning" = "info"
+ 	) => {
+-		setToastMsg({ text, type });
+ 		if (type === "success") message.success(text);
+ 		else if (type === "warning") message.warning(text);
+ 		else message.info(text);
+-		setTimeout(() => {
+-			setToastMsg(null);
+-		}, TOAST_DURATION_MS);
+ 	};
+ 
+ 	const loadDocuments = useCallback(
+@@ -583,11 +573,6 @@ export const KnowledgeDocTab: FC = () => {
+ 
+ 	return (
+ 		<div className="knowledge-workspace">
+-			{toastMsg && (
+-				<div className={`page-toast-alert alert-${toastMsg.type}`}>
+-					{toastMsg.text}
+-				</div>
+-			)}
+ 			{loading && (
+ 				<div className="panel-loading">Loading documents...</div>
+ 			)}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.scss b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.scss
+index b60f53c..bf29071 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.scss
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.scss
+@@ -6,37 +6,6 @@
+ 	color: #1e293b;
+ 	font-family: inherit;
+ 
+-	.page-toast-alert {
+-		position: fixed;
+-		top: 24px;
+-		left: 50%;
+-		transform: translateX(-50%);
+-		z-index: 3000;
+-		padding: 10px 20px;
+-		border-radius: 6px;
+-		font-size: 13px;
+-		font-weight: 500;
+-		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+-
+-		&.alert-success {
+-			background: #f6ffed;
+-			border: 1px solid #b7eb8f;
+-			color: #389e0d;
+-		}
+-
+-		&.alert-warning {
+-			background: #fffbe6;
+-			border: 1px solid #ffe58f;
+-			color: #d46b08;
+-		}
+-
+-		&.alert-error {
+-			background: #fff2f0;
+-			border: 1px solid #ffccc7;
+-			color: #cf1322;
+-		}
+-	}
+-
+ 	.page-heading {
+ 		display: flex;
+ 		justify-content: space-between;
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+index 0670a5e..f75c2d9 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+@@ -6,6 +6,7 @@ import {
+ 	waitFor,
+ } from "@testing-library/react";
+ import "@testing-library/jest-dom";
++import { message } from "@angen_frontend/components";
+ import type { ComponentProps, ReactNode } from "react";
+ import type {
+ 	GenericButtonV2 as GenericButtonV2Component,
+@@ -376,7 +377,8 @@ describe("PromptManagementTab Component", () => {
+ 		const saveDraftBtn = screen.getAllByText("Save draft")[0];
+ 		fireEvent.click(saveDraftBtn);
+ 
+-		await screen.findByText(
++		await waitFor(() => expect(message.success).toHaveBeenCalledTimes(1));
++		expect(message.success).toHaveBeenCalledWith(
+ 			"Draft saved. The active version is unchanged."
+ 		);
+ 
+@@ -394,7 +396,13 @@ describe("PromptManagementTab Component", () => {
+ 		});
+ 		fireEvent.click(discardBtns[discardBtns.length - 1]);
+ 
+-		await screen.findByText("Draft discarded.");
++		await waitFor(() => {
++			expect(message.warning).toHaveBeenCalledTimes(1);
++			expect(message.warning).toHaveBeenCalledWith("Draft discarded.");
++		});
++		expect(
++			document.querySelector(".page-toast-alert")
++		).not.toBeInTheDocument();
+ 		expect(screen.queryByText("Draft")).not.toBeInTheDocument();
+ 	});
+ 
+@@ -420,7 +428,12 @@ describe("PromptManagementTab Component", () => {
+ 		});
+ 		fireEvent.click(confirmPublishBtn);
+ 
+-		await screen.findByText("Version v3 is now active.");
++		await waitFor(() => {
++			expect(message.success).toHaveBeenCalledTimes(1);
++			expect(message.success).toHaveBeenCalledWith(
++				"Version v3 is now active."
++			);
++		});
+ 	});
+ 
+ 	it("switches to Version History, triggers rollback flow", async () => {
+@@ -451,9 +464,12 @@ describe("PromptManagementTab Component", () => {
+ 		});
+ 		fireEvent.click(confirmRestoreBtn);
+ 
+-		await screen.findByText(
+-			/Configuration restored as v3 in this workspace./i
+-		);
++		await waitFor(() => {
++			expect(message.success).toHaveBeenCalledTimes(1);
++			expect(message.success).toHaveBeenCalledWith(
++				"Configuration restored as v3 in this workspace."
++			);
++		});
+ 	});
+ 
+ 	it("manages metric definitions with add, edit, and delete operations", async () => {
+@@ -511,7 +527,12 @@ describe("PromptManagementTab Component", () => {
+ 			],
+ 		});
+ 		fireEvent.click(screen.getByRole("button", { name: "Save" }));
+-		await screen.findByText('Metric definition "Custom ROI Metric" added.');
++		await waitFor(() =>
++			expect(message.success).toHaveBeenNthCalledWith(
++				1,
++				'Metric definition "Custom ROI Metric" added.'
++			)
++		);
+ 		expect(screen.getByText("2 metrics")).toBeInTheDocument();
+ 
+ 		const editButtons = screen.getAllByRole("button", { name: "Edit" });
+@@ -551,7 +572,12 @@ describe("PromptManagementTab Component", () => {
+ 		});
+ 		fireEvent.click(screen.getByRole("button", { name: "Save" }));
+ 
+-		await screen.findByText(/updated\./i);
++		await waitFor(() =>
++			expect(message.success).toHaveBeenNthCalledWith(
++				2,
++				'Metric definition "NBRx Market Share" updated.'
++			)
++		);
+ 		expect(screen.getByText("2 metrics")).toBeInTheDocument();
+ 
+ 		const deleteButtons = screen.getAllByRole("button", { name: "Delete" });
+@@ -571,7 +597,12 @@ describe("PromptManagementTab Component", () => {
+ 		});
+ 		fireEvent.click(confirmDeleteBtn);
+ 
+-		await screen.findByText(/deleted\./i);
++		await waitFor(() =>
++			expect(message.success).toHaveBeenNthCalledWith(
++				3,
++				'Metric definition "NBRx Market Share" deleted.'
++			)
++		);
+ 		expect(await screen.findByText("1 metrics")).toBeInTheDocument();
+ 	});
+ 
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+index fe1b478..f2557de 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+@@ -166,8 +166,6 @@ Generate analytical commentary based on the user's dashboard view.`,
+ 		},
+ 	},
+ };
+-const TOAST_DURATION_MS = 3000;
+-
+ const renderIf = (condition: boolean, content: ReactNode): ReactNode =>
+ 	condition ? content : null;
+ 
+@@ -663,22 +661,13 @@ export const PromptManagementTab: FC = () => {
+ 		Record<string, IPromptVersion>
+ 	>({});
+ 
+-	const [toastMsg, setToastMsg] = useState<{
+-		text: string;
+-		type: "info" | "success" | "warning";
+-	} | null>(null);
+-
+ 	const showToast = (
+ 		text: string,
+ 		type: "info" | "success" | "warning" = "info"
+ 	) => {
+-		setToastMsg({ text, type });
+ 		if (type === "success") message.success(text);
+ 		else if (type === "warning") message.warning(text);
+ 		else message.info(text);
+-		setTimeout(() => {
+-			setToastMsg(null);
+-		}, TOAST_DURATION_MS);
+ 	};
+ 
+ 	const loadVersionPage = useCallback(
+@@ -1198,13 +1187,6 @@ export const PromptManagementTab: FC = () => {
+ 
+ 	const renderPageContent = () => (
+ 		<div className="prompt-workspace">
+-			{renderIf(
+-				Boolean(toastMsg),
+-				<div className={`page-toast-alert alert-${toastMsg?.type}`}>
+-					{toastMsg?.text}
+-				</div>
+-			)}
+-
+ 			<header className="page-heading">
+ 				<div>
+ 					<div className="title-line">
