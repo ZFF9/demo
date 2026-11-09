@@ -1,0 +1,93 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+index 1c08f0c..60418a8 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+@@ -80,9 +80,13 @@ jest.mock("@angen_frontend/components", () => ({
+ 		</button>
+ 	),
+ 	GenericStatusTag: ({
++		status,
+ 		label,
++		className,
+ 	}: ComponentProps<typeof GenericStatusTagComponent>) => (
+-		<span>{label}</span>
++		<span className={`statusTag-${status} ${className || ""}`}>
++			{label}
++		</span>
+ 	),
+ 	GenericDataTable: ({
+ 		columns,
+@@ -213,6 +217,9 @@ describe("KnowledgeDocumentTable Component", () => {
+ 		expect(screen.getByText("BRAND")).toBeInTheDocument();
+ 		expect(screen.getByText("STATUS")).toBeInTheDocument();
+ 		expect(screen.getByText("guidelines.pdf")).toBeInTheDocument();
++		expect(
++			screen.getByText("Active").closest(".knowledge-document-status-tag")
++		).toHaveClass("statusTag-active");
+ 
+ 		const jumperInput = document.querySelector(
+ 			".jumper-input"
+@@ -230,6 +237,11 @@ describe("KnowledgeDocumentTable Component", () => {
+ 		});
+ 		const firstCell = failedLink.closest("td");
+ 		const statusCell = screen.getByText("Inactive").closest(".status-cell");
++		expect(
++			screen
++				.getByText("Inactive")
++				.closest(".knowledge-document-status-tag")
++		).toHaveClass("statusTag-inactive");
+ 		const activateButton = screen.getByRole("button", { name: "Activate" });
+ 
+ 		expect(firstCell).toContainElement(failedLink);
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
+index 962d481..7344859 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
+@@ -108,6 +108,7 @@ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 					return (
+ 						<div className="status-cell">
+ 							<GenericStatusTag
++								className="knowledge-document-status-tag"
+ 								status={
+ 									row.status === "ACTIVE"
+ 										? "active"
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
+index b7c8362..efab523 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
+@@ -319,24 +319,30 @@
+ 						.status-cell {
+ 							display: flex;
+ 							flex-direction: column;
++							align-items: flex-start;
+ 							gap: 4px;
+ 
+-							.status-pill {
+-								display: inline-block;
++							.knowledge-document-status-tag {
++								display: inline-flex;
++								align-items: center;
+ 								width: fit-content;
++								box-sizing: border-box;
++								margin: 0;
+ 								padding: 2px 8px;
+-								border-radius: 12px;
++								border-radius: 4px;
+ 								font-size: 12px;
+ 								font-weight: 500;
+ 
+-								&.active {
++								&.statusTag-active {
+ 									background: #edf8f2;
+ 									color: #047857;
++									border-color: #d1fae5;
+ 								}
+ 
+-								&.inactive {
++								&.statusTag-inactive {
+ 									background: #f1f5f9;
+ 									color: #475569;
++									border-color: #e2e8f0;
+ 								}
+ 							}
+ 
