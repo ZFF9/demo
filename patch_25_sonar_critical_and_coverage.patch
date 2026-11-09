@@ -1,0 +1,1588 @@
+diff --git a/packages/services/src/InsightService/index.spec.ts b/packages/services/src/InsightService/index.spec.ts
+index efd984e..f74b1d1 100644
+--- a/packages/services/src/InsightService/index.spec.ts
++++ b/packages/services/src/InsightService/index.spec.ts
+@@ -781,6 +781,158 @@ describe("InsightService", () => {
+ 			).resolves.toBeNull();
+ 		});
+ 
++		it("exports prompt versions using the server-provided filename", async () => {
++			const blob = new Blob(["prompt versions"]);
++			global.fetch = jest.fn().mockResolvedValue({
++				ok: true,
++				headers: new Headers({
++					"content-disposition":
++						'attachment; filename="prompt-versions.xlsx"',
++				}),
++				blob: jest.fn().mockResolvedValue(blob),
++			});
++
++			await expect(
++				InsightService.exportPromptVersions()
++			).resolves.toEqual({
++				blob,
++				filename: "prompt-versions.xlsx",
++			});
++			expect(global.fetch).toHaveBeenCalledWith(
++				"/api/commentary/v1/portal/prompts/versions/export",
++				expect.objectContaining({
++					method: "GET",
++					credentials: "include",
++				})
++			);
++		});
++
++		it("uses the prompt export filename fallback when no filename is returned", async () => {
++			global.fetch = jest.fn().mockResolvedValue({
++				ok: true,
++				headers: new Headers(),
++				blob: jest
++					.fn()
++					.mockResolvedValue(new Blob(["prompt versions"])),
++			});
++
++			await expect(
++				InsightService.exportPromptVersions()
++			).resolves.toMatchObject({
++				filename: /^cothinker_prompt_templates_\d{8}_\d{6}\.xlsx$/,
++			});
++		});
++
++		it("uses the HTTP status when prompt export error details cannot be parsed", async () => {
++			global.fetch = jest.fn().mockResolvedValue({
++				ok: false,
++				status: 503,
++				json: jest.fn().mockRejectedValue(new Error("Invalid JSON")),
++			});
++
++			await expect(InsightService.exportPromptVersions()).rejects.toThrow(
++				"HTTP Error 503"
++			);
++		});
++
++		it("uses a prompt export error message returned by the server", async () => {
++			global.fetch = jest.fn().mockResolvedValue({
++				ok: false,
++				status: 500,
++				json: jest.fn().mockResolvedValue({
++					message: "Version export is unavailable.",
++				}),
++			});
++
++			await expect(InsightService.exportPromptVersions()).rejects.toThrow(
++				"Version export is unavailable."
++			);
++		});
++
++		it("loads a knowledge document by an encoded identifier", async () => {
++			const document = { id: "doc/one", filename: "guide.pdf" };
++			(BackendHttpClient.get as jest.Mock).mockResolvedValue({
++				status: HttpStatus.OK,
++				data: { code: 0, message: "success", data: document },
++			});
++
++			await expect(
++				InsightService.getKnowledgeDocument("doc/one")
++			).resolves.toEqual(document);
++			expect(BackendHttpClient.get).toHaveBeenCalledWith(
++				"/commentary/v1/portal/knowledge-documents/doc%2Fone"
++			);
++		});
++
++		it("loads paginated knowledge documents with encoded filters", async () => {
++			const page = { total: 1, page: 2, pageSize: 5, items: [] };
++			(BackendHttpClient.get as jest.Mock).mockResolvedValue({
++				status: HttpStatus.OK,
++				data: { code: 0, message: "success", data: page },
++			});
++
++			await expect(
++				InsightService.getKnowledgeDocuments({
++					keyword: "Brand & safety",
++					brandName: "J&J",
++					adminStatus: "inactive",
++					page: 2,
++					pageSize: 5,
++				})
++			).resolves.toEqual(page);
++			expect(BackendHttpClient.get).toHaveBeenCalledWith(
++				"/commentary/v1/portal/knowledge-documents?keyword=Brand+%26+safety&brandName=J%26J&adminStatus=inactive&page=2&pageSize=5"
++			);
++		});
++
++		it("rejects knowledge document list requests with an API error message", async () => {
++			(BackendHttpClient.get as jest.Mock).mockResolvedValue({
++				status: HttpStatus.BAD_REQUEST,
++				data: { code: 400, message: "Invalid document filters" },
++			});
++
++			await expect(
++				InsightService.getKnowledgeDocuments({
++					page: 1,
++					pageSize: 5,
++				})
++			).rejects.toThrow("Invalid document filters");
++		});
++
++		it("updates knowledge document metadata through the portal API", async () => {
++			const result = { success: true, message: null };
++			(BackendHttpClient.post as jest.Mock).mockResolvedValue({
++				status: HttpStatus.OK,
++				data: { code: 0, message: "success", data: result },
++			});
++
++			await expect(
++				InsightService.updateKnowledgeDocument({
++					id: "doc-1",
++					revision: 4,
++					brandName: "STELARA",
++					effectiveDate: "2026-11-01",
++					expiryDate: null,
++					description: "Updated evidence",
++				})
++			).resolves.toEqual(result);
++		});
++
++		it("retries processing for a knowledge document", async () => {
++			const result = { success: true, message: null };
++			(BackendHttpClient.post as jest.Mock).mockResolvedValue({
++				status: HttpStatus.OK,
++				data: { code: 0, message: "success", data: result },
++			});
++
++			await expect(
++				InsightService.retryKnowledgeDocument({
++					id: "doc-1",
++					revision: 4,
++				})
++			).resolves.toEqual(result);
++		});
++
+ 		it("sends knowledge uploads as multipart form data", async () => {
+ 			(BackendHttpClient.postFormData as jest.Mock).mockResolvedValue({
+ 				status: HttpStatus.OK,
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+index 476d30f..955a665 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+@@ -1,4 +1,4 @@
+-import { render, screen } from "@testing-library/react";
++import { fireEvent, render, screen } from "@testing-library/react";
+ import "@testing-library/jest-dom";
+ import type { ComponentProps, ReactNode } from "react";
+ import type {
+@@ -209,4 +209,84 @@ describe("KnowledgeDocumentDetail Component", () => {
+ 			"Processing must complete before activation."
+ 		);
+ 	});
++
++	it("allows deactivation and routes footer actions to their handlers", () => {
++		const onClose = jest.fn();
++		const onEdit = jest.fn();
++		const onChangeStatus = jest.fn();
++		render(
++			<KnowledgeDocumentDetail
++				visible={true}
++				document={mockDoc}
++				onClose={onClose}
++				onEdit={onEdit}
++				onChangeStatus={onChangeStatus}
++				onRetry={jest.fn()}
++			/>
++		);
++
++		const closeButtons = screen.getAllByRole("button", { name: "Close" });
++		fireEvent.click(closeButtons[closeButtons.length - 1]);
++		fireEvent.click(screen.getByRole("button", { name: "Edit" }));
++		fireEvent.click(screen.getByRole("button", { name: "Deactivate" }));
++
++		expect(onClose).toHaveBeenCalledTimes(1);
++		expect(onEdit).toHaveBeenCalledWith(mockDoc);
++		expect(onChangeStatus).toHaveBeenCalledWith(mockDoc);
++	});
++
++	it("shows processing guidance and disables retry while processing", () => {
++		render(
++			<KnowledgeDocumentDetail
++				visible={true}
++				document={{
++					...mockDoc,
++					status: "INACTIVE",
++					processingStatus: "PROCESSING",
++					processingError: "Indexing is still running",
++					updatedAt: undefined,
++				}}
++				onClose={jest.fn()}
++				onEdit={jest.fn()}
++				onChangeStatus={jest.fn()}
++				onRetry={jest.fn()}
++			/>
++		);
++
++		expect(
++			screen.getByText(
++				"Document is being parsed and indexed. You can activate it after processing reaches Ready."
++			)
++		).toBeInTheDocument();
++		expect(
++			screen.getByText("Indexing is still running")
++		).toBeInTheDocument();
++		expect(document.querySelector(".retry-btn")).toBeDisabled();
++		expect(screen.getByRole("button", { name: "Activate" })).toBeDisabled();
++	});
++
++	it("retries a failed document and shows the ready guidance", () => {
++		const onRetry = jest.fn();
++		render(
++			<KnowledgeDocumentDetail
++				visible={true}
++				document={{
++					...mockDoc,
++					status: "INACTIVE",
++					processingStatus: "FAILED",
++					processingError: "Extraction failed",
++				}}
++				onClose={jest.fn()}
++				onEdit={jest.fn()}
++				onChangeStatus={jest.fn()}
++				onRetry={onRetry}
++			/>
++		);
++
++		fireEvent.click(document.querySelector(".retry-btn") as HTMLElement);
++
++		expect(onRetry).toHaveBeenCalledWith(
++			expect.objectContaining({ processingStatus: "FAILED" })
++		);
++	});
+ });
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+index 4733f28..a2a4978 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+@@ -23,6 +23,56 @@ interface IKnowledgeDocumentDetailProps {
+ 	onRetry: (doc: IKnowledgeDocument) => void;
+ }
+ 
++const DocumentDetailFooter: FC<
++	Pick<
++		IKnowledgeDocumentDetailProps,
++		"document" | "onClose" | "onEdit" | "onChangeStatus"
++	>
++> = ({ document: doc, onClose, onEdit, onChangeStatus }) => {
++	if (!doc) return null;
++
++	const isActive = doc.status === "ACTIVE";
++	const canChangeStatus = isActive || canActivateKnowledgeDocument(doc);
++	const statusLabel = isActive
++		? "cothinker.knowledgeDoc.action.deactivate"
++		: "cothinker.knowledgeDoc.action.activate";
++
++	return (
++		<div className="drawer-footer">
++			<GenericButtonV2
++				type="default"
++				className="el-btn-default"
++				onClick={onClose}
++			>
++				<Text entry={{ "cothinker.common.close": {} }} />
++			</GenericButtonV2>
++			<GenericButtonV2
++				type="default"
++				className="el-btn-default"
++				onClick={() => onEdit(doc)}
++			>
++				<Text entry={{ "cothinker.common.edit": {} }} />
++			</GenericButtonV2>
++			<span
++				title={
++					!canChangeStatus
++						? "Processing must complete before activation."
++						: undefined
++				}
++			>
++				<GenericButtonV2
++					type="primary"
++					className={isActive ? "el-btn-warning" : "el-btn-primary"}
++					disabled={!canChangeStatus}
++					onClick={() => onChangeStatus(doc)}
++				>
++					<Text entry={{ [statusLabel]: {} }} />
++				</GenericButtonV2>
++			</span>
++		</div>
++	);
++};
++
+ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 	visible,
+ 	document: doc,
+@@ -309,60 +359,12 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 					</section>
+ 				</div>
+ 
+-				<div className="drawer-footer">
+-					<GenericButtonV2
+-						type="default"
+-						className="el-btn-default"
+-						onClick={onClose}
+-					>
+-						<Text entry={{ "cothinker.common.close": {} }} />
+-					</GenericButtonV2>
+-					<GenericButtonV2
+-						type="default"
+-						className="el-btn-default"
+-						onClick={() => onEdit(doc)}
+-					>
+-						<Text entry={{ "cothinker.common.edit": {} }} />
+-					</GenericButtonV2>
+-					<span
+-						title={
+-							doc.status === "INACTIVE" &&
+-							!canActivateKnowledgeDocument(doc)
+-								? "Processing must complete before activation."
+-								: undefined
+-						}
+-					>
+-						<GenericButtonV2
+-							type="primary"
+-							className={
+-								doc.status === "ACTIVE"
+-									? "el-btn-warning"
+-									: "el-btn-primary"
+-							}
+-							disabled={
+-								doc.status !== "ACTIVE" &&
+-								!canActivateKnowledgeDocument(doc)
+-							}
+-							onClick={() => onChangeStatus(doc)}
+-						>
+-							{doc.status === "ACTIVE" ? (
+-								<Text
+-									entry={{
+-										"cothinker.knowledgeDoc.action.deactivate":
+-											{},
+-									}}
+-								/>
+-							) : (
+-								<Text
+-									entry={{
+-										"cothinker.knowledgeDoc.action.activate":
+-											{},
+-									}}
+-								/>
+-							)}
+-						</GenericButtonV2>
+-					</span>
+-				</div>
++				<DocumentDetailFooter
++					document={doc}
++					onClose={onClose}
++					onEdit={onEdit}
++					onChangeStatus={onChangeStatus}
++				/>
+ 			</div>
+ 		</GenericSideDrawer>
+ 	);
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+index d9e97db..86f2d98 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+@@ -560,6 +560,78 @@ describe("KnowledgeDocTab Component", () => {
+ 		).toBeInTheDocument();
+ 	});
+ 
++	it("shows document and brand loading errors with working retry actions", async () => {
++		(
++			InsightService.getKnowledgeDocuments as jest.Mock
++		).mockRejectedValueOnce(new Error("Documents unavailable"));
++		(
++			FilterService.retrieveAdvancedFilter as jest.Mock
++		).mockRejectedValueOnce(new Error("Brands unavailable"));
++		render(<KnowledgeDocTab />);
++
++		expect(
++			await screen.findByText("Documents unavailable")
++		).toBeInTheDocument();
++		expect(screen.getByText("Brands unavailable")).toBeInTheDocument();
++
++		const retryButtons = screen.getAllByRole("button", { name: "Retry" });
++		fireEvent.click(retryButtons[0]);
++		fireEvent.click(retryButtons[1]);
++
++		await waitFor(() => {
++			expect(InsightService.getKnowledgeDocuments).toHaveBeenCalledTimes(
++				2
++			);
++			expect(FilterService.retrieveAdvancedFilter).toHaveBeenCalledTimes(
++				2
++			);
++		});
++		await screen.findByText("STELARA_Brand_Evidence.pdf");
++	});
++
++	it("shows a warning when refreshing processing documents fails", async () => {
++		mockKnowledgeDocs[0].processingStatus = "processing";
++		(
++			InsightService.refreshKnowledgeDocuments as jest.Mock
++		).mockRejectedValueOnce(new Error("Refresh unavailable"));
++		render(<KnowledgeDocTab />);
++
++		await screen.findByText("STELARA_Brand_Evidence.pdf");
++		fireEvent.click(
++			screen.getByRole("button", { name: "Refresh documents" })
++		);
++		await waitFor(() =>
++			expect(message.warning).toHaveBeenCalledWith("Refresh unavailable")
++		);
++		expect(message.success).not.toHaveBeenCalled();
++	});
++
++	it("shows a warning when retrying failed document processing fails", async () => {
++		mockKnowledgeDocs[0].processingStatus = "failed";
++		mockKnowledgeDocs[0].processingError = "Extraction failed";
++		(
++			InsightService.retryKnowledgeDocument as jest.Mock
++		).mockRejectedValueOnce(new Error("Retry unavailable"));
++		render(<KnowledgeDocTab />);
++		await screen.findByText("STELARA_Brand_Evidence.pdf");
++		fireEvent.click(
++			screen.getAllByRole("button", {
++				name: /Processing failed.*view details/i,
++			})[0]
++		);
++		await screen.findByText("Document details");
++		fireEvent.click(
++			screen.getByRole("button", { name: "Retry processing" })
++		);
++		await waitFor(() =>
++			expect(message.warning).toHaveBeenCalledWith("Retry unavailable")
++		);
++		expect(InsightService.retryKnowledgeDocument).toHaveBeenCalledWith({
++			id: mockKnowledgeDocs[0].id,
++			revision: 1,
++		});
++	});
++
+ 	it("filters documents by filename and resets filter", async () => {
+ 		render(<KnowledgeDocTab />);
+ 		await screen.findByText("STELARA_Brand_Evidence.pdf");
+@@ -606,6 +678,52 @@ describe("KnowledgeDocTab Component", () => {
+ 		expect(screen.queryByText("Document metadata")).not.toBeInTheDocument();
+ 	});
+ 
++	it("shows a warning when the document detail request fails", async () => {
++		(
++			InsightService.getKnowledgeDocument as jest.Mock
++		).mockRejectedValueOnce(new Error("Document detail unavailable"));
++		render(<KnowledgeDocTab />);
++		await screen.findByText("STELARA_Brand_Evidence.pdf");
++
++		fireEvent.click((await screen.findAllByText("View"))[0]);
++
++		await waitFor(() =>
++			expect(message.warning).toHaveBeenCalledWith(
++				"Document detail unavailable"
++			)
++		);
++		expect(
++			screen.queryByTestId("generic-side-drawer")
++		).not.toBeInTheDocument();
++	});
++
++	it("loads the latest detail after saving metadata for the open document", async () => {
++		render(<KnowledgeDocTab />);
++		await screen.findByText("STELARA_Brand_Evidence.pdf");
++		fireEvent.click((await screen.findAllByText("View"))[0]);
++		await screen.findByText("Document details");
++		fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]);
++		fireEvent.change(
++			screen.getByPlaceholderText(
++				"Describe the document content and its business context."
++			),
++			{ target: { value: "Updated while detail is open" } }
++		);
++		fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
++
++		await waitFor(() =>
++			expect(InsightService.getKnowledgeDocument).toHaveBeenCalledTimes(2)
++		);
++		expect(InsightService.updateKnowledgeDocument).toHaveBeenCalledWith(
++			expect.objectContaining({
++				id: mockKnowledgeDocs[0].id,
++				revision: 1,
++				description: "Updated while detail is open",
++			})
++		);
++		expect(screen.getByTestId("generic-side-drawer")).toBeInTheDocument();
++	});
++
+ 	it("opens edit document modal and saves modified metadata", async () => {
+ 		render(<KnowledgeDocTab />);
+ 
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+index a27efc9..236c4c4 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+@@ -293,6 +293,69 @@ const enabledBrandNames = (options: AdvancedFilterOptions): string[] =>
+ 		return option.children ? enabledBrandNames(option.children) : [];
+ 	});
+ 
++interface IStatusConfirmationProps {
++	document: IKnowledgeDocument;
++	onClose: () => void;
++	onConfirm: () => void;
++}
++
++const StatusConfirmation: FC<IStatusConfirmationProps> = ({
++	document,
++	onClose,
++	onConfirm,
++}) => {
++	const isActive = document.status === "ACTIVE";
++	const availability = getDocumentAvailability(document);
++	const showAvailabilityWarning =
++		!isActive && ["Not yet effective", "Expired"].includes(availability);
++
++	return (
++		<GenericModalV2
++			isOpen={true}
++			visible={true}
++			showCloseIcon={true}
++			title={`${isActive ? "Deactivate" : "Activate"} document`}
++			onClose={onClose}
++			footer={
++				<div className="modal-bottom">
++					<GenericButtonV2
++						type="default"
++						className="el-btn-default"
++						onClick={onClose}
++					>
++						Cancel
++					</GenericButtonV2>
++					<GenericButtonV2
++						type="primary"
++						className={
++							isActive ? "el-btn-warning" : "el-btn-primary"
++						}
++						onClick={onConfirm}
++					>
++						{isActive ? "Deactivate" : "Activate"}
++					</GenericButtonV2>
++				</div>
++			}
++		>
++			<div className="confirm-modal-box">
++				<div className="modal-middle">
++					<p className="confirm-text">
++						{isActive
++							? `Deactivate “${document.fileName}”? It will no longer be used for new commentary. Existing Log Audit references will remain available.`
++							: `Activate “${document.fileName}”? Only documents within their effective dates can be retrieved.`}
++					</p>
++					{showAvailabilityWarning && (
++						<p className="warning-note">
++							Its date range is {availability.toLowerCase()}, so
++							it will not be available for retrieval.
++						</p>
++					)}
++				</div>
++			</div>
++		</GenericModalV2>
++	);
++};
++
+ export const KnowledgeDocTab: FC = () => {
+ 	const [documents, setDocuments] = useState<IKnowledgeDocument[]>([]);
+ 	const [total, setTotal] = useState<number>(0);
+@@ -375,7 +438,7 @@ export const KnowledgeDocTab: FC = () => {
+ 	);
+ 
+ 	useEffect(() => {
+-		void loadDocuments(1, DEFAULT_PAGE_SIZE, emptyFilters);
++		loadDocuments(1, DEFAULT_PAGE_SIZE, emptyFilters);
+ 	}, [emptyFilters, loadDocuments]);
+ 
+ 	const loadBrandOptions = useCallback(async () => {
+@@ -398,7 +461,7 @@ export const KnowledgeDocTab: FC = () => {
+ 	}, []);
+ 
+ 	useEffect(() => {
+-		void loadBrandOptions();
++		loadBrandOptions();
+ 	}, [loadBrandOptions]);
+ 
+ 	const filteredDocuments = documents;
+@@ -408,14 +471,14 @@ export const KnowledgeDocTab: FC = () => {
+ 		const nextFilters = { ...filters };
+ 		setAppliedFilters(nextFilters);
+ 		setCurrentPage(1);
+-		void loadDocuments(1, pageSize, nextFilters);
++		loadDocuments(1, pageSize, nextFilters);
+ 	};
+ 
+ 	const handleResetFilters = () => {
+ 		setFilters(emptyFilters);
+ 		setAppliedFilters(emptyFilters);
+ 		setCurrentPage(1);
+-		void loadDocuments(1, pageSize, emptyFilters);
++		loadDocuments(1, pageSize, emptyFilters);
+ 	};
+ 
+ 	const handleRefresh = () => {
+@@ -423,7 +486,7 @@ export const KnowledgeDocTab: FC = () => {
+ 			.filter((doc) => doc.processingStatus === "PROCESSING")
+ 			.map((doc) => doc.id);
+ 		if (processingIds.length === 0) {
+-			void loadDocuments(currentPage, pageSize, appliedFilters).then(
++			loadDocuments(currentPage, pageSize, appliedFilters).then(
+ 				(loaded) => {
+ 					if (loaded)
+ 						showToast("Documents list refreshed.", "success");
+@@ -489,19 +552,21 @@ export const KnowledgeDocTab: FC = () => {
+ 					);
+ 				}
+ 				showToast("Document metadata saved.", "success");
+-			} else if (payload.file) {
+-				await InsightService.uploadKnowledgeDocument({
+-					file: payload.file,
+-					brandName: payload.metadata.brand || "",
+-					effectiveDate: payload.metadata.effectiveFrom || "",
+-					expiryDate: payload.metadata.effectiveTo,
+-					description: payload.metadata.description || "",
+-				});
+-				setCurrentPage(1);
+-				showToast(
+-					"Document uploaded. Processing has started; status remains Inactive.",
+-					"success"
+-				);
++			} else {
++				if (payload.file) {
++					await InsightService.uploadKnowledgeDocument({
++						file: payload.file,
++						brandName: payload.metadata.brand || "",
++						effectiveDate: payload.metadata.effectiveFrom || "",
++						expiryDate: payload.metadata.effectiveTo,
++						description: payload.metadata.description || "",
++					});
++					setCurrentPage(1);
++					showToast(
++						"Document uploaded. Processing has started; status remains Inactive.",
++						"success"
++					);
++				}
+ 			}
+ 			setEditorVisible(false);
+ 			await loadDocuments(
+@@ -596,11 +661,7 @@ export const KnowledgeDocTab: FC = () => {
+ 						type="link"
+ 						className="panel-error-action knowledge-link-control"
+ 						onClick={() =>
+-							void loadDocuments(
+-								currentPage,
+-								pageSize,
+-								appliedFilters
+-							)
++							loadDocuments(currentPage, pageSize, appliedFilters)
+ 						}
+ 					>
+ 						Retry
+@@ -613,7 +674,7 @@ export const KnowledgeDocTab: FC = () => {
+ 					<GenericButtonV2
+ 						type="link"
+ 						className="panel-error-action knowledge-link-control"
+-						onClick={() => void loadBrandOptions()}
++						onClick={loadBrandOptions}
+ 					>
+ 						Retry
+ 					</GenericButtonV2>
+@@ -777,7 +838,7 @@ export const KnowledgeDocTab: FC = () => {
+ 						pageSize={pageSize}
+ 						currentPage={currentPage}
+ 						onPageChange={(page, requestedPageSize) =>
+-							void loadDocuments(
++							loadDocuments(
+ 								page,
+ 								requestedPageSize,
+ 								appliedFilters
+@@ -815,64 +876,11 @@ export const KnowledgeDocTab: FC = () => {
+ 			/>
+ 
+ 			{confirmModalVisible && confirmTarget && (
+-				<GenericModalV2
+-					isOpen={confirmModalVisible}
+-					visible={confirmModalVisible}
+-					showCloseIcon={true}
+-					title={
+-						confirmTarget.status === "ACTIVE"
+-							? "Deactivate document"
+-							: "Activate document"
+-					}
++				<StatusConfirmation
++					document={confirmTarget}
+ 					onClose={() => setConfirmModalVisible(false)}
+-					footer={
+-						<div className="modal-bottom">
+-							<GenericButtonV2
+-								type="default"
+-								className="el-btn-default"
+-								onClick={() => setConfirmModalVisible(false)}
+-							>
+-								Cancel
+-							</GenericButtonV2>
+-							<GenericButtonV2
+-								type="primary"
+-								className={
+-									confirmTarget.status === "ACTIVE"
+-										? "el-btn-warning"
+-										: "el-btn-primary"
+-								}
+-								onClick={handleConfirmStatusChange}
+-							>
+-								{confirmTarget.status === "ACTIVE"
+-									? "Deactivate"
+-									: "Activate"}
+-							</GenericButtonV2>
+-						</div>
+-					}
+-				>
+-					<div className="confirm-modal-box">
+-						<div className="modal-middle">
+-							<p className="confirm-text">
+-								{confirmTarget.status === "ACTIVE"
+-									? `Deactivate “${confirmTarget.fileName}”? It will no longer be used for new commentary. Existing Log Audit references will remain available.`
+-									: `Activate “${confirmTarget.fileName}”? Only documents within their effective dates can be retrieved.`}
+-							</p>
+-							{confirmTarget.status === "INACTIVE" &&
+-								["Not yet effective", "Expired"].includes(
+-									getDocumentAvailability(confirmTarget)
+-								) && (
+-									<p className="warning-note">
+-										Its date range is{" "}
+-										{getDocumentAvailability(
+-											confirmTarget
+-										).toLowerCase()}
+-										, so it will not be available for
+-										retrieval.
+-									</p>
+-								)}
+-						</div>
+-					</div>
+-				</GenericModalV2>
++					onConfirm={handleConfirmStatusChange}
++				/>
+ 			)}
+ 		</div>
+ 	);
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+index 3d8f141..fa814f2 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.spec.tsx
+@@ -356,7 +356,7 @@ describe("MetricDefinitionsPanel Component", () => {
+ 		);
+ 	});
+ 
+-	it("handles delete metric confirmation and cancellation", () => {
++	it("handles delete metric confirmation and cancellation", async () => {
+ 		const handleDelete = jest.fn();
+ 		render(
+ 			<MetricDefinitionsPanel
+@@ -384,7 +384,9 @@ describe("MetricDefinitionsPanel Component", () => {
+ 
+ 		fireEvent.click(deleteButtons[0]);
+ 		fireEvent.click(screen.getByRole("button", { name: /Delete metric/i }));
+-		expect(handleDelete).toHaveBeenCalledWith("metric-1");
++		await waitFor(() =>
++			expect(handleDelete).toHaveBeenCalledWith("metric-1")
++		);
+ 	});
+ 
+ 	it("renders empty state when metrics array is empty", () => {
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+index 4ddbff7..a5cb70d 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+@@ -395,13 +395,15 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 							<GenericButtonV2
+ 								type="primary"
+ 								className="el-btn-danger"
+-								onClick={async () => {
+-									try {
+-										await onDeleteMetric(deleteTarget.id);
+-										setDeleteTarget(null);
+-									} catch (error) {
+-										setFormError((error as Error).message);
+-									}
++								onClick={() => {
++									Promise.resolve()
++										.then(() =>
++											onDeleteMetric(deleteTarget.id)
++										)
++										.then(() => setDeleteTarget(null))
++										.catch((error: Error) =>
++											setFormError(error.message)
++										);
+ 								}}
+ 							>
+ 								Delete metric
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+index 2fe6ce1..100153b 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+@@ -359,6 +359,51 @@ describe("PromptManagementTab Component", () => {
+ 		expect(screen.getByText("Create draft")).toBeInTheDocument();
+ 	});
+ 
++	it("shows initial load errors and retries loading prompt data", async () => {
++		(InsightService.getPromptVersion as jest.Mock).mockRejectedValueOnce(
++			new Error("Prompt service unavailable")
++		);
++		render(<PromptManagementTab />);
++
++		expect(
++			await screen.findByText("Prompt service unavailable")
++		).toBeInTheDocument();
++		fireEvent.click(screen.getByRole("button", { name: "Retry" }));
++
++		expect(await screen.findByText("Create draft")).toBeInTheDocument();
++		await waitFor(() =>
++			expect(InsightService.getPromptVersion).toHaveBeenCalledTimes(4)
++		);
++	});
++
++	it("shows and retries version and metric list errors", async () => {
++		(InsightService.getPromptVersions as jest.Mock).mockRejectedValueOnce(
++			new Error("Version list unavailable")
++		);
++		(InsightService.getGlossaryTerms as jest.Mock).mockRejectedValueOnce(
++			new Error("Metric list unavailable")
++		);
++		render(<PromptManagementTab />);
++
++		fireEvent.click(await screen.findByText("Version History"));
++		expect(
++			await screen.findByText("Version list unavailable")
++		).toBeInTheDocument();
++		fireEvent.click(screen.getByRole("button", { name: "Retry" }));
++		await waitFor(() =>
++			expect(InsightService.getPromptVersions).toHaveBeenCalledTimes(2)
++		);
++
++		fireEvent.click(screen.getByText("Metric Definitions"));
++		expect(
++			await screen.findByText("Metric list unavailable")
++		).toBeInTheDocument();
++		fireEvent.click(screen.getByRole("button", { name: "Retry" }));
++		await waitFor(() =>
++			expect(InsightService.getGlossaryTerms).toHaveBeenCalledTimes(2)
++		);
++	});
++
+ 	it("cancels a new draft when the editor is closed before saving", async () => {
+ 		render(<PromptManagementTab />);
+ 
+@@ -486,6 +531,65 @@ describe("PromptManagementTab Component", () => {
+ 		});
+ 	});
+ 
++	it("keeps the saved draft when publishing fails", async () => {
++		(InsightService.publishPromptDraft as jest.Mock).mockRejectedValueOnce(
++			new Error("Publish unavailable")
++		);
++		render(<PromptManagementTab />);
++		fireEvent.click(await screen.findByText("Create draft"));
++		fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
++		await screen.findByRole("region", { name: "Draft workspace" });
++		fireEvent.change(
++			screen.getByPlaceholderText("Describe the purpose of this change"),
++			{ target: { value: "Publish after review" } }
++		);
++		fireEvent.click(screen.getByText("Review & publish"));
++		fireEvent.click(screen.getByRole("button", { name: /Publish v/i }));
++
++		await waitFor(() =>
++			expect(message.warning).toHaveBeenCalledWith("Publish unavailable")
++		);
++		expect(
++			screen.getByRole("region", { name: "Draft workspace" })
++		).toBeInTheDocument();
++		expect(InsightService.deletePromptDraft).not.toHaveBeenCalled();
++	});
++
++	it("warns when restoring an earlier version fails to load its detail", async () => {
++		(InsightService.getPromptVersion as jest.Mock).mockImplementation(
++			(params?: { status?: string; versionId?: string }) =>
++				params?.versionId === "version-1"
++					? Promise.reject(new Error("Version detail unavailable"))
++					: Promise.resolve(
++							params?.status === "draft"
++								? null
++								: {
++										versionId: "version-2",
++										versionNo: 2,
++										versionLabel: "v2",
++										status: "active",
++										sharedInstructions:
++											"Active shared prompt",
++										roles: [],
++										revision: 2,
++								  }
++					  )
++		);
++		render(<PromptManagementTab />);
++		fireEvent.click(await screen.findByText("Version History"));
++		const restoreButtons = await screen.findAllByRole("button", {
++			name: "Restore",
++		});
++		fireEvent.click(restoreButtons[0]);
++
++		await waitFor(() =>
++			expect(message.warning).toHaveBeenCalledWith(
++				"Version detail unavailable"
++			)
++		);
++		expect(screen.queryByText(/Restore configuration from v/i)).toBeNull();
++	});
++
+ 	it("discards unsaved editor changes when closing an existing draft", async () => {
+ 		const savedDraftRoles = [
+ 			{
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+index e849409..7a281fe 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+@@ -1,5 +1,4 @@
+ import { FC, useState, useMemo, useEffect, useCallback, useRef } from "react";
+-import type { ReactNode } from "react";
+ import {
+ 	EditPenSvgIcon,
+ 	CollectionSvgIcon,
+@@ -166,9 +165,6 @@ Generate analytical commentary based on the user's dashboard view.`,
+ 		},
+ 	},
+ };
+-const renderIf = (condition: boolean, content: ReactNode): ReactNode =>
+-	condition ? content : null;
+-
+ export const INITIAL_PROMPT_VERSIONS: IPromptVersion[] = [
+ 	{
+ 		id: "ver-002-active",
+@@ -823,7 +819,9 @@ export const PromptManagementTab: FC = () => {
+ 	}, []);
+ 
+ 	useEffect(() => {
+-		void loadInitialData();
++		loadInitialData().catch((error) =>
++			showToast((error as Error).message, "warning")
++		);
+ 	}, [loadInitialData]);
+ 
+ 	const isDirty = useMemo(() => {
+@@ -1205,17 +1203,17 @@ export const PromptManagementTab: FC = () => {
+ 
+ 	const handleMetricSearch = (keyword: string) => {
+ 		setMetricKeyword(keyword);
+-		void loadMetrics(keyword, 1, metricPageSize).catch(() => {});
++		loadMetrics(keyword, 1, metricPageSize).catch(() => undefined);
+ 	};
+ 
+ 	const handleVersionPageChange = (page: number, pageSize: number) => {
+-		void loadVersionPage(page, pageSize).catch((error) =>
++		loadVersionPage(page, pageSize).catch((error) =>
+ 			showToast((error as Error).message, "warning")
+ 		);
+ 	};
+ 
+ 	const handleMetricPageChange = (page: number, pageSize: number) => {
+-		void loadMetrics(metricKeyword, page, pageSize).catch((error) =>
++		loadMetrics(metricKeyword, page, pageSize).catch((error) =>
+ 			showToast((error as Error).message, "warning")
+ 		);
+ 	};
+@@ -1226,6 +1224,294 @@ export const PromptManagementTab: FC = () => {
+ 		draftVersion?.config ||
+ 		activeVersion.config;
+ 
++	const renderWorkspaceTabs = () => (
++		<div className="workspace-tabs">
++			<div className="workspace-tabs-header">
++				<GenericButtonV2
++					type="text"
++					className={`tab-button portal-tab-control ${
++						activeTab === "configuration" ? "active" : ""
++					}`}
++					onClick={() => setActiveTab("configuration")}
++				>
++					Configuration
++				</GenericButtonV2>
++				<GenericButtonV2
++					type="text"
++					className={`tab-button portal-tab-control ${
++						activeTab === "history" ? "active" : ""
++					}`}
++					onClick={() => setActiveTab("history")}
++				>
++					Version History
++				</GenericButtonV2>
++				<GenericButtonV2
++					type="text"
++					className={`tab-button portal-tab-control ${
++						activeTab === "metrics" ? "active" : ""
++					}`}
++					onClick={() => setActiveTab("metrics")}
++				>
++					Metric Definitions
++				</GenericButtonV2>
++			</div>
++
++			{!loading && !loadError && (
++				<div className="workspace-tab-body">
++					{activeTab === "configuration" && (
++						<ConfigurationPanel
++							hasDraft={!!draftVersion}
++							activeVersion={activeVersion}
++							onOpenEditor={handleOpenEditor}
++						/>
++					)}
++
++					{activeTab === "history" && (
++						<>
++							{versionsError && (
++								<div className="panel-error" role="alert">
++									<span>{versionsError}</span>
++									<GenericButtonV2
++										type="link"
++										className="panel-error-action portal-link-control"
++										onClick={() =>
++											loadVersionPage().catch((error) =>
++												showToast(
++													(error as Error).message,
++													"warning"
++												)
++											)
++										}
++									>
++										Retry
++									</GenericButtonV2>
++								</div>
++							)}
++							{versionsLoading ? (
++								<div className="panel-loading">
++									Loading versions...
++								</div>
++							) : (
++								<VersionHistoryPanel
++									versions={versions}
++									activeVersionId={activeVersion.id}
++									hasDraft={!!draftVersion}
++									total={versionTotal}
++									currentPage={versionPage}
++									pageSize={versionPageSize}
++									onPageChange={handleVersionPageChange}
++									onExport={() =>
++										InsightService.exportPromptVersions()
++									}
++									onInspect={(v) =>
++										handleOpenEditor("SHARED", v)
++									}
++									onRollback={handlePrepareRestore}
++								/>
++							)}
++						</>
++					)}
++
++					{activeTab === "metrics" && (
++						<>
++							{metricsError && (
++								<div className="panel-error" role="alert">
++									<span>{metricsError}</span>
++									<GenericButtonV2
++										type="link"
++										className="panel-error-action portal-link-control"
++										onClick={() =>
++											loadMetrics().catch((error) =>
++												showToast(
++													(error as Error).message,
++													"warning"
++												)
++											)
++										}
++									>
++										Retry
++									</GenericButtonV2>
++								</div>
++							)}
++							{metricsLoading && !metricsLoaded ? (
++								<div className="panel-loading">
++									Loading glossary terms...
++								</div>
++							) : (
++								<MetricDefinitionsPanel
++									metrics={metrics}
++									total={metricTotal}
++									unfilteredTotal={metricUnfilteredTotal}
++									currentPage={metricPage}
++									pageSize={metricPageSize}
++									onPageChange={handleMetricPageChange}
++									onSearch={handleMetricSearch}
++									onSaveMetric={handleSaveMetric}
++									onDeleteMetric={handleDeleteMetric}
++								/>
++							)}
++						</>
++					)}
++				</div>
++			)}
++		</div>
++	);
++
++	const renderVersionBanner = () => {
++		if (loading || loadError) return null;
++		if (activeTab === "metrics") {
++			return (
++				<section
++					className="version-banner"
++					aria-label="Metric definitions context"
++				>
++					<div className="version-mark">
++						<CollectionSvgIcon size={24} />
++					</div>
++					<div className="version-info">
++						<div className="info-header">
++							<span className="textBold">
++								<Text
++									entry={{
++										"cothinker.prompt.metricsTitle": {},
++									}}
++								/>
++							</span>
++						</div>
++						<p>
++							Metrics will be dynamically injected into AI Agent
++							to enhance commentary quality.
++						</p>
++					</div>
++				</section>
++			);
++		}
++		return (
++			<section
++				className="version-banner"
++				aria-label="Current active configuration"
++			>
++				<div className="version-mark">v{activeVersion.version}</div>
++				<div className="version-info">
++					<div className="info-header">
++						<span className="textBold">
++							<Text
++								entry={{
++									"cothinker.prompt.currentActiveVersion": {},
++								}}
++							/>
++						</span>
++						<span className="active-tag">
++							<Text
++								entry={{
++									"cothinker.prompt.statusActive": {},
++								}}
++							/>
++						</span>
++					</div>
++					<p>{activeVersion.changeNote}</p>
++				</div>
++				<div className="version-scope">
++					<span className="textBold">
++						1 shared prompt · 3 role profiles
++					</span>
++					<span>
++						<Text
++							entry={{
++								"cothinker.prompt.publishedTogether": {},
++							}}
++						/>
++					</span>
++				</div>
++			</section>
++		);
++	};
++
++	const renderDraftBar = () => {
++		if (loading || loadError || activeTab === "metrics" || !draftVersion) {
++			return null;
++		}
++		return (
++			<section className="draft-bar" aria-label="Draft workspace">
++				<div className="draft-heading">
++					<div className="draft-meta-group">
++						<span className="draft-tag">
++							<Text
++								entry={{
++									"cothinker.prompt.statusDraft": {},
++								}}
++							/>
++						</span>
++						<span className="textBold">
++							Based on v{activeVersion.version}
++						</span>
++						<span className="dirty-state">
++							{isDirty ? "Unsaved changes" : "Draft saved"}
++						</span>
++					</div>
++					<GenericButtonV2
++						type="link"
++						className="discard-link portal-link-control"
++						disabled={saving}
++						onClick={handleDiscardDraft}
++					>
++						Discard draft
++					</GenericButtonV2>
++				</div>
++				<label htmlFor="change-note">
++					<Text
++						entry={{
++							"cothinker.prompt.fieldChangeNote": {},
++						}}
++					/>
++				</label>
++				<input
++					id="change-note"
++					type="text"
++					className="change-note-input"
++					placeholder="Describe the purpose of this change"
++					value={draftChangeNote}
++					onChange={(e) => setDraftChangeNote(e.target.value)}
++					maxLength={500}
++				/>
++				<div className="draft-actions">
++					<GenericButtonV2
++						type="default"
++						className="el-btn-default"
++						disabled={changedFields.length === 0}
++						onClick={() => setViewChangesVisible(true)}
++					>
++						<Text
++							entry={{
++								"cothinker.prompt.viewChanges": {},
++							}}
++						/>
++					</GenericButtonV2>
++					<GenericButtonV2
++						type="default"
++						className="el-btn-default"
++						disabled={saving}
++						onClick={handleSaveDraft}
++					>
++						<Text entry={{ "cothinker.prompt.saveDraft": {} }} />
++					</GenericButtonV2>
++					<GenericButtonV2
++						type="primary"
++						className="el-btn-primary"
++						disabled={saving || !draftChangeNote.trim()}
++						onClick={() => setPublishDialogVisible(true)}
++					>
++						<Text
++							entry={{
++								"cothinker.prompt.reviewPublish": {},
++							}}
++						/>
++					</GenericButtonV2>
++				</div>
++			</section>
++		);
++	};
++
+ 	const renderPageContent = () => (
+ 		<div className="prompt-workspace">
+ 			<header className="page-heading">
+@@ -1282,284 +1568,21 @@ export const PromptManagementTab: FC = () => {
+ 					<GenericButtonV2
+ 						type="link"
+ 						className="panel-error-action portal-link-control"
+-						onClick={() => void loadInitialData()}
++						onClick={() =>
++							loadInitialData().catch((error) =>
++								showToast((error as Error).message, "warning")
++							)
++						}
+ 					>
+ 						Retry
+ 					</GenericButtonV2>
+ 				</div>
+ 			)}
+ 
+-			{!loading && !loadError && activeTab !== "metrics" ? (
+-				<section
+-					className="version-banner"
+-					aria-label="Current active configuration"
+-				>
+-					<div className="version-mark">v{activeVersion.version}</div>
+-					<div className="version-info">
+-						<div className="info-header">
+-							<span className="textBold">
+-								<Text
+-									entry={{
+-										"cothinker.prompt.currentActiveVersion":
+-											{},
+-									}}
+-								/>
+-							</span>
+-							<span className="active-tag">
+-								<Text
+-									entry={{
+-										"cothinker.prompt.statusActive": {},
+-									}}
+-								/>
+-							</span>
+-						</div>
+-						<p>{activeVersion.changeNote}</p>
+-					</div>
+-					<div className="version-scope">
+-						<span className="textBold">
+-							1 shared prompt · 3 role profiles
+-						</span>
+-						<span>
+-							<Text
+-								entry={{
+-									"cothinker.prompt.publishedTogether": {},
+-								}}
+-							/>
+-						</span>
+-					</div>
+-				</section>
+-			) : !loading && !loadError ? (
+-				<section
+-					className="version-banner"
+-					aria-label="Metric definitions context"
+-				>
+-					<div className="version-mark">
+-						<CollectionSvgIcon size={24} />
+-					</div>
+-					<div className="version-info">
+-						<div className="info-header">
+-							<span className="textBold">
+-								<Text
+-									entry={{
+-										"cothinker.prompt.metricsTitle": {},
+-									}}
+-								/>
+-							</span>
+-						</div>
+-						<p>
+-							Metrics will be dynamically injected into AI Agent
+-							to enhance commentary quality.
+-						</p>
+-					</div>
+-				</section>
+-			) : null}
+-
+-			{renderIf(
+-				!loading && !loadError && activeTab !== "metrics",
+-				renderIf(
+-					Boolean(draftVersion),
+-					<section className="draft-bar" aria-label="Draft workspace">
+-						<div className="draft-heading">
+-							<div className="draft-meta-group">
+-								<span className="draft-tag">
+-									<Text
+-										entry={{
+-											"cothinker.prompt.statusDraft": {},
+-										}}
+-									/>
+-								</span>
+-								<span className="textBold">
+-									Based on v{activeVersion.version}
+-								</span>
+-								<span className="dirty-state">
+-									{isDirty
+-										? "Unsaved changes"
+-										: "Draft saved"}
+-								</span>
+-							</div>
+-							<GenericButtonV2
+-								type="link"
+-								className="discard-link portal-link-control"
+-								disabled={saving}
+-								onClick={handleDiscardDraft}
+-							>
+-								Discard draft
+-							</GenericButtonV2>
+-						</div>
+-						<label htmlFor="change-note">
+-							<Text
+-								entry={{
+-									"cothinker.prompt.fieldChangeNote": {},
+-								}}
+-							/>
+-						</label>
+-						<input
+-							id="change-note"
+-							type="text"
+-							className="change-note-input"
+-							placeholder="Describe the purpose of this change"
+-							value={draftChangeNote}
+-							onChange={(e) => setDraftChangeNote(e.target.value)}
+-							maxLength={500}
+-						/>
+-						<div className="draft-actions">
+-							<GenericButtonV2
+-								type="default"
+-								className="el-btn-default"
+-								disabled={changedFields.length === 0}
+-								onClick={() => setViewChangesVisible(true)}
+-							>
+-								<Text
+-									entry={{
+-										"cothinker.prompt.viewChanges": {},
+-									}}
+-								/>
+-							</GenericButtonV2>
+-							<GenericButtonV2
+-								type="default"
+-								className="el-btn-default"
+-								disabled={saving}
+-								onClick={handleSaveDraft}
+-							>
+-								<Text
+-									entry={{ "cothinker.prompt.saveDraft": {} }}
+-								/>
+-							</GenericButtonV2>
+-							<GenericButtonV2
+-								type="primary"
+-								className="el-btn-primary"
+-								disabled={saving || !draftChangeNote.trim()}
+-								onClick={() => setPublishDialogVisible(true)}
+-							>
+-								<Text
+-									entry={{
+-										"cothinker.prompt.reviewPublish": {},
+-									}}
+-								/>
+-							</GenericButtonV2>
+-						</div>
+-					</section>
+-				)
+-			)}
+-
+-			<div className="workspace-tabs">
+-				<div className="workspace-tabs-header">
+-					<GenericButtonV2
+-						type="text"
+-						className={`tab-button portal-tab-control ${
+-							activeTab === "configuration" ? "active" : ""
+-						}`}
+-						onClick={() => setActiveTab("configuration")}
+-					>
+-						Configuration
+-					</GenericButtonV2>
+-					<GenericButtonV2
+-						type="text"
+-						className={`tab-button portal-tab-control ${
+-							activeTab === "history" ? "active" : ""
+-						}`}
+-						onClick={() => setActiveTab("history")}
+-					>
+-						Version History
+-					</GenericButtonV2>
+-					<GenericButtonV2
+-						type="text"
+-						className={`tab-button portal-tab-control ${
+-							activeTab === "metrics" ? "active" : ""
+-						}`}
+-						onClick={() => setActiveTab("metrics")}
+-					>
+-						Metric Definitions
+-					</GenericButtonV2>
+-				</div>
+-
+-				{!loading && !loadError && (
+-					<div className="workspace-tab-body">
+-						{activeTab === "configuration" && (
+-							<ConfigurationPanel
+-								hasDraft={!!draftVersion}
+-								activeVersion={activeVersion}
+-								onOpenEditor={handleOpenEditor}
+-							/>
+-						)}
++			{renderVersionBanner()}
++			{renderDraftBar()}
+ 
+-						{activeTab === "history" && (
+-							<>
+-								{versionsError && (
+-									<div className="panel-error" role="alert">
+-										<span>{versionsError}</span>
+-										<GenericButtonV2
+-											type="link"
+-											className="panel-error-action portal-link-control"
+-											onClick={() =>
+-												void loadVersionPage()
+-											}
+-										>
+-											Retry
+-										</GenericButtonV2>
+-									</div>
+-								)}
+-								{versionsLoading ? (
+-									<div className="panel-loading">
+-										Loading versions...
+-									</div>
+-								) : (
+-									<VersionHistoryPanel
+-										versions={versions}
+-										activeVersionId={activeVersion.id}
+-										hasDraft={!!draftVersion}
+-										total={versionTotal}
+-										currentPage={versionPage}
+-										pageSize={versionPageSize}
+-										onPageChange={handleVersionPageChange}
+-										onExport={() =>
+-											InsightService.exportPromptVersions()
+-										}
+-										onInspect={(v) =>
+-											handleOpenEditor("SHARED", v)
+-										}
+-										onRollback={handlePrepareRestore}
+-									/>
+-								)}
+-							</>
+-						)}
+-
+-						{activeTab === "metrics" && (
+-							<>
+-								{metricsError && (
+-									<div className="panel-error" role="alert">
+-										<span>{metricsError}</span>
+-										<GenericButtonV2
+-											type="link"
+-											className="panel-error-action portal-link-control"
+-											onClick={() => void loadMetrics()}
+-										>
+-											Retry
+-										</GenericButtonV2>
+-									</div>
+-								)}
+-								{metricsLoading && !metricsLoaded ? (
+-									<div className="panel-loading">
+-										Loading glossary terms...
+-									</div>
+-								) : (
+-									<MetricDefinitionsPanel
+-										metrics={metrics}
+-										total={metricTotal}
+-										unfilteredTotal={metricUnfilteredTotal}
+-										currentPage={metricPage}
+-										pageSize={metricPageSize}
+-										onPageChange={handleMetricPageChange}
+-										onSearch={handleMetricSearch}
+-										onSaveMetric={handleSaveMetric}
+-										onDeleteMetric={handleDeleteMetric}
+-									/>
+-								)}
+-							</>
+-						)}
+-					</div>
+-				)}
+-			</div>
++			{renderWorkspaceTabs()}
+ 
+ 			<PromptEditorDrawer
+ 				visible={drawerVisible}
