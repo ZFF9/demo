@@ -1,0 +1,257 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+index ceb198c..476d30f 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+@@ -8,7 +8,7 @@ import type {
+ } from "@angen_frontend/components";
+ import type { TranslationEntry } from "@angen_frontend/types";
+ import { KnowledgeDocumentDetail } from "./index";
+-import { IKnowledgeDocument } from "../index";
++import type { IKnowledgeDocument } from "../index";
+ 
+ type MockTextProps = Omit<
+ 	ComponentProps<typeof TextComponent>,
+@@ -113,6 +113,26 @@ jest.mock("@angen_frontend/components", () => ({
+ 	},
+ }));
+ 
++jest.mock("@angen_frontend/services", () => ({
++	FilterService: { retrieveAdvancedFilter: jest.fn() },
++	InsightService: {
++		getKnowledgeDocuments: jest.fn(),
++		getKnowledgeDocument: jest.fn(),
++		uploadKnowledgeDocument: jest.fn(),
++		updateKnowledgeDocument: jest.fn(),
++		setKnowledgeDocumentStatus: jest.fn(),
++		retryKnowledgeDocument: jest.fn(),
++		refreshKnowledgeDocuments: jest.fn(),
++	},
++}));
++
++jest.mock("@angen_frontend/types", () => ({
++	__esModule: true,
++	AdvancedFilterName: { MARKET_DEFINITION: "marketDefinition" },
++	LeafProjectPath: { "J&J_IM_TA_PERFORMANCE": "j_j_im_ta_performance" },
++	ParentProjectPath: { AP360: "ap360" },
++}));
++
+ describe("KnowledgeDocumentDetail Component", () => {
+ 	const mockDoc: IKnowledgeDocument = {
+ 		id: "doc-1",
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+index 85d0a83..11d94f0 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+@@ -9,7 +9,7 @@ import type {
+ 	Text as TextComponent,
+ } from "@angen_frontend/components";
+ import { KnowledgeDocumentEditor } from "./index";
+-import { IKnowledgeDocument } from "../index";
++import type { IKnowledgeDocument } from "../index";
+ 
+ type MockTextProps = Omit<
+ 	ComponentProps<typeof TextComponent>,
+@@ -193,6 +193,26 @@ jest.mock("@angen_frontend/components", () => ({
+ 	),
+ }));
+ 
++jest.mock("@angen_frontend/services", () => ({
++	FilterService: { retrieveAdvancedFilter: jest.fn() },
++	InsightService: {
++		getKnowledgeDocuments: jest.fn(),
++		getKnowledgeDocument: jest.fn(),
++		uploadKnowledgeDocument: jest.fn(),
++		updateKnowledgeDocument: jest.fn(),
++		setKnowledgeDocumentStatus: jest.fn(),
++		retryKnowledgeDocument: jest.fn(),
++		refreshKnowledgeDocuments: jest.fn(),
++	},
++}));
++
++jest.mock("@angen_frontend/types", () => ({
++	__esModule: true,
++	AdvancedFilterName: { MARKET_DEFINITION: "marketDefinition" },
++	LeafProjectPath: { "J&J_IM_TA_PERFORMANCE": "j_j_im_ta_performance" },
++	ParentProjectPath: { AP360: "ap360" },
++}));
++
+ describe("KnowledgeDocumentEditor Component", () => {
+ 	const mockDoc: IKnowledgeDocument = {
+ 		id: "doc-1",
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+index 60418a8..b9cac33 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+@@ -7,7 +7,7 @@ import type {
+ 	Text as TextComponent,
+ } from "@angen_frontend/components";
+ import { KnowledgeDocumentTable } from "./index";
+-import { IKnowledgeDocument } from "../index";
++import type { IKnowledgeDocument } from "../index";
+ 
+ type MockTextProps = Omit<
+ 	ComponentProps<typeof TextComponent>,
+@@ -137,6 +137,26 @@ jest.mock("@angen_frontend/components", () => ({
+ 	),
+ }));
+ 
++jest.mock("@angen_frontend/services", () => ({
++	FilterService: { retrieveAdvancedFilter: jest.fn() },
++	InsightService: {
++		getKnowledgeDocuments: jest.fn(),
++		getKnowledgeDocument: jest.fn(),
++		uploadKnowledgeDocument: jest.fn(),
++		updateKnowledgeDocument: jest.fn(),
++		setKnowledgeDocumentStatus: jest.fn(),
++		retryKnowledgeDocument: jest.fn(),
++		refreshKnowledgeDocuments: jest.fn(),
++	},
++}));
++
++jest.mock("@angen_frontend/types", () => ({
++	__esModule: true,
++	AdvancedFilterName: { MARKET_DEFINITION: "marketDefinition" },
++	LeafProjectPath: { "J&J_IM_TA_PERFORMANCE": "j_j_im_ta_performance" },
++	ParentProjectPath: { AP360: "ap360" },
++}));
++
+ describe("KnowledgeDocumentTable Component", () => {
+ 	const createDocument = (
+ 		overrides: Partial<IKnowledgeDocument> = {}
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+index 38869d0..d9e97db 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+@@ -9,11 +9,8 @@ import type {
+ 	Text as TextComponent,
+ } from "@angen_frontend/components";
+ import type { TranslationEntry } from "@angen_frontend/types";
+-import {
+-	FilterService,
+-	InsightService,
+-	IKnowledgeDocumentApiItem,
+-} from "@angen_frontend/services";
++import { FilterService, InsightService } from "@angen_frontend/services";
++import type { IKnowledgeDocumentApiItem } from "@angen_frontend/services";
+ import { initialKnowledgeDocuments, KnowledgeDocTab } from "./index";
+ 
+ let mockKnowledgeDocs: IKnowledgeDocumentApiItem[] = [];
+@@ -411,6 +408,13 @@ jest.mock("@angen_frontend/services", () => ({
+ 	},
+ }));
+ 
++jest.mock("@angen_frontend/types", () => ({
++	__esModule: true,
++	AdvancedFilterName: { MARKET_DEFINITION: "marketDefinition" },
++	LeafProjectPath: { "J&J_IM_TA_PERFORMANCE": "j_j_im_ta_performance" },
++	ParentProjectPath: { AP360: "ap360" },
++}));
++
+ describe("KnowledgeDocTab Component", () => {
+ 	beforeEach(() => {
+ 		jest.clearAllMocks();
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
+index 22fe338..9a4cd3d 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.spec.tsx
+@@ -6,7 +6,7 @@ import type {
+ 	Text as TextComponent,
+ } from "@angen_frontend/components";
+ import { ConfigurationPanel } from "./index";
+-import { IPromptVersion } from "../index";
++import type { IPromptVersion } from "../index";
+ 
+ type MockTextProps = Omit<
+ 	ComponentProps<typeof TextComponent>,
+@@ -101,6 +101,21 @@ jest.mock("@angen_frontend/components", () => ({
+ 	),
+ }));
+ 
++jest.mock("@angen_frontend/services", () => ({
++	InsightService: {
++		getPromptVersion: jest.fn(),
++		getPromptVersions: jest.fn(),
++		getGlossaryTerms: jest.fn(),
++		savePromptDraft: jest.fn(),
++		deletePromptDraft: jest.fn(),
++		publishPromptDraft: jest.fn(),
++		republishPromptVersion: jest.fn(),
++		exportPromptVersions: jest.fn(),
++		saveGlossaryTerm: jest.fn(),
++		deleteGlossaryTerm: jest.fn(),
++	},
++}));
++
+ describe("ConfigurationPanel Component", () => {
+ 	const mockVersion: IPromptVersion = {
+ 		id: "v-1",
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
+index 1481e0e..4644678 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.spec.tsx
+@@ -7,7 +7,7 @@ import type {
+ 	Text as TextComponent,
+ } from "@angen_frontend/components";
+ import { PromptEditorDrawer } from "./index";
+-import { IPromptConfig } from "../index";
++import type { IPromptConfig } from "../index";
+ 
+ type MockTextProps = Omit<
+ 	ComponentProps<typeof TextComponent>,
+@@ -114,6 +114,21 @@ jest.mock("@angen_frontend/components", () => ({
+ 	),
+ }));
+ 
++jest.mock("@angen_frontend/services", () => ({
++	InsightService: {
++		getPromptVersion: jest.fn(),
++		getPromptVersions: jest.fn(),
++		getGlossaryTerms: jest.fn(),
++		savePromptDraft: jest.fn(),
++		deletePromptDraft: jest.fn(),
++		publishPromptDraft: jest.fn(),
++		republishPromptVersion: jest.fn(),
++		exportPromptVersions: jest.fn(),
++		saveGlossaryTerm: jest.fn(),
++		deleteGlossaryTerm: jest.fn(),
++	},
++}));
++
+ describe("PromptEditorDrawer Component", () => {
+ 	const mockConfig: IPromptConfig = {
+ 		sharedInstructions: "Shared template text",
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+index e611b49..87dc974 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.spec.tsx
+@@ -6,7 +6,7 @@ import type {
+ 	Text as TextComponent,
+ } from "@angen_frontend/components";
+ import { VersionHistoryPanel } from "./index";
+-import { IPromptVersion } from "../index";
++import type { IPromptVersion } from "../index";
+ 
+ const EXPORT_COMPLETION_DELAY_MS = 700;
+ 
+@@ -107,6 +107,21 @@ jest.mock("@angen_frontend/components", () => ({
+ 	),
+ }));
+ 
++jest.mock("@angen_frontend/services", () => ({
++	InsightService: {
++		getPromptVersion: jest.fn(),
++		getPromptVersions: jest.fn(),
++		getGlossaryTerms: jest.fn(),
++		savePromptDraft: jest.fn(),
++		deletePromptDraft: jest.fn(),
++		publishPromptDraft: jest.fn(),
++		republishPromptVersion: jest.fn(),
++		exportPromptVersions: jest.fn(),
++		saveGlossaryTerm: jest.fn(),
++		deleteGlossaryTerm: jest.fn(),
++	},
++}));
++
+ describe("VersionHistoryPanel Component", () => {
+ 	const mockVersions: IPromptVersion[] = [
+ 		{
