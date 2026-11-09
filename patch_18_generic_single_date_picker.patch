@@ -1,0 +1,500 @@
+diff --git a/packages/components/src/GenericSingleDatePicker/index.scss b/packages/components/src/GenericSingleDatePicker/index.scss
+new file mode 100644
+index 0000000..259ec2b
+--- /dev/null
++++ b/packages/components/src/GenericSingleDatePicker/index.scss
+@@ -0,0 +1,77 @@
++.genericSingleDatePickerWrapper {
++	display: flex;
++	align-items: center;
++	width: 100%;
++	height: 38px;
++	box-sizing: border-box;
++	background: #ffffff;
++	border: 1px solid #dcdfe6;
++	border-radius: 4px;
++	padding: 0 12px;
++	gap: 8px;
++	transition: border-color 0.2s ease, box-shadow 0.2s ease;
++
++	&:hover:not(.disabled) {
++		border-color: #c0c4cc;
++	}
++
++	&:focus-within:not(.disabled) {
++		border-color: #eb1700;
++		box-shadow: 0 0 0 2px rgba(235, 23, 0, 0.08);
++	}
++
++	&.disabled {
++		background: #f5f7fa;
++		cursor: not-allowed;
++		opacity: 0.7;
++	}
++
++	.genericSingleDatePrefixIcon {
++		color: #909399;
++		font-size: 14px;
++		width: 14px;
++		height: 14px;
++		flex-shrink: 0;
++		display: inline-flex;
++		align-items: center;
++		justify-content: center;
++	}
++
++	.genericSingleDatePicker.ant-picker {
++		flex: 1;
++		width: 100%;
++		height: 100%;
++		border: none !important;
++		box-shadow: none !important;
++		background: transparent !important;
++		padding: 0;
++
++		.ant-picker-input {
++			flex: 1;
++
++			> input {
++				font-size: 13px;
++				color: #303133;
++				font-family: inherit;
++
++				&::placeholder {
++					color: #a8abb2;
++				}
++			}
++		}
++
++		.ant-picker-suffix {
++			display: none !important;
++		}
++
++		.ant-picker-clear {
++			background: #ffffff;
++			color: #909399;
++			right: 0;
++
++			&:hover {
++				color: #606266;
++			}
++		}
++	}
++}
+diff --git a/packages/components/src/GenericSingleDatePicker/index.spec.tsx b/packages/components/src/GenericSingleDatePicker/index.spec.tsx
+new file mode 100644
+index 0000000..b2e8884
+--- /dev/null
++++ b/packages/components/src/GenericSingleDatePicker/index.spec.tsx
+@@ -0,0 +1,131 @@
++import { fireEvent, render, screen } from "@testing-library/react";
++import "@testing-library/jest-dom";
++import dayjs from "dayjs";
++import type { ChangeEvent } from "react";
++import { GenericSingleDatePicker } from "./index";
++
++jest.mock("antd", () => {
++	const React = jest.requireActual("react");
++	const mockDayjs = jest.requireActual("dayjs").default;
++
++	return {
++		__esModule: true,
++		DatePicker: ({
++			value,
++			onChange,
++			placeholder,
++			allowClear,
++			disabled,
++			id,
++			className,
++		}: {
++			value: dayjs.Dayjs | null;
++			onChange: (date: dayjs.Dayjs | null, dateString: string) => void;
++			placeholder?: string;
++			allowClear?: boolean;
++			disabled?: boolean;
++			id?: string;
++			className?: string;
++		}) =>
++			React.createElement(
++				"div",
++				null,
++				React.createElement("input", {
++					id,
++					className,
++					"aria-label": placeholder,
++					placeholder,
++					type: "date",
++					value: value?.format("YYYY-MM-DD") || "",
++					disabled,
++					onChange: (event: ChangeEvent<HTMLInputElement>) =>
++						onChange(
++							event.target.value
++								? mockDayjs(event.target.value)
++								: null,
++							event.target.value
++						),
++				}),
++				allowClear &&
++					value &&
++					React.createElement(
++						"button",
++						{
++							type: "button",
++							onClick: () => onChange(null, ""),
++						},
++						"Clear"
++					)
++			),
++	};
++});
++
++describe("GenericSingleDatePicker", () => {
++	it("renders its placeholder and controlled date value", () => {
++		render(
++			<GenericSingleDatePicker
++				id="effective-date"
++				value="2026-10-08"
++				placeholder="Effective date"
++			/>
++		);
++
++		expect(screen.getByLabelText("Effective date")).toHaveValue(
++			"2026-10-08"
++		);
++	});
++
++	it("emits the selected date as a YYYY-MM-DD string", () => {
++		const onChange = jest.fn();
++		render(
++			<GenericSingleDatePicker
++				value=""
++				onChange={onChange}
++				placeholder="Effective date"
++			/>
++		);
++
++		fireEvent.change(screen.getByLabelText("Effective date"), {
++			target: { value: "2026-10-08" },
++		});
++
++		expect(onChange).toHaveBeenCalledWith("2026-10-08");
++	});
++
++	it("allows clearing only when allowClear is enabled", () => {
++		const onChange = jest.fn();
++		const { rerender } = render(
++			<GenericSingleDatePicker
++				value="2026-10-08"
++				onChange={onChange}
++				allowClear
++				placeholder="Expiry date"
++			/>
++		);
++
++		fireEvent.click(screen.getByRole("button", { name: "Clear" }));
++		expect(onChange).toHaveBeenCalledWith("");
++
++		rerender(
++			<GenericSingleDatePicker
++				value="2026-10-08"
++				onChange={onChange}
++				placeholder="Expiry date"
++			/>
++		);
++
++		expect(screen.queryByRole("button", { name: "Clear" })).toBeNull();
++	});
++
++	it("passes the disabled state to the date input", () => {
++		render(
++			<GenericSingleDatePicker
++				value=""
++				disabled
++				placeholder="Effective date"
++			/>
++		);
++
++		expect(screen.getByLabelText("Effective date")).toBeDisabled();
++	});
++});
+diff --git a/packages/components/src/GenericSingleDatePicker/index.tsx b/packages/components/src/GenericSingleDatePicker/index.tsx
+new file mode 100644
+index 0000000..0f6e0d4
+--- /dev/null
++++ b/packages/components/src/GenericSingleDatePicker/index.tsx
+@@ -0,0 +1,57 @@
++import { DatePicker } from "antd";
++import classNames from "classnames";
++import dayjs from "dayjs";
++import { FC } from "react";
++import CoThinkerCalendarSvgIcon from "../Icons/CoThinkerCalendarSvgIcon";
++import "./index.scss";
++
++const dateFormat = "YYYY-MM-DD";
++
++export interface IGenericSingleDatePickerProps {
++	value: string;
++	onChange?: (dateString: string) => void;
++	placeholder?: string;
++	allowClear?: boolean;
++	disabled?: boolean;
++	className?: string;
++	id?: string;
++}
++
++export const GenericSingleDatePicker: FC<IGenericSingleDatePickerProps> = ({
++	value,
++	onChange,
++	placeholder,
++	allowClear = false,
++	disabled = false,
++	className,
++	id,
++}) => {
++	const parsedValue = value ? dayjs(value, dateFormat) : null;
++	const pickerValue = parsedValue?.isValid() ? parsedValue : null;
++
++	return (
++		<div
++			className={classNames(
++				"genericSingleDatePickerWrapper",
++				{ disabled },
++				className
++			)}
++		>
++			<CoThinkerCalendarSvgIcon className="genericSingleDatePrefixIcon" />
++			<DatePicker
++				id={id}
++				className="genericSingleDatePicker"
++				popupClassName="genericSingleDatePickerDropdown"
++				value={pickerValue}
++				onChange={(_date, dateString) => onChange?.(dateString)}
++				placeholder={placeholder}
++				format={dateFormat}
++				allowClear={allowClear}
++				disabled={disabled}
++				suffixIcon={null}
++			/>
++		</div>
++	);
++};
++
++export default GenericSingleDatePicker;
+diff --git a/packages/components/src/index.ts b/packages/components/src/index.ts
+index f09923d..57852ca 100644
+--- a/packages/components/src/index.ts
++++ b/packages/components/src/index.ts
+@@ -130,6 +130,7 @@ import { GenericCheckbox } from "./GenericCheckbox";
+ import { GenericCheckboxGroup } from "./GenericCheckboxGroup";
+ import { GenericDateRange } from "./GenericDateRange";
+ import { GenericDateRangePicker } from "./GenericDateRangePicker";
++import { GenericSingleDatePicker } from "./GenericSingleDatePicker";
+ import { GenericMultiSelect } from "./GenericMultiSelect";
+ import { GenericDatePicker } from "./GenericDatePicker";
+ import { GenericGrid, gridContainerWidths } from "./GenericGrid";
+@@ -424,6 +425,7 @@ export {
+ 	GenericCheckboxGroup,
+ 	GenericDateRange,
+ 	GenericDateRangePicker,
++	GenericSingleDatePicker,
+ 	GenericTreeSelect,
+ 	GenericPageHeader,
+ 	GenericButton,
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+index 3f6664e..349daf9 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+@@ -5,6 +5,7 @@ import type {
+ 	GenericButtonV2 as GenericButtonV2Component,
+ 	GenericModalV2 as GenericModalV2Component,
+ 	GenericUploadDragger as GenericUploadDraggerComponent,
++	GenericSingleDatePicker as GenericSingleDatePickerComponent,
+ 	Text as TextComponent,
+ } from "@angen_frontend/components";
+ import { KnowledgeDocumentEditor } from "./index";
+@@ -42,6 +43,16 @@ type MockUploadProps = {
+ 		typeof GenericUploadDraggerComponent
+ 	>["onFileSelect"];
+ };
++type MockSingleDatePickerProps = Pick<
++	ComponentProps<typeof GenericSingleDatePickerComponent>,
++	| "value"
++	| "onChange"
++	| "placeholder"
++	| "allowClear"
++	| "disabled"
++	| "className"
++	| "id"
++>;
+ 
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+@@ -151,6 +162,35 @@ jest.mock("@angen_frontend/components", () => ({
+ 			</div>
+ 		</div>
+ 	),
++	GenericSingleDatePicker: ({
++		value,
++		onChange,
++		placeholder,
++		allowClear,
++		disabled,
++		className,
++		id,
++	}: MockSingleDatePickerProps) => (
++		<div className={className}>
++			<input
++				id={id}
++				type="date"
++				value={value}
++				placeholder={placeholder}
++				disabled={disabled}
++				onChange={(event) => onChange?.(event.target.value)}
++			/>
++			{allowClear && value && (
++				<button
++					type="button"
++					aria-label={`Clear ${id}`}
++					onClick={() => onChange?.("")}
++				>
++					Clear
++				</button>
++			)}
++		</div>
++	),
+ }));
+ 
+ describe("KnowledgeDocumentEditor Component", () => {
+@@ -189,6 +229,10 @@ describe("KnowledgeDocumentEditor Component", () => {
+ 		expect(screen.getByTestId("doc-brand")).toHaveClass(
+ 			"knowledge-brand-select"
+ 		);
++		expect(
++			(screen.getByLabelText("Effective date") as HTMLInputElement).value
++		).toMatch(/^\d{4}-\d{2}-\d{2}$/);
++		expect(screen.getByLabelText("Expiry date")).toHaveValue("");
+ 		fireEvent.click(screen.getByText("Cancel"));
+ 		expect(handleClose).toHaveBeenCalledTimes(1);
+ 
+@@ -272,15 +316,16 @@ describe("KnowledgeDocumentEditor Component", () => {
+ 		);
+ 		fireEvent.change(descInput, { target: { value: "Test description" } });
+ 
+-		const effectiveFromInput = document.querySelector(
+-			'input[type="date"]'
++		const effectiveFromInput = screen.getByLabelText(
++			"Effective date"
+ 		) as HTMLInputElement;
+ 		fireEvent.change(effectiveFromInput, {
+ 			target: { value: "2026-05-01" },
+ 		});
+ 
+-		const allDateInputs = document.querySelectorAll('input[type="date"]');
+-		const effectiveToInput = allDateInputs[1] as HTMLInputElement;
++		const effectiveToInput = screen.getByLabelText(
++			"Expiry date"
++		) as HTMLInputElement;
+ 		fireEvent.change(effectiveToInput, { target: { value: "2026-04-01" } });
+ 
+ 		fireEvent.click(saveBtn);
+@@ -320,10 +365,17 @@ describe("KnowledgeDocumentEditor Component", () => {
+ 		expect(screen.getByTestId("doc-brand")).toHaveClass(
+ 			"knowledge-brand-select"
+ 		);
++		expect(screen.getByLabelText("Effective date")).toHaveValue(
++			"2026-01-01"
++		);
++		expect(screen.getByLabelText("Expiry date")).toHaveValue("2026-12-31");
+ 		expect(
+ 			screen.getByDisplayValue("Sample description")
+ 		).toBeInTheDocument();
+ 
++		fireEvent.change(screen.getByLabelText("Effective date"), {
++			target: { value: "2026-02-01" },
++		});
+ 		const descInput = screen.getByDisplayValue("Sample description");
+ 		fireEvent.change(descInput, {
+ 			target: { value: "Updated document description" },
+@@ -335,9 +387,32 @@ describe("KnowledgeDocumentEditor Component", () => {
+ 		expect(handleSave).toHaveBeenCalledWith(
+ 			expect.objectContaining({
+ 				brand: "STELARA",
++				effectiveFrom: "2026-02-01",
+ 				description: "Updated document description",
+ 			}),
+ 			null
+ 		);
+ 	});
++
++	it("saves an empty expiry date when the clear control is used", () => {
++		const handleSave = jest.fn();
++		render(
++			<KnowledgeDocumentEditor
++				visible={true}
++				initialDoc={mockDoc}
++				onClose={jest.fn()}
++				onSave={handleSave}
++			/>
++		);
++
++		fireEvent.click(
++			screen.getByRole("button", { name: "Clear doc-effective-to" })
++		);
++		fireEvent.click(screen.getByText("Save changes"));
++
++		expect(handleSave).toHaveBeenCalledWith(
++			expect.objectContaining({ effectiveTo: undefined }),
++			null
++		);
++	});
+ });
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+index 8c01635..d6972d6 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.tsx
+@@ -5,6 +5,7 @@ import {
+ 	GenericModalV2,
+ 	Text,
+ 	Select,
++	GenericSingleDatePicker,
+ } from "@angen_frontend/components";
+ import { IKnowledgeDocument, documentDate } from "../index";
+ 
+@@ -217,14 +218,12 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 									}}
+ 								/>
+ 							</label>
+-							<input
+-								type="date"
++							<GenericSingleDatePicker
+ 								id="doc-effective-from"
+-								className="form-input"
++								className="knowledge-document-date-picker"
+ 								value={effectiveFrom}
+-								onChange={(e) =>
+-									setEffectiveFrom(e.target.value)
+-								}
++								onChange={setEffectiveFrom}
++								placeholder="YYYY-MM-DD"
+ 							/>
+ 						</div>
+ 
+@@ -240,12 +239,13 @@ export const KnowledgeDocumentEditor: FC<IKnowledgeDocumentEditorProps> = ({
+ 									}}
+ 								/>
+ 							</label>
+-							<input
+-								type="date"
++							<GenericSingleDatePicker
+ 								id="doc-effective-to"
+-								className="form-input"
++								className="knowledge-document-date-picker"
+ 								value={effectiveTo}
+-								onChange={(e) => setEffectiveTo(e.target.value)}
++								onChange={setEffectiveTo}
++								placeholder="YYYY-MM-DD"
++								allowClear
+ 							/>
+ 						</div>
+ 					</div>
