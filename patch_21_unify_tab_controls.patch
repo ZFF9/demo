@@ -1,0 +1,682 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
+index 7344859..e6f666f 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
+@@ -1,6 +1,7 @@
+ import { FC, useState, useMemo, KeyboardEvent } from "react";
+ import {
+ 	DocFileSvgIcon,
++	GenericButtonV2,
+ 	GenericDataTable,
+ 	GenericStatusTag,
+ } from "@angen_frontend/components";
+@@ -80,13 +81,13 @@ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 								</span>
+ 							)}
+ 							{row.processingStatus === "FAILED" && (
+-								<button
+-									type="button"
+-									className="processing-failed-link"
++								<GenericButtonV2
++									type="link"
++									className="processing-failed-link knowledge-link-control"
+ 									onClick={() => onView(row)}
+ 								>
+ 									Processing failed — view details
+-								</button>
++								</GenericButtonV2>
+ 							)}
+ 						</div>
+ 					</div>
+@@ -161,20 +162,20 @@ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 						!canActivateKnowledgeDocument(row);
+ 					return (
+ 						<div className="actions-cell">
+-							<button
+-								type="button"
+-								className="action-link"
++							<GenericButtonV2
++								type="link"
++								className="action-link knowledge-link-control"
+ 								onClick={() => onView(row)}
+ 							>
+ 								View
+-							</button>
+-							<button
+-								type="button"
+-								className="action-link"
++							</GenericButtonV2>
++							<GenericButtonV2
++								type="link"
++								className="action-link knowledge-link-control"
+ 								onClick={() => onEdit(row)}
+ 							>
+ 								Edit
+-							</button>
++							</GenericButtonV2>
+ 							<span
+ 								title={
+ 									activationBlocked
+@@ -182,16 +183,16 @@ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 										: undefined
+ 								}
+ 							>
+-								<button
+-									type="button"
+-									className="action-link"
++								<GenericButtonV2
++									type="link"
++									className="action-link knowledge-link-control"
+ 									disabled={activationBlocked}
+ 									onClick={() => onChangeStatus(row)}
+ 								>
+ 									{row.status === "ACTIVE"
+ 										? "Deactivate"
+ 										: "Activate"}
+-								</button>
++								</GenericButtonV2>
+ 							</span>
+ 						</div>
+ 					);
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
+index efab523..afca3d4 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
+@@ -283,7 +283,21 @@
+ 									color: #64748b;
+ 								}
+ 
+-								.processing-failed-link {
++								.processing-failed-link.ant-btn {
++									--btn-width: max-content;
++									--btn-height: auto;
++									--btn-padding-inline: 0;
++									--btn-padding-block: 0;
++									--btn-border: 0;
++									--btn-border-radius: 0;
++									--btn-font-size: 12px;
++									--btn-default-color: #dc2626;
++									--btn-default-bg: transparent;
++									--btn-hover-color: #dc2626;
++									--btn-hover-bg: transparent;
++									--btn-focus-outline: 2px solid #d5171e;
++									--btn-focus-outline-offset: 2px;
++									display: inline-flex;
+ 									background: none;
+ 									border: none;
+ 									padding: 0;
+@@ -292,14 +306,11 @@
+ 									color: #dc2626;
+ 									cursor: pointer;
+ 
+-									&:hover {
++									&:hover:not(:disabled) {
++										color: #dc2626;
++										background: none;
+ 										text-decoration: underline;
+ 									}
+-
+-									&:focus-visible {
+-										outline: 2px solid #d5171e;
+-										outline-offset: 2px;
+-									}
+ 								}
+ 
+ 								.processing-note {
+@@ -358,7 +369,20 @@
+ 							align-items: center;
+ 							gap: 14px;
+ 
+-							.action-link {
++							.action-link.ant-btn {
++								--btn-width: max-content;
++								--btn-height: auto;
++								--btn-padding-inline: 0;
++								--btn-padding-block: 0;
++								--btn-border: 0;
++								--btn-border-radius: 0;
++								--btn-font-size: 13px;
++								--btn-default-color: #0891b2;
++								--btn-default-bg: transparent;
++								--btn-hover-color: #0891b2;
++								--btn-hover-bg: transparent;
++								--btn-disabled-color: #64748b;
++								display: inline-flex;
+ 								background: none;
+ 								border: none;
+ 								padding: 0;
+@@ -368,6 +392,8 @@
+ 								cursor: pointer;
+ 
+ 								&:hover:not(:disabled) {
++									color: #0891b2;
++									background: none;
+ 									text-decoration: underline;
+ 								}
+ 
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+index f61439a..a27efc9 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+@@ -592,8 +592,9 @@ export const KnowledgeDocTab: FC = () => {
+ 			{loadError && (
+ 				<div className="panel-error" role="alert">
+ 					<span>{loadError}</span>
+-					<button
+-						type="button"
++					<GenericButtonV2
++						type="link"
++						className="panel-error-action knowledge-link-control"
+ 						onClick={() =>
+ 							void loadDocuments(
+ 								currentPage,
+@@ -603,18 +604,19 @@ export const KnowledgeDocTab: FC = () => {
+ 						}
+ 					>
+ 						Retry
+-					</button>
++					</GenericButtonV2>
+ 				</div>
+ 			)}
+ 			{brandError && (
+ 				<div className="panel-error" role="alert">
+ 					<span>{brandError}</span>
+-					<button
+-						type="button"
++					<GenericButtonV2
++						type="link"
++						className="panel-error-action knowledge-link-control"
+ 						onClick={() => void loadBrandOptions()}
+ 					>
+ 						Retry
+-					</button>
++					</GenericButtonV2>
+ 				</div>
+ 			)}
+ 
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
+index d316a1a..468876c 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
+@@ -1,5 +1,9 @@
+ import { FC, useMemo } from "react";
+-import { GenericDataTable, Text } from "@angen_frontend/components";
++import {
++	GenericButtonV2,
++	GenericDataTable,
++	Text,
++} from "@angen_frontend/components";
+ import {
+ 	PromptScope,
+ 	IPromptVersion,
+@@ -58,13 +62,13 @@ export const ConfigurationPanel: FC<IProps> = ({ hasDraft, onOpenEditor }) => {
+ 				key: "configuration",
+ 				render: (_: unknown, row: IConfigEntry) => (
+ 					<div>
+-						<button
+-							type="button"
+-							className="name-link"
++						<GenericButtonV2
++							type="link"
++							className="name-link portal-link-control"
+ 							onClick={() => onOpenEditor(row.scope)}
+ 						>
+ 							{row.name}
+-						</button>
++						</GenericButtonV2>
+ 						<p className="row-description">{row.description}</p>
+ 					</div>
+ 				),
+@@ -82,13 +86,13 @@ export const ConfigurationPanel: FC<IProps> = ({ hasDraft, onOpenEditor }) => {
+ 				key: "actions",
+ 				width: 100,
+ 				render: (_: unknown, row: IConfigEntry) => (
+-					<button
+-						type="button"
+-						className="action-link"
++					<GenericButtonV2
++						type="link"
++						className="action-link portal-link-control"
+ 						onClick={() => onOpenEditor(row.scope)}
+ 					>
+ 						{hasDraft ? "Edit" : "View"}
+-					</button>
++					</GenericButtonV2>
+ 				),
+ 			},
+ 		],
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+index f3cc63f..4ddbff7 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+@@ -224,23 +224,23 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 				width: 130,
+ 				render: (_: unknown, m: IMetricDefinition) => (
+ 					<div className="metric-actions">
+-						<button
+-							type="button"
+-							className="action-link"
++						<GenericButtonV2
++							type="link"
++							className="action-link portal-link-control"
+ 							onClick={() => handleOpenEdit(m)}
+ 						>
+ 							Edit
+-						</button>
+-						<button
+-							type="button"
+-							className="action-link delete-link"
++						</GenericButtonV2>
++						<GenericButtonV2
++							type="link"
++							className="action-link delete-link portal-link-control"
+ 							onClick={() => {
+ 								setFormError("");
+ 								setDeleteTarget(m);
+ 							}}
+ 						>
+ 							Delete
+-						</button>
++						</GenericButtonV2>
+ 					</div>
+ 				),
+ 			},
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+index c162fd1..755e0e0 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+@@ -77,7 +77,7 @@ export const PromptEditorDrawer: FC<IProps> = ({
+ 			open={visible}
+ 			visible={visible}
+ 			onClose={onClose}
+-			width={1120}
++			width="min(1120px, 96vw)"
+ 			title={SCOPE_NAMES[activeScope]}
+ 		>
+ 			<div className="prompt-drawer-content">
+@@ -96,16 +96,16 @@ export const PromptEditorDrawer: FC<IProps> = ({
+ 						aria-label="Configuration item"
+ 					>
+ 						{scopes.map((item) => (
+-							<button
++							<GenericButtonV2
+ 								key={item.scope}
+-								type="button"
+-								className={
++								type="text"
++								className={`scope-button ${
+ 									activeScope === item.scope ? "selected" : ""
+-								}
++								} portal-tab-control`}
+ 								onClick={() => setActiveScope(item.scope)}
+ 							>
+ 								{item.label}
+-							</button>
++							</GenericButtonV2>
+ 						))}
+ 					</div>
+ 
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+index a6d936f..bc55d9e 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+@@ -122,22 +122,22 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 				width: 160,
+ 				render: (_: unknown, v: IPromptVersion) => (
+ 					<div className="history-actions-cell">
+-						<button
+-							type="button"
+-							className="action-link"
++						<GenericButtonV2
++							type="link"
++							className="action-link portal-link-control"
+ 							onClick={() => handleInspect(v)}
+ 						>
+ 							View
+-						</button>
++						</GenericButtonV2>
+ 						{v.id !== activeVersionId && (
+-							<button
+-								type="button"
+-								className="action-link restore-btn"
++							<GenericButtonV2
++								type="link"
++								className="action-link restore-btn portal-link-control"
+ 								disabled={hasDraft}
+ 								onClick={() => handleRollback(v)}
+ 							>
+ 								Restore
+-							</button>
++							</GenericButtonV2>
+ 						)}
+ 					</div>
+ 				),
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.scss b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.scss
+index bf29071..1c7ffc8 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.scss
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.scss
+@@ -6,6 +6,84 @@
+ 	color: #1e293b;
+ 	font-family: inherit;
+ 
++	.portal-link-control.ant-btn,
++	.portal-link-control.ant-btn:hover,
++	.portal-link-control.ant-btn:focus,
++	.portal-link-control.ant-btn:active {
++		--btn-width: max-content;
++		--btn-height: auto;
++		--btn-padding-inline: 0;
++		--btn-padding-block: 0;
++		--btn-border: 0;
++		--btn-border-radius: 0;
++		--btn-default-bg: transparent;
++		--btn-hover-bg: transparent;
++		--btn-active-bg: transparent;
++		--btn-default-color: #0891b2;
++		--btn-hover-color: #0891b2;
++		--btn-active-color: #0891b2;
++		display: inline-flex;
++		background: none;
++		border: 0;
++		padding: 0;
++		box-shadow: none;
++		font-size: 13px;
++		font-weight: 500;
++	}
++
++	.panel-error-action.ant-btn {
++		color: #0891b2;
++	}
++
++	.discard-link.ant-btn,
++	.discard-link.ant-btn:hover,
++	.discard-link.ant-btn:focus {
++		--btn-default-color: #dc2626;
++		--btn-hover-color: #dc2626;
++		color: #dc2626;
++		font-weight: 500;
++	}
++
++	.tab-button.ant-btn,
++	.tab-button.ant-btn:hover,
++	.tab-button.ant-btn:focus,
++	.tab-button.ant-btn:active {
++		--btn-height: 56px;
++		--btn-padding-inline: 0;
++		--btn-padding-block: 0;
++		--btn-default-color: #64748b;
++		--btn-hover-color: #1e293b;
++		--btn-active-color: #d5171e;
++		--btn-default-bg: transparent;
++		--btn-hover-bg: transparent;
++		--btn-active-bg: transparent;
++		--btn-font-size: 13px;
++		--btn-border-radius: 0;
++		--btn-font-weight: 500;
++		--btn-border: 0;
++		display: inline-flex;
++		position: relative;
++		background: none;
++		border: 0;
++		border-bottom: 3px solid transparent;
++		margin-bottom: -1px;
++		color: #64748b;
++		font-weight: 500;
++		transition: all 0.2s;
++	}
++
++	.tab-button.ant-btn:hover {
++		color: #1e293b;
++	}
++
++	.tab-button.ant-btn.active {
++		--btn-default-color: #d5171e;
++		--btn-hover-color: #d5171e;
++		color: #d5171e;
++		border-bottom-color: #d5171e;
++		font-weight: 600;
++	}
++
+ 	.page-heading {
+ 		display: flex;
+ 		justify-content: space-between;
+@@ -310,7 +388,7 @@
+ 					padding: 16px;
+ 					vertical-align: middle;
+ 
+-					.name-link {
++					.name-link.ant-btn {
+ 						padding: 0;
+ 						border: 0;
+ 						background: none;
+@@ -336,7 +414,7 @@
+ 						color: #64748b;
+ 					}
+ 
+-					.action-link {
++					.action-link.ant-btn {
+ 						background: none;
+ 						border: none;
+ 						padding: 0;
+@@ -482,7 +560,7 @@
+ 						align-items: center;
+ 						gap: 12px;
+ 
+-						.action-link {
++						.action-link.ant-btn {
+ 							background: none;
+ 							border: none;
+ 							padding: 0;
+@@ -652,7 +730,7 @@
+ 						align-items: center;
+ 						gap: 12px;
+ 
+-						.action-link {
++						.action-link.ant-btn {
+ 							background: none;
+ 							border: none;
+ 							padding: 0;
+@@ -763,17 +841,34 @@
+ 			flex-wrap: wrap;
+ 			margin-bottom: 24px;
+ 
+-			button {
+-				background: #ffffff;
++			.scope-button.ant-btn {
++				--btn-width: auto;
++				--btn-height: 42px;
++				--btn-padding-inline: 10px;
++				--btn-padding-block: 0;
++				--btn-border-radius: 6px;
++				--btn-font-size: 12px;
++				--btn-default-color: #1e293b;
++				--btn-default-bg: #ffffff;
++				--btn-hover-color: #1e293b;
++				--btn-hover-bg: #ffffff;
++				--btn-border: 1px solid #e2e8f0;
++				flex: 0 0 auto;
+ 				border: 1px solid #e2e8f0;
+-				border-radius: 6px;
+-				font-size: 12px;
+-				padding: 8px 10px;
+-				cursor: pointer;
+ 				color: #1e293b;
+-				transition: all 0.2s;
++
++				&:hover,
++				&:focus {
++					border-color: #e2e8f0;
++					color: #1e293b;
++				}
+ 
+ 				&.selected {
++					--btn-default-color: #d5171e;
++					--btn-default-bg: #fff5f5;
++					--btn-hover-color: #d5171e;
++					--btn-hover-bg: #fff5f5;
++					--btn-border: 1px solid #d5171e;
+ 					border-color: #d5171e;
+ 					color: #d5171e;
+ 					background: #fff5f5;
+@@ -1011,14 +1106,32 @@
+ 					}
+ 				}
+ 
+-				.role-select {
++				.role-select.ant-select {
++					width: 100%;
+ 					margin-top: 14px;
+-					padding: 6px 10px;
+-					border: 1px solid #d9d9d9;
+-					border-radius: 6px;
+-					font-size: 13px;
+-					background: #ffffff;
+-					outline: none;
++
++					.ant-select-selector {
++						height: 44px;
++						padding: 0 12px;
++						border: 1px solid #d9d9d9;
++						border-radius: 6px;
++						box-shadow: none;
++						display: flex;
++						align-items: center;
++					}
++
++					&:hover .ant-select-selector {
++						border-color: #bfbfbf;
++					}
++
++					&.ant-select-focused .ant-select-selector {
++						border-color: #d5171e;
++						box-shadow: 0 0 0 2px rgba(213, 23, 30, 0.08);
++					}
++
++					.ant-select-selection-item {
++						line-height: 42px;
++					}
+ 				}
+ 
+ 				p {
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+index 84346a5..e849409 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+@@ -1279,12 +1279,13 @@ export const PromptManagementTab: FC = () => {
+ 			{loadError && (
+ 				<div className="panel-error" role="alert">
+ 					<span>{loadError}</span>
+-					<button
+-						type="button"
++					<GenericButtonV2
++						type="link"
++						className="panel-error-action portal-link-control"
+ 						onClick={() => void loadInitialData()}
+ 					>
+ 						Retry
+-					</button>
++					</GenericButtonV2>
+ 				</div>
+ 			)}
+ 
+@@ -1376,14 +1377,14 @@ export const PromptManagementTab: FC = () => {
+ 										: "Draft saved"}
+ 								</span>
+ 							</div>
+-							<button
+-								type="button"
+-								className="discard-link"
++							<GenericButtonV2
++								type="link"
++								className="discard-link portal-link-control"
+ 								disabled={saving}
+ 								onClick={handleDiscardDraft}
+ 							>
+ 								Discard draft
+-							</button>
++							</GenericButtonV2>
+ 						</div>
+ 						<label htmlFor="change-note">
+ 							<Text
+@@ -1443,33 +1444,33 @@ export const PromptManagementTab: FC = () => {
+ 
+ 			<div className="workspace-tabs">
+ 				<div className="workspace-tabs-header">
+-					<button
+-						type="button"
+-						className={`tab-button ${
++					<GenericButtonV2
++						type="text"
++						className={`tab-button portal-tab-control ${
+ 							activeTab === "configuration" ? "active" : ""
+ 						}`}
+ 						onClick={() => setActiveTab("configuration")}
+ 					>
+ 						Configuration
+-					</button>
+-					<button
+-						type="button"
+-						className={`tab-button ${
++					</GenericButtonV2>
++					<GenericButtonV2
++						type="text"
++						className={`tab-button portal-tab-control ${
+ 							activeTab === "history" ? "active" : ""
+ 						}`}
+ 						onClick={() => setActiveTab("history")}
+ 					>
+ 						Version History
+-					</button>
+-					<button
+-						type="button"
+-						className={`tab-button ${
++					</GenericButtonV2>
++					<GenericButtonV2
++						type="text"
++						className={`tab-button portal-tab-control ${
+ 							activeTab === "metrics" ? "active" : ""
+ 						}`}
+ 						onClick={() => setActiveTab("metrics")}
+ 					>
+ 						Metric Definitions
+-					</button>
++					</GenericButtonV2>
+ 				</div>
+ 
+ 				{!loading && !loadError && (
+@@ -1487,14 +1488,15 @@ export const PromptManagementTab: FC = () => {
+ 								{versionsError && (
+ 									<div className="panel-error" role="alert">
+ 										<span>{versionsError}</span>
+-										<button
+-											type="button"
++										<GenericButtonV2
++											type="link"
++											className="panel-error-action portal-link-control"
+ 											onClick={() =>
+ 												void loadVersionPage()
+ 											}
+ 										>
+ 											Retry
+-										</button>
++										</GenericButtonV2>
+ 									</div>
+ 								)}
+ 								{versionsLoading ? (
+@@ -1527,12 +1529,13 @@ export const PromptManagementTab: FC = () => {
+ 								{metricsError && (
+ 									<div className="panel-error" role="alert">
+ 										<span>{metricsError}</span>
+-										<button
+-											type="button"
++										<GenericButtonV2
++											type="link"
++											className="panel-error-action portal-link-control"
+ 											onClick={() => void loadMetrics()}
+ 										>
+ 											Retry
+-										</button>
++										</GenericButtonV2>
+ 									</div>
+ 								)}
+ 								{metricsLoading && !metricsLoaded ? (
