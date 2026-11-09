@@ -1,0 +1,84 @@
+diff --git a/packages/services/src/HttpService/service.spec.ts b/packages/services/src/HttpService/service.spec.ts
+index 043aca0..0db4b16 100644
+--- a/packages/services/src/HttpService/service.spec.ts
++++ b/packages/services/src/HttpService/service.spec.ts
+@@ -1,3 +1,4 @@
++import { AnalyticsEventType } from "@angen_frontend/types";
+ import { BasePath, Path, createHttpService } from "./service";
+ 
+ jest.mock("ulid", () => ({
+@@ -296,6 +297,49 @@ describe("service", () => {
+ 			);
+ 		});
+ 
++		it("captures analytics for FormData requests", async () => {
++			const analyticsInput = {
++				pageUrl: "/co-thinker-admin",
++				browserResolution: "1280x800",
++				eventType: AnalyticsEventType.API_LOAD,
++			};
++			const analyticsCompletion = jest.fn();
++			const onCaptureAnalytics = jest
++				.fn()
++				.mockReturnValue(analyticsCompletion);
++			const analyticsHttpService = createHttpService({
++				basePath: "https://example.com",
++				withCredentials: false,
++				onCaptureAnalytics,
++			});
++			const formData = new FormData();
++
++			global.fetch = jest.fn().mockResolvedValue({
++				json: jest.fn().mockResolvedValue({ code: 0 }),
++				headers: new Headers({
++					"Content-Type": "application/json",
++				}),
++				status: 200,
++			});
++
++			await analyticsHttpService.postFormData(
++				"/upload",
++				formData,
++				{},
++				undefined,
++				analyticsInput
++			);
++
++			expect(onCaptureAnalytics).toHaveBeenCalledWith(
++				expect.objectContaining({
++					pageUrl: analyticsInput.pageUrl,
++					browserResolution: analyticsInput.browserResolution,
++					eventType: analyticsInput.eventType,
++				})
++			);
++			expect(analyticsCompletion).toHaveBeenCalledWith({});
++		});
++
+ 		it("should not send any default headers, additional headers and credentials in the PUT request when calling put", async () => {
+ 			const url: Path = "/test";
+ 			const payload = { id: "XAY12" };
+diff --git a/packages/services/src/HttpService/service.ts b/packages/services/src/HttpService/service.ts
+index c770013..c46dbdd 100644
+--- a/packages/services/src/HttpService/service.ts
++++ b/packages/services/src/HttpService/service.ts
+@@ -147,7 +147,8 @@ export const createHttpService = ({
+ 			path: Path,
+ 			payload: FormData,
+ 			additionalHeaders: Record<string, string> = {},
+-			signal?: AbortSignal
++			signal?: AbortSignal,
++			analyticsInput?: IAnalyticsWithoutApiLoadTime
+ 		) => {
+ 			const formHeaders = Object.fromEntries(
+ 				Object.entries({ ...headers, ...additionalHeaders }).filter(
+@@ -162,8 +163,8 @@ export const createHttpService = ({
+ 				withCredentials,
+ 				payload,
+ 				signal,
+-				undefined,
+-				undefined,
++				analyticsInput,
++				onCaptureAnalytics,
+ 				true
+ 			);
+ 		},
