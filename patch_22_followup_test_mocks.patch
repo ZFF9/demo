@@ -1,0 +1,163 @@
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+index 349daf9..85d0a83 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentEditor/index.spec.tsx
+@@ -230,9 +230,9 @@ describe("KnowledgeDocumentEditor Component", () => {
+ 			"knowledge-brand-select"
+ 		);
+ 		expect(
+-			(screen.getByLabelText("Effective date") as HTMLInputElement).value
++			(screen.getByLabelText(/Effective date/i) as HTMLInputElement).value
+ 		).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+-		expect(screen.getByLabelText("Expiry date")).toHaveValue("");
++		expect(screen.getByLabelText(/Expiry date/i)).toHaveValue("");
+ 		fireEvent.click(screen.getByText("Cancel"));
+ 		expect(handleClose).toHaveBeenCalledTimes(1);
+ 
+@@ -317,14 +317,14 @@ describe("KnowledgeDocumentEditor Component", () => {
+ 		fireEvent.change(descInput, { target: { value: "Test description" } });
+ 
+ 		const effectiveFromInput = screen.getByLabelText(
+-			"Effective date"
++			/Effective date/i
+ 		) as HTMLInputElement;
+ 		fireEvent.change(effectiveFromInput, {
+ 			target: { value: "2026-05-01" },
+ 		});
+ 
+ 		const effectiveToInput = screen.getByLabelText(
+-			"Expiry date"
++			/Expiry date/i
+ 		) as HTMLInputElement;
+ 		fireEvent.change(effectiveToInput, { target: { value: "2026-04-01" } });
+ 
+@@ -365,15 +365,15 @@ describe("KnowledgeDocumentEditor Component", () => {
+ 		expect(screen.getByTestId("doc-brand")).toHaveClass(
+ 			"knowledge-brand-select"
+ 		);
+-		expect(screen.getByLabelText("Effective date")).toHaveValue(
++		expect(screen.getByLabelText(/Effective date/i)).toHaveValue(
+ 			"2026-01-01"
+ 		);
+-		expect(screen.getByLabelText("Expiry date")).toHaveValue("2026-12-31");
++		expect(screen.getByLabelText(/Expiry date/i)).toHaveValue("2026-12-31");
+ 		expect(
+ 			screen.getByDisplayValue("Sample description")
+ 		).toBeInTheDocument();
+ 
+-		fireEvent.change(screen.getByLabelText("Effective date"), {
++		fireEvent.change(screen.getByLabelText(/Effective date/i), {
+ 			target: { value: "2026-02-01" },
+ 		});
+ 		const descInput = screen.getByDisplayValue("Sample description");
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
+index fe3e00a..4a3efdd 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.scss
+@@ -6,6 +6,35 @@
+ 	color: #1e293b;
+ 	font-family: inherit;
+ 
++	.knowledge-link-control.ant-btn,
++	.knowledge-link-control.ant-btn:hover,
++	.knowledge-link-control.ant-btn:focus,
++	.knowledge-link-control.ant-btn:active {
++		--btn-width: max-content;
++		--btn-height: auto;
++		--btn-padding-inline: 0;
++		--btn-padding-block: 0;
++		--btn-border: 0;
++		--btn-border-radius: 0;
++		--btn-default-bg: transparent;
++		--btn-hover-bg: transparent;
++		--btn-active-bg: transparent;
++		--btn-default-color: #0891b2;
++		--btn-hover-color: #0891b2;
++		--btn-active-color: #0891b2;
++		display: inline-flex;
++		background: none;
++		border: 0;
++		padding: 0;
++		box-shadow: none;
++		font-size: 13px;
++		font-weight: 500;
++	}
++
++	.panel-error-action.ant-btn {
++		color: #0891b2;
++	}
++
+ 	.page-heading {
+ 		display: flex;
+ 		justify-content: space-between;
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+index cb5ab64..38869d0 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.spec.tsx
+@@ -5,6 +5,7 @@ import type React from "react";
+ import type { ComponentProps } from "react";
+ import type {
+ 	GenericSideDrawer as GenericSideDrawerComponent,
++	GenericSingleDatePicker as GenericSingleDatePickerComponent,
+ 	Text as TextComponent,
+ } from "@angen_frontend/components";
+ import type { TranslationEntry } from "@angen_frontend/types";
+@@ -26,6 +27,10 @@ type MockTextProps = Omit<
+ 	};
+ 	children?: React.ReactNode;
+ };
++type MockSingleDatePickerProps = Pick<
++	ComponentProps<typeof GenericSingleDatePickerComponent>,
++	"value" | "onChange" | "placeholder" | "allowClear" | "disabled" | "id"
++>;
+ 
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
+@@ -129,6 +134,34 @@ jest.mock("@angen_frontend/components", () => ({
+ 			{children}
+ 		</button>
+ 	),
++	GenericSingleDatePicker: ({
++		value,
++		onChange,
++		placeholder,
++		allowClear,
++		disabled,
++		id,
++	}: MockSingleDatePickerProps) => (
++		<div>
++			<input
++				id={id}
++				type="date"
++				value={value}
++				placeholder={placeholder}
++				disabled={disabled}
++				onChange={(event) => onChange?.(event.target.value)}
++			/>
++			{allowClear && value && (
++				<button
++					type="button"
++					aria-label={`Clear ${id}`}
++					onClick={() => onChange?.("")}
++				>
++					Clear
++				</button>
++			)}
++		</div>
++	),
+ 	GenericStatusTag: ({ label }: { label?: React.ReactNode }) => (
+ 		<span>{label}</span>
+ 	),
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.scss b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.scss
+index c68316d..d6b9ac9 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.scss
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.scss
+@@ -293,7 +293,7 @@
+ 			border-bottom: 1px solid #e2e8f0;
+ 			gap: 24px;
+ 
+-			.tab-button {
++			.tab-button.ant-btn {
+ 				background: none;
+ 				border: none;
+ 				height: 56px;
