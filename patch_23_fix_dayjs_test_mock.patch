@@ -1,0 +1,13 @@
+diff --git a/packages/components/src/GenericSingleDatePicker/index.spec.tsx b/packages/components/src/GenericSingleDatePicker/index.spec.tsx
+index b2e8884..e104082 100644
+--- a/packages/components/src/GenericSingleDatePicker/index.spec.tsx
++++ b/packages/components/src/GenericSingleDatePicker/index.spec.tsx
+@@ -6,7 +6,7 @@ import { GenericSingleDatePicker } from "./index";
+ 
+ jest.mock("antd", () => {
+ 	const React = jest.requireActual("react");
+-	const mockDayjs = jest.requireActual("dayjs").default;
++	const mockDayjs = jest.requireActual("dayjs");
+ 
+ 	return {
+ 		__esModule: true,
