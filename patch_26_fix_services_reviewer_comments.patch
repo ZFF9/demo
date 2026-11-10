@@ -1,0 +1,83 @@
+diff --git a/packages/services/src/HttpService/service.ts b/packages/services/src/HttpService/service.ts
+index c46dbdd..f84e175 100644
+--- a/packages/services/src/HttpService/service.ts
++++ b/packages/services/src/HttpService/service.ts
+@@ -29,14 +29,14 @@ const request = async <Result, Payload = undefined>(
+ 	analyticsInput?: IAnalyticsWithoutApiLoadTime,
+ 	onCaptureAnalytics?: (
+ 		input?: IAnalyticsWithoutApiLoadTime
+-	) => (overrideInput?: Partial<IAnalyticsWithoutApiLoadTime>) => void,
+-	isFormData: boolean = false
++	) => (overrideInput?: Partial<IAnalyticsWithoutApiLoadTime>) => void
+ ) => {
+ 	if (isAuthenticationFailed) {
+ 		throw new Error("Unauthorized");
+ 	}
+ 
+ 	const url = prepareUrl(basePath, path);
++	const isFormData = payload instanceof FormData;
+ 
+ 	const updatedHeaders = {
+ 		"X-Correlation-ID": ulid(),
+@@ -164,8 +164,7 @@ export const createHttpService = ({
+ 				payload,
+ 				signal,
+ 				analyticsInput,
+-				onCaptureAnalytics,
+-				true
++				onCaptureAnalytics
+ 			);
+ 		},
+ 		put: async <T, J extends {} = {}>(
+diff --git a/packages/services/src/InsightService/index.ts b/packages/services/src/InsightService/index.ts
+index 54fc0c5..ec02649 100644
+--- a/packages/services/src/InsightService/index.ts
++++ b/packages/services/src/InsightService/index.ts
+@@ -952,21 +952,6 @@ export {
+ 	PORTAL_FEEDBACK_TREND_PATH,
+ 	PORTAL_AUDIT_GENERATIONS_PATH,
+ 	PORTAL_AUDIT_GENERATIONS_EXPORT_PATH,
+-	PORTAL_PROMPTS_DRAFT_DELETE_PATH,
+-	PORTAL_PROMPTS_DRAFT_SAVE_PATH,
+-	PORTAL_PROMPTS_VERSIONS_PATH,
+-	PORTAL_PROMPTS_VERSIONS_EXPORT_PATH,
+-	PORTAL_PROMPTS_PATH,
+-	PORTAL_PROMPTS_DRAFT_PUBLISH_PATH,
+-	PORTAL_PROMPTS_GLOSSARY_PATH,
+-	PORTAL_PROMPTS_GLOSSARY_SAVE_PATH,
+-	PORTAL_PROMPTS_GLOSSARY_DELETE_PATH,
+-	PORTAL_KNOWLEDGE_DOCUMENTS_PATH,
+-	PORTAL_KNOWLEDGE_UPLOAD_PATH,
+-	PORTAL_KNOWLEDGE_UPDATE_PATH,
+-	PORTAL_KNOWLEDGE_STATUS_PATH,
+-	PORTAL_KNOWLEDGE_RETRY_PATH,
+-	PORTAL_KNOWLEDGE_REFRESH_PATH,
+ };
+ 
+ export const InsightService = {
+diff --git a/packages/services/src/index.ts b/packages/services/src/index.ts
+index 8fa9d5f..282a112 100644
+--- a/packages/services/src/index.ts
++++ b/packages/services/src/index.ts
+@@ -47,21 +47,6 @@ export {
+ 	PORTAL_FEEDBACK_TREND_PATH,
+ 	PORTAL_AUDIT_GENERATIONS_PATH,
+ 	PORTAL_AUDIT_GENERATIONS_EXPORT_PATH,
+-	PORTAL_PROMPTS_DRAFT_DELETE_PATH,
+-	PORTAL_PROMPTS_DRAFT_SAVE_PATH,
+-	PORTAL_PROMPTS_VERSIONS_PATH,
+-	PORTAL_PROMPTS_VERSIONS_EXPORT_PATH,
+-	PORTAL_PROMPTS_PATH,
+-	PORTAL_PROMPTS_DRAFT_PUBLISH_PATH,
+-	PORTAL_PROMPTS_GLOSSARY_PATH,
+-	PORTAL_PROMPTS_GLOSSARY_SAVE_PATH,
+-	PORTAL_PROMPTS_GLOSSARY_DELETE_PATH,
+-	PORTAL_KNOWLEDGE_DOCUMENTS_PATH,
+-	PORTAL_KNOWLEDGE_UPLOAD_PATH,
+-	PORTAL_KNOWLEDGE_UPDATE_PATH,
+-	PORTAL_KNOWLEDGE_STATUS_PATH,
+-	PORTAL_KNOWLEDGE_RETRY_PATH,
+-	PORTAL_KNOWLEDGE_REFRESH_PATH,
+ } from "./InsightService";
+ export {
+ 	ConfigService,
