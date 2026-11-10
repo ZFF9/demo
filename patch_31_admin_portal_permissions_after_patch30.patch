@@ -1,0 +1,1491 @@
+diff --git a/packages/services/src/InsightService/index.spec.ts b/packages/services/src/InsightService/index.spec.ts
+index f74b1d1f186dfdb72f786fa1f6620e22a34f0d38..31959b53625bd8dc6995ab71692ab334ecc692db 100644
+--- a/packages/services/src/InsightService/index.spec.ts
++++ b/packages/services/src/InsightService/index.spec.ts
+@@ -72,6 +72,68 @@ describe("InsightService", () => {
+ 		jest.resetAllMocks();
+ 	});
+ 
++	it("loads Admin Portal permission groups", async () => {
++		(BackendHttpClient.get as jest.Mock).mockResolvedValue({
++			status: HttpStatus.OK,
++			data: {
++				code: 0,
++				message: "ok",
++				data: {
++					readGroups: ["reader-group"],
++					writeGroups: ["admin-group"],
++				},
++			},
++		});
++
++		await expect(
++			InsightService.getAdminPortalPermissions()
++		).resolves.toEqual({
++			readGroups: ["reader-group"],
++			writeGroups: ["admin-group"],
++		});
++		expect(BackendHttpClient.get).toHaveBeenCalledWith(
++			"/commentary/v1/portal/permissions"
++		);
++	});
++
++	it("surfaces Admin Portal permission API errors", async () => {
++		(BackendHttpClient.get as jest.Mock).mockResolvedValue({
++			status: HttpStatus.OK,
++			data: {
++				code: 403,
++				message: "Permission denied",
++				data: null,
++			},
++		});
++
++		await expect(
++			InsightService.getAdminPortalPermissions()
++		).rejects.toThrow("Permission denied");
++
++		(BackendHttpClient.get as jest.Mock).mockResolvedValue({
++			status: HttpStatus.INTERNAL_SERVER_ERROR,
++			data: undefined,
++		});
++		await expect(
++			InsightService.getAdminPortalPermissions()
++		).rejects.toThrow("Portal API error");
++	});
++
++	it("rejects Admin Portal permissions without group arrays", async () => {
++		(BackendHttpClient.get as jest.Mock).mockResolvedValue({
++			status: HttpStatus.OK,
++			data: {
++				code: 0,
++				message: "ok",
++				data: { readGroups: [], writeGroups: undefined },
++			},
++		});
++
++		await expect(
++			InsightService.getAdminPortalPermissions()
++		).rejects.toThrow("Invalid Admin Portal permissions response");
++	});
++
+ 	it("loads commentary capability from the v1 endpoint", async () => {
+ 		(BackendHttpClient.get as jest.Mock).mockResolvedValue({
+ 			status: HttpStatus.OK,
+diff --git a/packages/services/src/InsightService/index.ts b/packages/services/src/InsightService/index.ts
+index ec02649259827bff6fb554d99afa2cd439945dc1..042188c829dec0e139ea2d9aeb91669f0f96f5db 100644
+--- a/packages/services/src/InsightService/index.ts
++++ b/packages/services/src/InsightService/index.ts
+@@ -281,6 +281,11 @@ export interface IKnowledgeDocumentRefreshResult {
+ 	processingStatus?: "processing" | "ready" | "failed" | null;
+ }
+ 
++export interface IAdminPortalPermissions {
++	readGroups: string[];
++	writeGroups: string[];
++}
++
+ export interface IPortalWriteResult {
+ 	success: boolean;
+ 	message: string | null;
+@@ -329,6 +334,7 @@ const PORTAL_KNOWLEDGE_RETRY_PATH =
+ 	"/commentary/v1/portal/knowledge-documents/retry";
+ const PORTAL_KNOWLEDGE_REFRESH_PATH =
+ 	"/commentary/v1/portal/knowledge-documents/refresh";
++const PORTAL_PERMISSIONS_PATH = "/commentary/v1/portal/permissions";
+ 
+ const appendAuditFilters = (
+ 	query: URLSearchParams,
+@@ -631,6 +637,19 @@ async function refreshKnowledgeDocuments(
+ 	return result.results;
+ }
+ 
++async function getAdminPortalPermissions(): Promise<IAdminPortalPermissions> {
++	const permissions = await portalGet<IAdminPortalPermissions>(
++		PORTAL_PERMISSIONS_PATH
++	);
++	if (
++		!Array.isArray(permissions.readGroups) ||
++		!Array.isArray(permissions.writeGroups)
++	) {
++		throw new Error("Invalid Admin Portal permissions response");
++	}
++	return permissions;
++}
++
+ export class InsightTimeoutError extends Error {
+ 	public readonly isTimeout = true;
+ 	public readonly correlationId?: string;
+@@ -984,4 +1003,5 @@ export const InsightService = {
+ 	setKnowledgeDocumentStatus,
+ 	retryKnowledgeDocument,
+ 	refreshKnowledgeDocuments,
++	getAdminPortalPermissions,
+ };
+diff --git a/packages/services/src/index.ts b/packages/services/src/index.ts
+index 9f0854ee8c9f9cd2bd3af582714638729f412501..92abe781f7314d732885394fe98e665e7f280e4b 100644
+--- a/packages/services/src/index.ts
++++ b/packages/services/src/index.ts
+@@ -31,8 +31,8 @@ export type {
+ 	IPromptVersionDetail,
+ 	IPromptVersionListItem,
+ 	IKnowledgeDocumentApiItem,
++	IAdminPortalPermissions,
+ } from "./InsightService";
+-export { InsightService, InsightTimeoutError } from "./InsightService";
+ export {
+ 	ConfigService,
+ 	LanguageService,
+diff --git a/packages/types/src/translations/en.json b/packages/types/src/translations/en.json
+index 05cd4744dd977ea9259955776f083363505c8d4c..3a2b3ffd2e0fbacaf24ca6fce6221e00874c41fe 100644
+--- a/packages/types/src/translations/en.json
++++ b/packages/types/src/translations/en.json
+@@ -2055,6 +2055,11 @@
+     "noModuleTitle": "Sorry you do not have access to this."
+   },
+   "cothinker": {
++    "admin": {
++      "permissionLoading": "Loading permissions...",
++      "permissionRetry": "Retry",
++      "permissionDenied": "You do not have access to Admin Portal."
++    },
+     "common": {
+       "search": "Search",
+       "reset": "Reset",
+diff --git a/packages/types/src/translations/ja.json b/packages/types/src/translations/ja.json
+index 2eaf8a9d8d8555b3e21b55420b4d0acf85d4ee93..a853bdfd8301968766458e1996b256eb6ae5f382 100644
+--- a/packages/types/src/translations/ja.json
++++ b/packages/types/src/translations/ja.json
+@@ -2056,6 +2056,11 @@
+     "noModuleTitle": "Sorry you do not have access to this."
+   },
+   "cothinker": {
++    "admin": {
++      "permissionLoading": "Loading permissions...",
++      "permissionRetry": "Retry",
++      "permissionDenied": "You do not have access to Admin Portal."
++    },
+     "common": {
+       "search": "Search",
+       "reset": "Reset",
+diff --git a/packages/types/src/translations/ko.json b/packages/types/src/translations/ko.json
+index 47fcecf5424261d632ebd5675949e05a057b312c..207d544d1679ec0ec18d9738818b8eff5e5bc4e5 100644
+--- a/packages/types/src/translations/ko.json
++++ b/packages/types/src/translations/ko.json
+@@ -2055,6 +2055,11 @@
+     "noModuleTitle": "Sorry you do not have access to this."
+   },
+   "cothinker": {
++    "admin": {
++      "permissionLoading": "Loading permissions...",
++      "permissionRetry": "Retry",
++      "permissionDenied": "You do not have access to Admin Portal."
++    },
+     "common": {
+       "search": "Search",
+       "reset": "Reset",
+diff --git a/packages/types/src/translations/zh-CN.json b/packages/types/src/translations/zh-CN.json
+index f9dd8c276a4bb1722cf65bbe3186b38ad587cfbc..b0b6140880fbc6e9181d73f67b15d914a0946071 100644
+--- a/packages/types/src/translations/zh-CN.json
++++ b/packages/types/src/translations/zh-CN.json
+@@ -2064,6 +2064,11 @@
+     "noModuleTitle": "Sorry you do not have access to this."
+   },
+   "cothinker": {
++    "admin": {
++      "permissionLoading": "Loading permissions...",
++      "permissionRetry": "Retry",
++      "permissionDenied": "You do not have access to Admin Portal."
++    },
+     "common": {
+       "search": "Search",
+       "reset": "Reset",
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+index 955a665ad8e0a84c9916a535376922a56cd4f152..00d688ca905b6c0ce477a2db06b99a4a1c3f5040 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.spec.tsx
+@@ -184,6 +184,36 @@ describe("KnowledgeDocumentDetail Component", () => {
+ 		expect(container).toBeEmptyDOMElement();
+ 	});
+ 
++	it("keeps close available and hides write actions in read mode", () => {
++		render(
++			<KnowledgeDocumentDetail
++				visible={true}
++				document={{
++					...mockDoc,
++					processingError: "Processing failed",
++				}}
++				onClose={jest.fn()}
++				onEdit={jest.fn()}
++				onChangeStatus={jest.fn()}
++				onRetry={jest.fn()}
++				canWrite={false}
++			/>
++		);
++
++		expect(
++			screen.getAllByRole("button", { name: "Close" }).length
++		).toBeGreaterThan(0);
++		expect(
++			screen.queryByRole("button", { name: "Edit" })
++		).not.toBeInTheDocument();
++		expect(
++			screen.queryByRole("button", { name: "Deactivate" })
++		).not.toBeInTheDocument();
++		expect(
++			screen.queryByRole("button", { name: "Retry" })
++		).not.toBeInTheDocument();
++	});
++
+ 	it("blocks activation while document processing has failed", () => {
+ 		render(
+ 			<KnowledgeDocumentDetail
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+index a2a497824a7310486a5aa5df56a4f94be91ba6cc..5c0cdef4c889a4433259a5c4e6ad65b33746a84e 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentDetail/index.tsx
+@@ -21,14 +21,15 @@ interface IKnowledgeDocumentDetailProps {
+ 	onEdit: (doc: IKnowledgeDocument) => void;
+ 	onChangeStatus: (doc: IKnowledgeDocument) => void;
+ 	onRetry: (doc: IKnowledgeDocument) => void;
++	canWrite?: boolean;
+ }
+ 
+ const DocumentDetailFooter: FC<
+ 	Pick<
+ 		IKnowledgeDocumentDetailProps,
+-		"document" | "onClose" | "onEdit" | "onChangeStatus"
++		"document" | "onClose" | "onEdit" | "onChangeStatus" | "canWrite"
+ 	>
+-> = ({ document: doc, onClose, onEdit, onChangeStatus }) => {
++> = ({ document: doc, onClose, onEdit, onChangeStatus, canWrite = true }) => {
+ 	if (!doc) return null;
+ 
+ 	const isActive = doc.status === "ACTIVE";
+@@ -46,29 +47,35 @@ const DocumentDetailFooter: FC<
+ 			>
+ 				<Text entry={{ "cothinker.common.close": {} }} />
+ 			</GenericButtonV2>
+-			<GenericButtonV2
+-				type="default"
+-				className="el-btn-default"
+-				onClick={() => onEdit(doc)}
+-			>
+-				<Text entry={{ "cothinker.common.edit": {} }} />
+-			</GenericButtonV2>
+-			<span
+-				title={
+-					!canChangeStatus
+-						? "Processing must complete before activation."
+-						: undefined
+-				}
+-			>
++			{canWrite && (
+ 				<GenericButtonV2
+-					type="primary"
+-					className={isActive ? "el-btn-warning" : "el-btn-primary"}
+-					disabled={!canChangeStatus}
+-					onClick={() => onChangeStatus(doc)}
++					type="default"
++					className="el-btn-default"
++					onClick={() => onEdit(doc)}
+ 				>
+-					<Text entry={{ [statusLabel]: {} }} />
++					<Text entry={{ "cothinker.common.edit": {} }} />
+ 				</GenericButtonV2>
+-			</span>
++			)}
++			{canWrite && (
++				<span
++					title={
++						!canChangeStatus
++							? "Processing must complete before activation."
++							: undefined
++					}
++				>
++					<GenericButtonV2
++						type="primary"
++						className={
++							isActive ? "el-btn-warning" : "el-btn-primary"
++						}
++						disabled={!canChangeStatus}
++						onClick={() => onChangeStatus(doc)}
++					>
++						<Text entry={{ [statusLabel]: {} }} />
++					</GenericButtonV2>
++				</span>
++			)}
+ 		</div>
+ 	);
+ };
+@@ -80,6 +87,7 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 	onEdit,
+ 	onChangeStatus,
+ 	onRetry,
++	canWrite = true,
+ }) => {
+ 	if (!visible || !doc) return null;
+ 
+@@ -342,18 +350,23 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 									/>
+ 								</span>
+ 								<p>{doc.processingError}</p>
+-								<GenericButtonV2
+-									type="default"
+-									className="el-btn-default retry-btn"
+-									disabled={
+-										doc.processingStatus === "PROCESSING"
+-									}
+-									onClick={() => onRetry(doc)}
+-								>
+-									<Text
+-										entry={{ "cothinker.common.retry": {} }}
+-									/>
+-								</GenericButtonV2>
++								{canWrite && (
++									<GenericButtonV2
++										type="default"
++										className="el-btn-default retry-btn"
++										disabled={
++											doc.processingStatus ===
++											"PROCESSING"
++										}
++										onClick={() => onRetry(doc)}
++									>
++										<Text
++											entry={{
++												"cothinker.common.retry": {},
++											}}
++										/>
++									</GenericButtonV2>
++								)}
+ 							</div>
+ 						)}
+ 					</section>
+@@ -364,6 +377,7 @@ export const KnowledgeDocumentDetail: FC<IKnowledgeDocumentDetailProps> = ({
+ 					onClose={onClose}
+ 					onEdit={onEdit}
+ 					onChangeStatus={onChangeStatus}
++					canWrite={canWrite}
+ 				/>
+ 			</div>
+ 		</GenericSideDrawer>
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+index b9cac3342231fd06652e132b6c6f1c7c5a7fc5f4..d49bd25e9dad1d3d3b8dc453ad283b63077bb2fb 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.spec.tsx
+@@ -277,6 +277,32 @@ describe("KnowledgeDocumentTable Component", () => {
+ 		expect(onChangeStatus).not.toHaveBeenCalled();
+ 	});
+ 
++	it("keeps document viewing available while hiding write actions in read mode", () => {
++		render(
++			<KnowledgeDocumentTable
++				documents={[createDocument()]}
++				total={1}
++				pageSize={5}
++				currentPage={1}
++				onPageChange={jest.fn()}
++				onView={jest.fn()}
++				onEdit={jest.fn()}
++				onChangeStatus={jest.fn()}
++				canWrite={false}
++			/>
++		);
++
++		expect(
++			screen.getByRole("button", { name: "View" })
++		).toBeInTheDocument();
++		expect(
++			screen.queryByRole("button", { name: "Edit" })
++		).not.toBeInTheDocument();
++		expect(
++			screen.queryByRole("button", { name: "Activate" })
++		).not.toBeInTheDocument();
++	});
++
+ 	it("shows processing state below the document name", () => {
+ 		const documentItem = createDocument({
+ 			processingStatus: "PROCESSING",
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
+index e6f666fcc2a37a4ba090db2fb4d3400fe4ee38e1..ab9eeb3a5bcd918538d553262999fbd7d3f00b90 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/KnowledgeDocumentTable/index.tsx
+@@ -23,6 +23,7 @@ interface IKnowledgeDocumentTableProps {
+ 	onView: (doc: IKnowledgeDocument) => void;
+ 	onEdit: (doc: IKnowledgeDocument) => void;
+ 	onChangeStatus: (doc: IKnowledgeDocument) => void;
++	canWrite?: boolean;
+ }
+ 
+ const KEYBOARD_ENTER_CODE = 13;
+@@ -36,6 +37,7 @@ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 	onView,
+ 	onEdit,
+ 	onChangeStatus,
++	canWrite = true,
+ }) => {
+ 	const [jumpInput, setJumpInput] = useState<string>("");
+ 
+@@ -169,37 +171,41 @@ export const KnowledgeDocumentTable: FC<IKnowledgeDocumentTableProps> = ({
+ 							>
+ 								View
+ 							</GenericButtonV2>
+-							<GenericButtonV2
+-								type="link"
+-								className="action-link knowledge-link-control"
+-								onClick={() => onEdit(row)}
+-							>
+-								Edit
+-							</GenericButtonV2>
+-							<span
+-								title={
+-									activationBlocked
+-										? "Processing must complete before activation."
+-										: undefined
+-								}
+-							>
++							{canWrite && (
+ 								<GenericButtonV2
+ 									type="link"
+ 									className="action-link knowledge-link-control"
+-									disabled={activationBlocked}
+-									onClick={() => onChangeStatus(row)}
++									onClick={() => onEdit(row)}
+ 								>
+-									{row.status === "ACTIVE"
+-										? "Deactivate"
+-										: "Activate"}
++									Edit
+ 								</GenericButtonV2>
+-							</span>
++							)}
++							{canWrite && (
++								<span
++									title={
++										activationBlocked
++											? "Processing must complete before activation."
++											: undefined
++									}
++								>
++									<GenericButtonV2
++										type="link"
++										className="action-link knowledge-link-control"
++										disabled={activationBlocked}
++										onClick={() => onChangeStatus(row)}
++									>
++										{row.status === "ACTIVE"
++											? "Deactivate"
++											: "Activate"}
++									</GenericButtonV2>
++								</span>
++							)}
+ 						</div>
+ 					);
+ 				},
+ 			},
+ 		],
+-		[onView, onEdit, onChangeStatus]
++		[onView, onEdit, onChangeStatus, canWrite]
+ 	);
+ 
+ 	return (
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+index 236c4c4624940f0c8616c847acf6dfa32e1e973c..8f701554de6da0f2321fee7b636e254a75dc0205 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/KnowledgeDocTab/index.tsx
+@@ -356,7 +356,13 @@ const StatusConfirmation: FC<IStatusConfirmationProps> = ({
+ 	);
+ };
+ 
+-export const KnowledgeDocTab: FC = () => {
++interface IKnowledgeDocTabProps {
++	canWrite?: boolean;
++}
++
++export const KnowledgeDocTab: FC<IKnowledgeDocTabProps> = ({
++	canWrite = true,
++}) => {
+ 	const [documents, setDocuments] = useState<IKnowledgeDocument[]>([]);
+ 	const [total, setTotal] = useState<number>(0);
+ 	const [brandOptions, setBrandOptions] = useState<string[]>([]);
+@@ -513,11 +519,13 @@ export const KnowledgeDocTab: FC = () => {
+ 	};
+ 
+ 	const handleOpenUpload = () => {
++		if (!canWrite) return;
+ 		setEditingDoc(null);
+ 		setEditorVisible(true);
+ 	};
+ 
+ 	const handleOpenEdit = (doc: IKnowledgeDocument) => {
++		if (!canWrite) return;
+ 		setEditingDoc(doc);
+ 		setEditorVisible(true);
+ 	};
+@@ -580,6 +588,7 @@ export const KnowledgeDocTab: FC = () => {
+ 	};
+ 
+ 	const handleChangeStatusClick = (doc: IKnowledgeDocument) => {
++		if (!canWrite) return;
+ 		if (doc.status === "INACTIVE" && !canActivateKnowledgeDocument(doc)) {
+ 			return;
+ 		}
+@@ -588,7 +597,7 @@ export const KnowledgeDocTab: FC = () => {
+ 	};
+ 
+ 	const handleConfirmStatusChange = async () => {
+-		if (!confirmTarget) return;
++		if (!canWrite || !confirmTarget) return;
+ 		const activating = confirmTarget.status === "INACTIVE";
+ 		if (activating && !canActivateKnowledgeDocument(confirmTarget)) {
+ 			setConfirmModalVisible(false);
+@@ -624,6 +633,7 @@ export const KnowledgeDocTab: FC = () => {
+ 	};
+ 
+ 	const handleRetryProcessing = async (doc: IKnowledgeDocument) => {
++		if (!canWrite) return;
+ 		try {
+ 			if (doc.revision === undefined) {
+ 				throw new Error("The document revision is unavailable.");
+@@ -692,16 +702,20 @@ export const KnowledgeDocTab: FC = () => {
+ 						/>
+ 					</p>
+ 				</div>
+-				<GenericButtonV2
+-					type="primary"
+-					className="el-btn-primary upload-btn"
+-					prefixIcon={<UploadSvgIcon size={16} />}
+-					onClick={handleOpenUpload}
+-				>
+-					<Text
+-						entry={{ "cothinker.knowledgeDoc.uploadDocument": {} }}
+-					/>
+-				</GenericButtonV2>
++				{canWrite && (
++					<GenericButtonV2
++						type="primary"
++						className="el-btn-primary upload-btn"
++						prefixIcon={<UploadSvgIcon size={16} />}
++						onClick={handleOpenUpload}
++					>
++						<Text
++							entry={{
++								"cothinker.knowledgeDoc.uploadDocument": {},
++							}}
++						/>
++					</GenericButtonV2>
++				)}
+ 			</header>
+ 
+ 			<section
+@@ -819,15 +833,17 @@ export const KnowledgeDocTab: FC = () => {
+ 						<span>
+ 							{total} {total === 1 ? "document" : "documents"}
+ 						</span>
+-						<GenericButtonV2
+-							type="default"
+-							className="refresh-btn"
+-							aria-label="Refresh documents"
+-							title="Refresh documents"
+-							onClick={handleRefresh}
+-						>
+-							<RefreshSvgIcon size={14} />
+-						</GenericButtonV2>
++						{canWrite && (
++							<GenericButtonV2
++								type="default"
++								className="refresh-btn"
++								aria-label="Refresh documents"
++								title="Refresh documents"
++								onClick={handleRefresh}
++							>
++								<RefreshSvgIcon size={14} />
++							</GenericButtonV2>
++						)}
+ 					</div>
+ 				</header>
+ 
+@@ -847,19 +863,22 @@ export const KnowledgeDocTab: FC = () => {
+ 						onView={handleViewDocument}
+ 						onEdit={handleOpenEdit}
+ 						onChangeStatus={handleChangeStatusClick}
++						canWrite={canWrite}
+ 					/>
+ 				</div>
+ 			</section>
+ 
+-			<KnowledgeDocumentEditor
+-				visible={editorVisible}
+-				initialDoc={editingDoc}
+-				brandOptions={brandOptions}
+-				onClose={() => setEditorVisible(false)}
+-				onSave={(metadata, file) =>
+-					handleSaveDocument({ file: file || null, metadata })
+-				}
+-			/>
++			{canWrite && (
++				<KnowledgeDocumentEditor
++					visible={editorVisible}
++					initialDoc={editingDoc}
++					brandOptions={brandOptions}
++					onClose={() => setEditorVisible(false)}
++					onSave={(metadata, file) =>
++						handleSaveDocument({ file: file || null, metadata })
++					}
++				/>
++			)}
+ 
+ 			<KnowledgeDocumentDetail
+ 				visible={detailVisible}
+@@ -873,6 +892,7 @@ export const KnowledgeDocTab: FC = () => {
+ 					handleChangeStatusClick(doc);
+ 				}}
+ 				onRetry={handleRetryProcessing}
++				canWrite={canWrite}
+ 			/>
+ 
+ 			{confirmModalVisible && confirmTarget && (
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
+index 468876c21dcf8e773ec636de1790f39410f3ead8..36c3d337883b11576502c8334a4d950ab2f62222 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/ConfigurationPanel/index.tsx
+@@ -14,6 +14,7 @@ import {
+ interface IProps {
+ 	activeVersion: IPromptVersion;
+ 	hasDraft: boolean;
++	canWrite?: boolean;
+ 	onOpenEditor: (scope: PromptScope) => void;
+ }
+ 
+@@ -24,7 +25,11 @@ interface IConfigEntry {
+ 	type: string;
+ }
+ 
+-export const ConfigurationPanel: FC<IProps> = ({ hasDraft, onOpenEditor }) => {
++export const ConfigurationPanel: FC<IProps> = ({
++	hasDraft,
++	canWrite = true,
++	onOpenEditor,
++}) => {
+ 	const entries: IConfigEntry[] = useMemo(
+ 		() => [
+ 			{
+@@ -91,12 +96,12 @@ export const ConfigurationPanel: FC<IProps> = ({ hasDraft, onOpenEditor }) => {
+ 						className="action-link portal-link-control"
+ 						onClick={() => onOpenEditor(row.scope)}
+ 					>
+-						{hasDraft ? "Edit" : "View"}
++						{canWrite && hasDraft ? "Edit" : "View"}
+ 					</GenericButtonV2>
+ 				),
+ 			},
+ 		],
+-		[hasDraft, onOpenEditor]
++		[canWrite, hasDraft, onOpenEditor]
+ 	);
+ 
+ 	return (
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+index a5cb70d264bf5441169a0b667809b21b1f178229..eaa01877bfd9fe8b63f7060709dfadb7ac24a225 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/MetricDefinitionsPanel/index.tsx
+@@ -25,6 +25,7 @@ interface IProps {
+ 		isEdit: boolean
+ 	) => void | Promise<void>;
+ 	onDeleteMetric?: (id: string) => void | Promise<void>;
++	canWrite?: boolean;
+ }
+ 
+ export const MetricDefinitionsPanel: FC<IProps> = ({
+@@ -37,6 +38,7 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 	onSearch = () => {},
+ 	onSaveMetric,
+ 	onDeleteMetric = () => {},
++	canWrite = true,
+ }) => {
+ 	const [searchQuery, setSearchQuery] = useState<string>("");
+ 	const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+@@ -224,28 +226,32 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 				width: 130,
+ 				render: (_: unknown, m: IMetricDefinition) => (
+ 					<div className="metric-actions">
+-						<GenericButtonV2
+-							type="link"
+-							className="action-link portal-link-control"
+-							onClick={() => handleOpenEdit(m)}
+-						>
+-							Edit
+-						</GenericButtonV2>
+-						<GenericButtonV2
+-							type="link"
+-							className="action-link delete-link portal-link-control"
+-							onClick={() => {
+-								setFormError("");
+-								setDeleteTarget(m);
+-							}}
+-						>
+-							Delete
+-						</GenericButtonV2>
++						{canWrite && (
++							<GenericButtonV2
++								type="link"
++								className="action-link portal-link-control"
++								onClick={() => handleOpenEdit(m)}
++							>
++								Edit
++							</GenericButtonV2>
++						)}
++						{canWrite && (
++							<GenericButtonV2
++								type="link"
++								className="action-link delete-link portal-link-control"
++								onClick={() => {
++									setFormError("");
++									setDeleteTarget(m);
++								}}
++							>
++								Delete
++							</GenericButtonV2>
++						)}
+ 					</div>
+ 				),
+ 			},
+ 		],
+-		[]
++		[canWrite]
+ 	);
+ 
+ 	return (
+@@ -265,14 +271,16 @@ export const MetricDefinitionsPanel: FC<IProps> = ({
+ 						<Text entry={{ "cothinker.prompt.metricsDesc": {} }} />
+ 					</p>
+ 				</div>
+-				<GenericButtonV2
+-					type="primary"
+-					className="el-btn-primary"
+-					prefixIcon={<CoThinkerPlusSvgIcon size={14} />}
+-					onClick={handleOpenAdd}
+-				>
+-					<Text entry={{ "cothinker.prompt.addMetric": {} }} />
+-				</GenericButtonV2>
++				{canWrite && (
++					<GenericButtonV2
++						type="primary"
++						className="el-btn-primary"
++						prefixIcon={<CoThinkerPlusSvgIcon size={14} />}
++						onClick={handleOpenAdd}
++					>
++						<Text entry={{ "cothinker.prompt.addMetric": {} }} />
++					</GenericButtonV2>
++				)}
+ 			</div>
+ 
+ 			<div className="metrics-controls">
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+index 755e0e02561a868d08df35730bff756c390cfcbb..a095ef123fdbe8f9db6baf0cb069c437e5004386 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/PromptEditorDrawer/index.tsx
+@@ -20,6 +20,7 @@ interface IProps {
+ 	inspectedVersion: IPromptVersion | null;
+ 	isDraft: boolean;
+ 	isDirty: boolean;
++	canWrite?: boolean;
+ 	config: IPromptConfig;
+ 	onClose: () => void;
+ 	onSaveDraft: () => void;
+@@ -42,6 +43,7 @@ export const PromptEditorDrawer: FC<IProps> = ({
+ 	onSaveDraft,
+ 	onUpdateShared,
+ 	onUpdateRoleField,
++	canWrite = true,
+ }) => {
+ 	const [activeScope, setActiveScope] = useState<PromptScope>(initialScope);
+ 	const [previewRole, setPreviewRole] = useState<
+@@ -55,7 +57,7 @@ export const PromptEditorDrawer: FC<IProps> = ({
+ 		{ scope: "SALES_REP", label: SCOPE_NAMES.SALES_REP },
+ 	];
+ 
+-	const editable = isDraft && !inspectedVersion;
++	const editable = canWrite && isDraft && !inspectedVersion;
+ 
+ 	const previewText = useMemo(() => {
+ 		const targetRole = activeScope === "SHARED" ? previewRole : activeScope;
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+index bc55d9ea93504c8c183cf599b577be6e24b4d47e..77c573008fef1cfa7eb213218bf2346ba0b07a3e 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/VersionHistoryPanel/index.tsx
+@@ -15,6 +15,7 @@ interface IProps {
+ 	versions: IPromptVersion[];
+ 	activeVersionId: string;
+ 	hasDraft: boolean;
++	canWrite?: boolean;
+ 	total?: number;
+ 	currentPage?: number;
+ 	pageSize?: number;
+@@ -30,6 +31,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 	versions,
+ 	activeVersionId,
+ 	hasDraft,
++	canWrite = true,
+ 	total = versions.length,
+ 	currentPage = 1,
+ 	pageSize = 20,
+@@ -129,7 +131,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 						>
+ 							View
+ 						</GenericButtonV2>
+-						{v.id !== activeVersionId && (
++						{canWrite && v.id !== activeVersionId && (
+ 							<GenericButtonV2
+ 								type="link"
+ 								className="action-link restore-btn portal-link-control"
+@@ -146,6 +148,7 @@ export const VersionHistoryPanel: FC<IProps> = ({
+ 	}, [
+ 		activeVersionId,
+ 		hasDraft,
++		canWrite,
+ 		onInspect,
+ 		onInspectVersion,
+ 		onRollback,
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+index 100153bf4725440c452b5ace39207e677fe4d366..9b2066ed0b3c0211a4720a1d3d92c34f4b4b0e83 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.spec.tsx
+@@ -359,6 +359,23 @@ describe("PromptManagementTab Component", () => {
+ 		expect(screen.getByText("Create draft")).toBeInTheDocument();
+ 	});
+ 
++	it("hides prompt write actions for read-only users", async () => {
++		render(<PromptManagementTab canWrite={false} />);
++
++		await screen.findByText("Current prompt");
++		expect(screen.queryByText("Create draft")).not.toBeInTheDocument();
++		expect(screen.queryByText("Continue editing")).not.toBeInTheDocument();
++		expect(screen.queryByText("Discard draft")).not.toBeInTheDocument();
++
++		fireEvent.click(screen.getByText("Metric Definitions"));
++		expect(
++			await screen.findByText("NBRx Market Share")
++		).toBeInTheDocument();
++		expect(screen.queryByText("Add Metric")).not.toBeInTheDocument();
++		expect(screen.queryByText("Edit")).not.toBeInTheDocument();
++		expect(screen.queryByText("Delete")).not.toBeInTheDocument();
++	});
++
+ 	it("shows initial load errors and retries loading prompt data", async () => {
+ 		(InsightService.getPromptVersion as jest.Mock).mockRejectedValueOnce(
+ 			new Error("Prompt service unavailable")
+diff --git a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+index 7a281fea42bf9850d1b0ab8b3c8f0a84738321cd..5e30df48bdaed85dbd55b4128d2e4ca9bcdff7b0 100644
+--- a/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/components/PromptManagementTab/index.tsx
+@@ -587,7 +587,13 @@ const mapPromptListItem = (item: IPromptVersionListItem): IPromptVersion => ({
+ 	revision: item.revision,
+ });
+ 
+-export const PromptManagementTab: FC = () => {
++interface IPromptManagementTabProps {
++	canWrite?: boolean;
++}
++
++export const PromptManagementTab: FC<IPromptManagementTabProps> = ({
++	canWrite = true,
++}) => {
+ 	const [activeTab, setActiveTab] = useState<
+ 		"configuration" | "history" | "metrics"
+ 	>("configuration");
+@@ -887,7 +893,7 @@ export const PromptManagementTab: FC = () => {
+ 	};
+ 
+ 	const handleSaveDraft = async () => {
+-		if (!draftVersion) return;
++		if (!canWrite || !draftVersion) return;
+ 		setSaving(true);
+ 		try {
+ 			const model = await persistDraft(
+@@ -909,7 +915,7 @@ export const PromptManagementTab: FC = () => {
+ 	};
+ 
+ 	const handleSaveDrawerDraft = async () => {
+-		if (!editorDraftMode || !editorConfig) return;
++		if (!canWrite || !editorDraftMode || !editorConfig) return;
+ 		setSaving(true);
+ 		try {
+ 			const model = await persistDraft(
+@@ -942,10 +948,12 @@ export const PromptManagementTab: FC = () => {
+ 	};
+ 
+ 	const handleDiscardDraft = () => {
++		if (!canWrite) return;
+ 		setDiscardDialogVisible(true);
+ 	};
+ 
+ 	const handleConfirmDiscard = async () => {
++		if (!canWrite) return;
+ 		try {
+ 			if (draftVersion?.id) {
+ 				await InsightService.deletePromptDraft(draftVersion.id);
+@@ -962,7 +970,7 @@ export const PromptManagementTab: FC = () => {
+ 	};
+ 
+ 	const handlePublish = async () => {
+-		if (!draftVersion) return;
++		if (!canWrite || !draftVersion) return;
+ 		if (!draftChangeNote.trim()) {
+ 			showToast(
+ 				"A change note is required before publishing.",
+@@ -1015,6 +1023,7 @@ export const PromptManagementTab: FC = () => {
+ 	};
+ 
+ 	const handlePrepareRestore = async (v: IPromptVersion) => {
++		if (!canWrite) return;
+ 		if (draftVersion) {
+ 			showToast(
+ 				"Please publish or discard the current draft before restoring.",
+@@ -1054,7 +1063,7 @@ export const PromptManagementTab: FC = () => {
+ 	};
+ 
+ 	const handleConfirmRestore = async () => {
+-		if (!rollbackTarget) return;
++		if (!canWrite || !rollbackTarget) return;
+ 		if (!rollbackReason.trim()) {
+ 			showToast("A restore reason is required.", "warning");
+ 			return;
+@@ -1121,7 +1130,7 @@ export const PromptManagementTab: FC = () => {
+ 	};
+ 
+ 	const handleUpdateShared = (newText: string) => {
+-		if (!editorDraftMode || !editorConfig) return;
++		if (!canWrite || !editorDraftMode || !editorConfig) return;
+ 		setEditorConfig({
+ 			...editorConfig,
+ 			sharedInstructions: newText,
+@@ -1133,7 +1142,7 @@ export const PromptManagementTab: FC = () => {
+ 		field: "audienceLens" | "priorities" | "commentaryFocus",
+ 		val: string
+ 	) => {
+-		if (!editorDraftMode || !editorConfig) return;
++		if (!canWrite || !editorDraftMode || !editorConfig) return;
+ 		setEditorConfig({
+ 			...editorConfig,
+ 			roles: {
+@@ -1150,6 +1159,7 @@ export const PromptManagementTab: FC = () => {
+ 		metric: Omit<IMetricDefinition, "updatedAt" | "updatedBy">,
+ 		isEdit: boolean
+ 	) => {
++		if (!canWrite) return;
+ 		try {
+ 			const existing = metrics.find((item) => item.id === metric.id);
+ 			if (isEdit && (!existing || existing.revision === undefined)) {
+@@ -1182,6 +1192,7 @@ export const PromptManagementTab: FC = () => {
+ 	};
+ 
+ 	const handleDeleteMetric = async (id: string) => {
++		if (!canWrite) return;
+ 		try {
+ 			const target = metrics.find((item) => item.id === id);
+ 			if (!target) return;
+@@ -1261,6 +1272,7 @@ export const PromptManagementTab: FC = () => {
+ 					{activeTab === "configuration" && (
+ 						<ConfigurationPanel
+ 							hasDraft={!!draftVersion}
++							canWrite={canWrite}
+ 							activeVersion={activeVersion}
+ 							onOpenEditor={handleOpenEditor}
+ 						/>
+@@ -1296,6 +1308,7 @@ export const PromptManagementTab: FC = () => {
+ 									versions={versions}
+ 									activeVersionId={activeVersion.id}
+ 									hasDraft={!!draftVersion}
++									canWrite={canWrite}
+ 									total={versionTotal}
+ 									currentPage={versionPage}
+ 									pageSize={versionPageSize}
+@@ -1348,6 +1361,7 @@ export const PromptManagementTab: FC = () => {
+ 									onSearch={handleMetricSearch}
+ 									onSaveMetric={handleSaveMetric}
+ 									onDeleteMetric={handleDeleteMetric}
++									canWrite={canWrite}
+ 								/>
+ 							)}
+ 						</>
+@@ -1449,31 +1463,37 @@ export const PromptManagementTab: FC = () => {
+ 							{isDirty ? "Unsaved changes" : "Draft saved"}
+ 						</span>
+ 					</div>
+-					<GenericButtonV2
+-						type="link"
+-						className="discard-link portal-link-control"
+-						disabled={saving}
+-						onClick={handleDiscardDraft}
+-					>
+-						Discard draft
+-					</GenericButtonV2>
++					{canWrite && (
++						<GenericButtonV2
++							type="link"
++							className="discard-link portal-link-control"
++							disabled={saving}
++							onClick={handleDiscardDraft}
++						>
++							Discard draft
++						</GenericButtonV2>
++					)}
+ 				</div>
+-				<label htmlFor="change-note">
+-					<Text
+-						entry={{
+-							"cothinker.prompt.fieldChangeNote": {},
+-						}}
+-					/>
+-				</label>
+-				<input
+-					id="change-note"
+-					type="text"
+-					className="change-note-input"
+-					placeholder="Describe the purpose of this change"
+-					value={draftChangeNote}
+-					onChange={(e) => setDraftChangeNote(e.target.value)}
+-					maxLength={500}
+-				/>
++				{canWrite && (
++					<>
++						<label htmlFor="change-note">
++							<Text
++								entry={{
++									"cothinker.prompt.fieldChangeNote": {},
++								}}
++							/>
++						</label>
++						<input
++							id="change-note"
++							type="text"
++							className="change-note-input"
++							placeholder="Describe the purpose of this change"
++							value={draftChangeNote}
++							onChange={(e) => setDraftChangeNote(e.target.value)}
++							maxLength={500}
++						/>
++					</>
++				)}
+ 				<div className="draft-actions">
+ 					<GenericButtonV2
+ 						type="default"
+@@ -1487,26 +1507,34 @@ export const PromptManagementTab: FC = () => {
+ 							}}
+ 						/>
+ 					</GenericButtonV2>
+-					<GenericButtonV2
+-						type="default"
+-						className="el-btn-default"
+-						disabled={saving}
+-						onClick={handleSaveDraft}
+-					>
+-						<Text entry={{ "cothinker.prompt.saveDraft": {} }} />
+-					</GenericButtonV2>
+-					<GenericButtonV2
+-						type="primary"
+-						className="el-btn-primary"
+-						disabled={saving || !draftChangeNote.trim()}
+-						onClick={() => setPublishDialogVisible(true)}
+-					>
+-						<Text
+-							entry={{
+-								"cothinker.prompt.reviewPublish": {},
+-							}}
+-						/>
+-					</GenericButtonV2>
++					{canWrite && (
++						<>
++							<GenericButtonV2
++								type="default"
++								className="el-btn-default"
++								disabled={saving}
++								onClick={handleSaveDraft}
++							>
++								<Text
++									entry={{
++										"cothinker.prompt.saveDraft": {},
++									}}
++								/>
++							</GenericButtonV2>
++							<GenericButtonV2
++								type="primary"
++								className="el-btn-primary"
++								disabled={saving || !draftChangeNote.trim()}
++								onClick={() => setPublishDialogVisible(true)}
++							>
++								<Text
++									entry={{
++										"cothinker.prompt.reviewPublish": {},
++									}}
++								/>
++							</GenericButtonV2>
++						</>
++					)}
+ 				</div>
+ 			</section>
+ 		);
+@@ -1525,7 +1553,8 @@ export const PromptManagementTab: FC = () => {
+ 						<Text entry={{ "cothinker.prompt.subtitle": {} }} />
+ 					</p>
+ 				</div>
+-				{!loading &&
++				{canWrite &&
++					!loading &&
+ 					!loadError &&
+ 					activeTab !== "metrics" &&
+ 					!draftVersion && (
+@@ -1540,7 +1569,8 @@ export const PromptManagementTab: FC = () => {
+ 							/>
+ 						</GenericButtonV2>
+ 					)}
+-				{!loading &&
++				{canWrite &&
++					!loading &&
+ 					!loadError &&
+ 					activeTab !== "metrics" &&
+ 					draftVersion && (
+@@ -1589,6 +1619,7 @@ export const PromptManagementTab: FC = () => {
+ 				initialScope={drawerScope}
+ 				inspectedVersion={inspectedVersion}
+ 				isDraft={editorDraftMode && !inspectedVersion}
++				canWrite={canWrite}
+ 				isDirty={editorIsDirty}
+ 				config={currentEditorConfig}
+ 				onClose={handleCloseEditor}
+diff --git a/packages/web/src/pages/coThinkerAdmin/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/index.spec.tsx
+index 0c624dbeb289025d1d2207bc9beac418e5fc55f7..cf0fd4ccd234079a0810fdb9c6655a28fb81f0b9 100644
+--- a/packages/web/src/pages/coThinkerAdmin/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/index.spec.tsx
+@@ -1,8 +1,22 @@
+-import { render, screen, fireEvent } from "@testing-library/react";
++import { render, screen, fireEvent, waitFor } from "@testing-library/react";
++import { useUser } from "@angen_frontend/components";
++import { InsightService } from "@angen_frontend/services";
+ import { CoThinkerAdmin } from "./index";
+ 
+ jest.mock("@angen_frontend/components", () => ({
+ 	__esModule: true,
++	GenericButtonV2: ({
++		children,
++		onClick,
++	}: {
++		children?: React.ReactNode;
++		onClick?: () => void;
++	}) => (
++		<button type="button" onClick={onClick}>
++			{children}
++		</button>
++	),
++	useUser: jest.fn(),
+ 	TrendChartsSvgIcon: () => <span />,
+ 	DocumentCheckedSvgIcon: () => <span />,
+ 	CoThinkerEditSvgIcon: () => <span />,
+@@ -11,10 +25,39 @@ jest.mock("@angen_frontend/components", () => ({
+ 		const key = Object.keys(entry)[0];
+ 		if (key === "cothinker.nav.overview") return <span>Overview</span>;
+ 		if (key === "cothinker.nav.logAudit") return <span>Log Audit</span>;
++		if (key === "cothinker.nav.promptManagement") {
++			return <span>Prompt Management</span>;
++		}
++		if (key === "cothinker.nav.knowledgeDoc") {
++			return <span>Knowledge Doc Container</span>;
++		}
++		if (key === "cothinker.admin.permissionLoading") {
++			return <span>Loading permissions...</span>;
++		}
++		if (key === "cothinker.admin.permissionRetry") {
++			return <span>Retry</span>;
++		}
++		if (key === "cothinker.admin.permissionDenied") {
++			return <span>You do not have access to Admin Portal.</span>;
++		}
+ 		return <span>{key}</span>;
+ 	},
+ }));
+ 
++jest.mock("../../components/UserWrapper", () => ({
++	__esModule: true,
++	UserWrapper: ({ children }: { children: React.ReactNode }) => children,
++}));
++
++jest.mock("@angen_frontend/services", () => ({
++	InsightService: {
++		getAdminPortalPermissions: jest.fn().mockResolvedValue({
++			readGroups: ["reader-group"],
++			writeGroups: ["admin-group"],
++		}),
++	},
++}));
++
+ jest.mock("./components/OverviewTab", () => ({
+ 	__esModule: true,
+ 	OverviewTab: () => <div data-testid="mock-overview-tab">Overview Tab</div>,
+@@ -29,8 +72,8 @@ jest.mock("./components/LogAuditTab", () => ({
+ 
+ jest.mock("./components/PromptManagementTab", () => ({
+ 	__esModule: true,
+-	PromptManagementTab: () => (
+-		<div data-testid="mock-prompt-management-tab">
++	PromptManagementTab: ({ canWrite }: { canWrite: boolean }) => (
++		<div data-testid="mock-prompt-management-tab" data-can-write={canWrite}>
+ 			Prompt Management Tab
+ 		</div>
+ 	),
+@@ -38,33 +81,104 @@ jest.mock("./components/PromptManagementTab", () => ({
+ 
+ jest.mock("./components/KnowledgeDocTab", () => ({
+ 	__esModule: true,
+-	KnowledgeDocTab: () => (
+-		<div data-testid="mock-knowledge-doc-tab">Knowledge Doc Tab</div>
++	KnowledgeDocTab: ({ canWrite }: { canWrite: boolean }) => (
++		<div data-testid="mock-knowledge-doc-tab" data-can-write={canWrite}>
++			Knowledge Doc Tab
++		</div>
+ 	),
+ }));
+ 
+ describe("CoThinkerAdmin Shell Component", () => {
++	const getPermissions =
++		InsightService.getAdminPortalPermissions as jest.Mock;
++
++	beforeEach(() => {
++		jest.clearAllMocks();
++		(useUser as jest.Mock).mockReturnValue({
++			profile: { shortenedAdGroupsForGtm: ["ADMIN-GROUP"] },
++		});
++		getPermissions.mockResolvedValue({
++			readGroups: ["reader-group"],
++			writeGroups: ["admin-group"],
++		});
++	});
++
+ 	it("renders brand logo image correctly", () => {
+ 		render(<CoThinkerAdmin />);
+ 
+-		const logo = screen.getByAltText("Analytics Next Generation");
+-		expect(logo).toBeInTheDocument();
+-		expect(logo).toHaveAttribute("src", "/icons/logo-angen-new.svg");
++		return waitFor(() => {
++			const logo = screen.getByAltText("Analytics Next Generation");
++			expect(logo).toBeInTheDocument();
++			expect(logo).toHaveAttribute("src", "/icons/logo-angen-new.svg");
++		});
+ 	});
+ 
+-	it("renders tabs and switches content correctly", () => {
++	it("renders tabs and switches content correctly", async () => {
+ 		render(<CoThinkerAdmin />);
+ 
+-		expect(screen.getByTestId("mock-overview-tab")).toBeInTheDocument();
++		expect(
++			await screen.findByTestId("mock-overview-tab")
++		).toBeInTheDocument();
+ 
+ 		const logAuditBtn = screen.getByText("Log Audit");
+ 		fireEvent.click(logAuditBtn);
+ 		expect(screen.getByTestId("mock-log-audit-tab")).toBeInTheDocument();
+ 
+-		expect(screen.queryByText("Prompt Management")).not.toBeInTheDocument();
+ 		expect(
+-			screen.queryByText("Knowledge Doc Container")
++			screen.queryByTestId("mock-prompt-management-tab")
++		).not.toBeInTheDocument();
++		expect(
++			screen.queryByTestId("mock-knowledge-doc-tab")
+ 		).not.toBeInTheDocument();
+ 		expect(screen.queryByText("Demo tools")).not.toBeInTheDocument();
+ 	});
++
++	it("shows no access when the user matches neither group", async () => {
++		getPermissions.mockResolvedValue({
++			readGroups: ["different-reader"],
++			writeGroups: ["different-writer"],
++		});
++		render(<CoThinkerAdmin />);
++		expect(
++			await screen.findByText("You do not have access to Admin Portal.")
++		).toBeInTheDocument();
++	});
++
++	it("grants read access case-insensitively and hides write capability", async () => {
++		(useUser as jest.Mock).mockReturnValue({
++			profile: { shortenedAdGroupsForGtm: ["  ReAdEr-GrOuP "] },
++		});
++		getPermissions.mockResolvedValue({
++			readGroups: ["reader-group"],
++			writeGroups: ["admin-group"],
++		});
++		render(<CoThinkerAdmin />);
++		await screen.findByTestId("mock-overview-tab");
++		fireEvent.click(screen.getByText("Prompt Management"));
++		expect(
++			await screen.findByTestId("mock-prompt-management-tab")
++		).toHaveAttribute("data-can-write", "false");
++		fireEvent.click(screen.getByText("Knowledge Doc Container"));
++		expect(
++			await screen.findByTestId("mock-knowledge-doc-tab")
++		).toHaveAttribute("data-can-write", "false");
++	});
++
++	it("shows an error and retries permission loading", async () => {
++		getPermissions.mockRejectedValueOnce(
++			new Error("Permission service unavailable")
++		);
++		render(<CoThinkerAdmin />);
++		expect(
++			await screen.findByText("Permission service unavailable")
++		).toBeInTheDocument();
++		getPermissions.mockResolvedValue({
++			readGroups: [],
++			writeGroups: ["admin-group"],
++		});
++		fireEvent.click(screen.getByText("Retry"));
++		expect(
++			await screen.findByTestId("mock-overview-tab")
++		).toBeInTheDocument();
++	});
+ });
+diff --git a/packages/web/src/pages/coThinkerAdmin/index.tsx b/packages/web/src/pages/coThinkerAdmin/index.tsx
+index 3ef8318f31b7f45c94e2a0f9527cef1689af7993..7d0880f3e2085b8c5cc71ee3a97db30edc83b4dd 100644
+--- a/packages/web/src/pages/coThinkerAdmin/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/index.tsx
+@@ -1,4 +1,4 @@
+-import { FC, useState } from "react";
++import { FC, useEffect, useState } from "react";
+ import { OverviewTab } from "./components/OverviewTab";
+ import { LogAuditTab } from "./components/LogAuditTab";
+ import { PromptManagementTab } from "./components/PromptManagementTab";
+@@ -8,8 +8,13 @@ import {
+ 	DocumentCheckedSvgIcon,
+ 	CoThinkerEditSvgIcon,
+ 	FolderOpenedSvgIcon,
++	GenericButtonV2,
+ 	Text,
++	useUser,
+ } from "@angen_frontend/components";
++import { InsightService } from "@angen_frontend/services";
++import type { IAdminPortalPermissions } from "@angen_frontend/services";
++import { UserWrapper } from "../../components/UserWrapper";
+ import { TranslationEntry } from "@angen_frontend/types";
+ import "./index.scss";
+ 
+@@ -21,6 +26,25 @@ export interface IIconProps {
+ }
+ 
+ type TabKey = "overview" | "logAudit" | "promptManagement" | "knowledgeDoc";
++type AdminPortalAccess = "write" | "read" | "none";
++
++const resolveAdminPortalAccess = (
++	userGroups: string[],
++	permissions: IAdminPortalPermissions
++): AdminPortalAccess => {
++	const groups = new Set(
++		userGroups.map((group) => group.trim().toLowerCase()).filter(Boolean)
++	);
++	const matches = (configuredGroups: string[]) =>
++		configuredGroups.some((group) => {
++			const normalized = group.trim().toLowerCase();
++			return normalized !== "" && groups.has(normalized);
++		});
++
++	if (matches(permissions.writeGroups)) return "write";
++	if (matches(permissions.readGroups)) return "read";
++	return "none";
++};
+ 
+ interface ITabItem {
+ 	key: TabKey;
+@@ -51,8 +75,67 @@ const TABS: ITabItem[] = [
+ 	},
+ ];
+ 
+-export const CoThinkerAdmin: FC = () => {
++const CoThinkerAdminContent: FC = () => {
+ 	const [activeTab, setActiveTab] = useState<TabKey>("overview");
++	const { profile } = useUser();
++	const [access, setAccess] = useState<AdminPortalAccess | null>(null);
++	const [permissionError, setPermissionError] = useState<string>("");
++	const [retryKey, setRetryKey] = useState(0);
++
++	useEffect(() => {
++		let mounted = true;
++		setAccess(null);
++		setPermissionError("");
++		InsightService.getAdminPortalPermissions()
++			.then((permissions) => {
++				if (mounted) {
++					setAccess(
++						resolveAdminPortalAccess(
++							profile?.shortenedAdGroupsForGtm || [],
++							permissions
++						)
++					);
++				}
++			})
++			.catch((error: Error) => {
++				if (mounted) setPermissionError(error.message);
++			});
++		return () => {
++			mounted = false;
++		};
++	}, [profile, retryKey]);
++
++	const canWrite = access === "write";
++
++	if (permissionError) {
++		return (
++			<div className="admin-permission-state" role="alert">
++				<span>{permissionError}</span>
++				<GenericButtonV2
++					type="link"
++					onClick={() => setRetryKey((value) => value + 1)}
++				>
++					<Text entry={{ "cothinker.admin.permissionRetry": {} }} />
++				</GenericButtonV2>
++			</div>
++		);
++	}
++
++	if (access === null) {
++		return (
++			<div className="admin-permission-state">
++				<Text entry={{ "cothinker.admin.permissionLoading": {} }} />
++			</div>
++		);
++	}
++
++	if (access === "none") {
++		return (
++			<div className="admin-permission-state" role="alert">
++				<Text entry={{ "cothinker.admin.permissionDenied": {} }} />
++			</div>
++		);
++	}
+ 
+ 	return (
+ 		<div className="coThinkerAdminContainer">
+@@ -92,9 +175,19 @@ export const CoThinkerAdmin: FC = () => {
+ 			<main className="adminMain">
+ 				{activeTab === "overview" && <OverviewTab />}
+ 				{activeTab === "logAudit" && <LogAuditTab />}
+-				{activeTab === "promptManagement" && <PromptManagementTab />}
+-				{activeTab === "knowledgeDoc" && <KnowledgeDocTab />}
++				{activeTab === "promptManagement" && (
++					<PromptManagementTab canWrite={canWrite} />
++				)}
++				{activeTab === "knowledgeDoc" && (
++					<KnowledgeDocTab canWrite={canWrite} />
++				)}
+ 			</main>
+ 		</div>
+ 	);
+ };
++
++export const CoThinkerAdmin: FC = () => (
++	<UserWrapper>
++		<CoThinkerAdminContent />
++	</UserWrapper>
++);
