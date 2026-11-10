@@ -1,0 +1,18 @@
+diff --git a/packages/services/src/index.ts b/packages/services/src/index.ts
+index 282a112..079c792 100644
+--- a/packages/services/src/index.ts
++++ b/packages/services/src/index.ts
+@@ -27,13 +27,9 @@ export type {
+ 	IGenerationRequestPayload,
+ 	IGenerationFeedbackDetail,
+ 	IAuditGenerationDetail,
+-	PromptRoleCode,
+ 	IPromptRole,
+ 	IPromptVersionDetail,
+ 	IPromptVersionListItem,
+-	IPromptVersionPage,
+-	IGlossaryTerm,
+-	IGlossaryTermPage,
+ 	IKnowledgeDocumentApiItem,
+ 	IKnowledgeDocumentPage,
+ 	IKnowledgeDocumentRefreshResult,
