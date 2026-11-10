@@ -122,19 +122,17 @@ index ec02649259827bff6fb554d99afa2cd439945dc1..042188c829dec0e139ea2d9aeb91669f
 +	getAdminPortalPermissions,
  };
 diff --git a/packages/services/src/index.ts b/packages/services/src/index.ts
-index 9f0854ee8c9f9cd2bd3af582714638729f412501..92abe781f7314d732885394fe98e665e7f280e4b 100644
+index 9f0854ee8c9f9cd2bd3af582714638729f412501..cc7e5a52e334c24ff15601e8d9885e56949e61c2 100644
 --- a/packages/services/src/index.ts
 +++ b/packages/services/src/index.ts
-@@ -31,8 +31,8 @@ export type {
+@@ -31,6 +31,7 @@ export type {
  	IPromptVersionDetail,
  	IPromptVersionListItem,
  	IKnowledgeDocumentApiItem,
 +	IAdminPortalPermissions,
  } from "./InsightService";
--export { InsightService, InsightTimeoutError } from "./InsightService";
+ export { InsightService, InsightTimeoutError } from "./InsightService";
  export {
- 	ConfigService,
- 	LanguageService,
 diff --git a/packages/types/src/translations/en.json b/packages/types/src/translations/en.json
 index 05cd4744dd977ea9259955776f083363505c8d4c..3a2b3ffd2e0fbacaf24ca6fce6221e00874c41fe 100644
 --- a/packages/types/src/translations/en.json
