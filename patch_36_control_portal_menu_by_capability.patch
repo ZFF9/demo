@@ -1,0 +1,221 @@
+diff --git a/packages/components/src/MenuContent/index.spec.tsx b/packages/components/src/MenuContent/index.spec.tsx
+index 7293435b2a4bcad42187fb718da40fe45f8e8933..a2cd2f91955df92b026db27ebb0ffc4cebf529bf 100644
+--- a/packages/components/src/MenuContent/index.spec.tsx
++++ b/packages/components/src/MenuContent/index.spec.tsx
+@@ -21,7 +21,7 @@ import { PropsWithChildren, ReactNode } from "react";
+ import { LinkProps, Path, useSearchParams } from "react-router-dom";
+ import { useProjectParams } from "../Hooks/useProjectParams";
+ import { useLocalStorage } from "react-use";
+-import { IConfig } from "@angen_frontend/services";
++import { IConfig, InsightService } from "@angen_frontend/services";
+ import { useTrackingFn } from "../GTMTrackingProvider";
+ import { useUser } from "../UserProvider";
+ 
+@@ -33,6 +33,12 @@ type ItemProp = {
+ 	className?: string;
+ };
+ 
++jest.mock("@angen_frontend/services", () => ({
++	InsightService: {
++		getCapability: jest.fn(),
++	},
++}));
++
+ jest.mock("react-use", () => ({
+ 	__esModule: true,
+ 	useLocalStorage: jest.fn(),
+@@ -259,6 +265,10 @@ describe("Menu Content", () => {
+ 	let mockConfig: DeepPartial<IConfig>;
+ 	let mockGtmDataLayerPushEvent = jest.fn();
+ 	beforeEach(() => {
++		(InsightService.getCapability as jest.Mock).mockResolvedValue({
++			enabled: false,
++			panelIds: [],
++		});
+ 		mockMenuRecord = {
+ 			"/defaultSection": {
+ 				label: "MockDefaultSection",
+@@ -365,6 +375,7 @@ describe("Menu Content", () => {
+ 			},
+ 			menuRedirectUrl: {
+ 				angenHomePage: "/home",
++				coThinkerAdmin: "/cothinker-admin",
+ 				"help&SupportNew": "https://example.com",
+ 			},
+ 			customPageLibraryTypeBaseRoute: {
+@@ -457,6 +468,74 @@ describe("Menu Content", () => {
+ 		});
+ 	});
+ 
++	it("shows the portal when capability is enabled even without enabled panels", async () => {
++		(InsightService.getCapability as jest.Mock).mockResolvedValue({
++			enabled: true,
++			panelIds: [],
++		});
++		render(<MenuContent />);
++
++		expect(
++			screen.queryByText("sideMenu.sections.coThinkerAdmin")
++		).not.toBeInTheDocument();
++		expect(
++			await screen.findByText("sideMenu.sections.coThinkerAdmin")
++		).toHaveAttribute("href", "/cothinker-admin");
++		expect(InsightService.getCapability).toHaveBeenCalledTimes(1);
++	});
++
++	it("hides the portal when capability is disabled and preserves other menus", async () => {
++		render(<MenuContent sections={mockMenuRecord} />);
++
++		await act(async () => {});
++		expect(
++			screen.queryByText("sideMenu.sections.coThinkerAdmin")
++		).not.toBeInTheDocument();
++		expect(screen.getByText("Sub Section 1.1")).toBeInTheDocument();
++		expect(
++			screen.getByText("sideMenu.sections.angenHomePage")
++		).toBeInTheDocument();
++		expect(
++			screen.getByText("sideMenu.sections.help&Support")
++		).toBeInTheDocument();
++	});
++
++	it("hides the portal when capability fails and preserves other menus", async () => {
++		(InsightService.getCapability as jest.Mock).mockRejectedValue(
++			new Error("unavailable")
++		);
++		render(<MenuContent />);
++
++		await act(async () => {});
++		expect(
++			screen.queryByText("sideMenu.sections.coThinkerAdmin")
++		).not.toBeInTheDocument();
++		expect(
++			screen.getByText("sideMenu.sections.angenHomePage")
++		).toBeInTheDocument();
++		expect(
++			screen.getByText("sideMenu.sections.help&Support")
++		).toBeInTheDocument();
++	});
++
++	it("ignores capability responses after the menu is unmounted", async () => {
++		let resolveCapability!: (value: {
++			enabled: boolean;
++			panelIds: string[];
++		}) => void;
++		(InsightService.getCapability as jest.Mock).mockReturnValue(
++			new Promise((resolve) => {
++				resolveCapability = resolve;
++			})
++		);
++		const { unmount } = render(<MenuContent />);
++		unmount();
++
++		await act(async () => {
++			resolveCapability({ enabled: true, panelIds: [] });
++		});
++	});
++
+ 	it("should show nested projects of menu structure", async () => {
+ 		render(<MenuContent sections={mockMenuRecord} />);
+ 
+diff --git a/packages/components/src/MenuContent/index.tsx b/packages/components/src/MenuContent/index.tsx
+index f2bbf51ecd90a4409e00824a2f246ee5d1cf6ca6..d26ad87136fc68bcbbeecd47ec1c707322a0abf6 100644
+--- a/packages/components/src/MenuContent/index.tsx
++++ b/packages/components/src/MenuContent/index.tsx
+@@ -1,4 +1,5 @@
+ import { Menu, type MenuProps } from "antd";
++import { InsightService } from "@angen_frontend/services";
+ import { useProjectParams } from "../Hooks/useProjectParams";
+ import {
+ 	FC,
+@@ -324,6 +325,21 @@ export const MenuContent: FC<IProps> = ({ sections = {} }) => {
+ 	const [openKeys, setOpenKeys] = useState<string[]>();
+ 	const lastClosedKey = useRef<string>();
+ 	const [lastSelectedMenu, setLastSelectedMenu] = useState<string>();
++	const [isCoThinkerEnabled, setIsCoThinkerEnabled] = useState(false);
++
++	useEffect(() => {
++		let active = true;
++		InsightService.getCapability()
++			.then(({ enabled }) => {
++				if (active) setIsCoThinkerEnabled(enabled === true);
++			})
++			.catch(() => {
++				if (active) setIsCoThinkerEnabled(false);
++			});
++		return () => {
++			active = false;
++		};
++	}, []);
+ 
+ 	const gtmDataLayerPushEvent = useTrackingFn();
+ 	const { profile } = useUser();
+@@ -482,33 +498,37 @@ export const MenuContent: FC<IProps> = ({ sections = {} }) => {
+ 	);
+ 
+ 	const menuItems = useMemo(() => {
+-		const otherItems = mapContent(
+-			translateLabel,
+-			translateIconMapping,
+-			{
+-				"/other_platforms": {
+-					iconSuffixType: LabelType.EXTERNAL_LINK,
+-					label: {
+-						[`sideMenu.sections.${otherSectionConfig.otherOrHomePageLabelKey}`]:
+-							{},
+-					},
+-					url: otherSectionConfig.otherOrHomePageLink,
++		const otherSections: ITranslatedProject = {
++			"/other_platforms": {
++				iconSuffixType: LabelType.EXTERNAL_LINK,
++				label: {
++					[`sideMenu.sections.${otherSectionConfig.otherOrHomePageLabelKey}`]:
++						{},
+ 				},
+-				"/cothinker_admin": {
+-					iconSuffixType: LabelType.EXTERNAL_LINK,
+-					label: {
+-						"sideMenu.sections.coThinkerAdmin": {},
+-					},
+-					url: otherSectionConfig.coThinkerAdminLink,
++				url: otherSectionConfig.otherOrHomePageLink,
++			},
++			"/cothinker_admin": {
++				iconSuffixType: LabelType.EXTERNAL_LINK,
++				label: {
++					"sideMenu.sections.coThinkerAdmin": {},
+ 				},
+-				"/help&Support": {
+-					iconSuffixType: LabelType.EXTERNAL_LINK,
+-					label: {
+-						"sideMenu.sections.help&Support": {},
+-					},
+-					url: otherSectionConfig.helpAndSupportLink,
++				url: otherSectionConfig.coThinkerAdminLink,
++			},
++			"/help&Support": {
++				iconSuffixType: LabelType.EXTERNAL_LINK,
++				label: {
++					"sideMenu.sections.help&Support": {},
+ 				},
++				url: otherSectionConfig.helpAndSupportLink,
+ 			},
++		};
++		if (!isCoThinkerEnabled) {
++			delete otherSections["/cothinker_admin"];
++		}
++		const otherItems = mapContent(
++			translateLabel,
++			translateIconMapping,
++			otherSections,
+ 			searchParam.toString(),
+ 			false,
+ 			"",
+@@ -602,6 +622,7 @@ export const MenuContent: FC<IProps> = ({ sections = {} }) => {
+ 		items,
+ 		searchParam,
+ 		otherSectionConfig,
++		isCoThinkerEnabled,
+ 		handleGtmEvent,
+ 		favouriteItems,
+ 		sideBarModuleGroups,
