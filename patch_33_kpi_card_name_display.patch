@@ -1,0 +1,434 @@
+diff --git a/packages/web/src/components/InsightCard/index.scss b/packages/web/src/components/InsightCard/index.scss
+index cc549e3..3f6107c 100644
+--- a/packages/web/src/components/InsightCard/index.scss
++++ b/packages/web/src/components/InsightCard/index.scss
+@@ -290,7 +290,7 @@
+ 		}
+ 	}
+ 
+-	&__kpiCardId {
++	&__kpiCardName {
+ 		margin: 0 0 14px;
+ 		color: rgba(86, 76, 71, 0.2);
+ 		font-size: 10px;
+diff --git a/packages/web/src/components/InsightCard/index.spec.tsx b/packages/web/src/components/InsightCard/index.spec.tsx
+index f709657..9a988f6 100644
+--- a/packages/web/src/components/InsightCard/index.spec.tsx
++++ b/packages/web/src/components/InsightCard/index.spec.tsx
+@@ -23,6 +23,7 @@ import {
+ 
+ let mockCachedInsight: unknown;
+ let mockCardViewState: unknown;
++let mockTableauProjects: unknown;
+ const mockSetCardViewState = jest.fn();
+ 
+ jest.mock("@angen_frontend/services", () => ({
+@@ -167,6 +168,7 @@ jest.mock("@angen_frontend/components", () => ({
+ 	),
+ 	useTranslateFn: () => (key: string) =>
+ 		(({ "language.en": "EN" } as Record<string, string>)[key] || ""),
++	useTableau: () => ({ projects: mockTableauProjects }),
+ 	GenericSelect: ({
+ 		value,
+ 		options,
+@@ -324,6 +326,7 @@ describe("InsightCard", () => {
+ 		jest.resetAllMocks();
+ 		mockCachedInsight = undefined;
+ 		mockCardViewState = undefined;
++		mockTableauProjects = undefined;
+ 		mockSetCardViewState.mockClear();
+ 		buildPayload.mockResolvedValue(payload);
+ 	});
+@@ -1203,6 +1206,9 @@ describe("InsightCard", () => {
+ 
+ 		expect(screen.getByText("KPI-1")).toBeInTheDocument();
+ 		expect(screen.getByText("KPI-2")).toBeInTheDocument();
++		expect(
++			container.querySelector(".insightCard__kpiCardName")?.textContent
++		).toBe("KPI Card Name: KPI-1");
+ 		expect(screen.getByText("Language")).toBeInTheDocument();
+ 		expect(screen.getByText("EN")).toBeInTheDocument();
+ 		expect(screen.getByText("Date Range")).toBeInTheDocument();
+@@ -1218,6 +1224,159 @@ describe("InsightCard", () => {
+ 		expect(screen.queryByText("KPI-1")).not.toBeInTheDocument();
+ 	});
+ 
++	it("resolves the KPI Card Name from workbook and view names", async () => {
++		mockTableauProjects = {
++			"/module": {
++				views: [
++					{
++						id: "card-1",
++						kpiCardId: "card-1",
++						name: "Weekly NTS KPI Card D",
++						urlName: "weekly_nts_kpi_card_d",
++						workbookUrlName: "ap360_weekly_nts",
++					},
++				],
++			},
++		};
++		(InsightService.generate as jest.Mock).mockResolvedValue({
++			summary: "Summary text",
++			filters: [
++				{
++					kpiCardId: "card-1",
++					workbookUrlName: "ap360_weekly_nts",
++					viewUrlName: "weekly_nts_kpi_card_d",
++					filters: { parameters: { Currency: "USD" } },
++				},
++			],
++		});
++		const { container } = render(<TestInsightCard />);
++
++		fireEvent.click(
++			screen.getByRole("button", { name: "Generate Insight" })
++		);
++		await screen.findByText("Generation Complete");
++		fireEvent.click(screen.getByRole("button", { name: "Show All" }));
++
++		expect(
++			container.querySelector(".insightCard__kpiCardName")?.textContent
++		).toBe("KPI Card Name: Weekly NTS");
++		expect(screen.getByText("Currency")).toBeInTheDocument();
++		expect(screen.getByText("USD")).toBeInTheDocument();
++	});
++
++	it("matches nested template views and uses the KPI Card ID as a fallback", async () => {
++		mockTableauProjects = {
++			"/custom-page": {
++				templateData: {
++					Canvas: {
++						children: {
++							group: {
++								views: [
++									{
++										id: "card-2",
++										kpiCardId: "card-2",
++										name: "Darzalex YTDKPICardD",
++										urlName: "darzalex_ytd",
++										workbookUrlName: "darzalex",
++									},
++								],
++							},
++						},
++					},
++				},
++			},
++		};
++		(InsightService.generate as jest.Mock).mockResolvedValue({
++			summary: "Summary text",
++			filters: [
++				{
++					kpiCardId: "card-2",
++					filters: { parameters: { Currency: "USD" } },
++				},
++			],
++		});
++		const { container } = render(<TestInsightCard />);
++
++		fireEvent.click(
++			screen.getByRole("button", { name: "Generate Insight" })
++		);
++		await screen.findByText("Generation Complete");
++		fireEvent.click(screen.getByRole("button", { name: "Show All" }));
++
++		expect(
++			container.querySelector(".insightCard__kpiCardName")?.textContent
++		).toBe("KPI Card Name: Darzalex YTD");
++	});
++
++	it("does not match an identically named view from another workbook", async () => {
++		mockTableauProjects = {
++			"/module": {
++				views: [
++					{
++						id: "other-card",
++						name: "Wrong Name KPI Card D",
++						urlName: "shared-view",
++						workbookUrlName: "other-workbook",
++					},
++				],
++			},
++		};
++		(InsightService.generate as jest.Mock).mockResolvedValue({
++			summary: "Summary text",
++			filters: [
++				{
++					workbookUrlName: "expected-workbook",
++					viewUrlName: "shared-view",
++					filters: { parameters: { Currency: "USD" } },
++				},
++			],
++		});
++		const { container } = render(<TestInsightCard />);
++
++		fireEvent.click(
++			screen.getByRole("button", { name: "Generate Insight" })
++		);
++		await screen.findByText("Generation Complete");
++		fireEvent.click(screen.getByRole("button", { name: "Show All" }));
++
++		expect(
++			container.querySelector(".insightCard__kpiCardName")?.textContent
++		).toBe("KPI Card Name: shared-view");
++		expect(
++			screen.queryByText("KPI Card Name: Wrong Name")
++		).not.toBeInTheDocument();
++	});
++
++	it("falls back to the backend view name and hides the label without identifiers", async () => {
++		(InsightService.generate as jest.Mock).mockResolvedValue({
++			summary: "Summary text",
++			filters: [
++				{
++					viewUrlName: "fallback-view",
++					filters: { parameters: { Currency: "USD" } },
++				},
++				{
++					filters: { parameters: { Currency: "Local" } },
++				},
++			],
++		});
++		const { container } = render(<TestInsightCard />);
++
++		fireEvent.click(
++			screen.getByRole("button", { name: "Generate Insight" })
++		);
++		await screen.findByText("Generation Complete");
++		fireEvent.click(screen.getByRole("button", { name: "Show All" }));
++
++		expect(
++			container.querySelector(".insightCard__kpiCardName")?.textContent
++		).toBe("KPI Card Name: fallback-view");
++		expect(
++			container.querySelectorAll(".insightCard__kpiCardName")
++		).toHaveLength(1);
++		expect(screen.getByText("Local")).toBeInTheDocument();
++	});
++
+ 	it("translates language values and falls back for missing translations", async () => {
+ 		(InsightService.generate as jest.Mock).mockResolvedValue({
+ 			summary: "Summary text",
+diff --git a/packages/web/src/components/InsightCard/index.tsx b/packages/web/src/components/InsightCard/index.tsx
+index 2ffa71b..6b7d4dd 100644
+--- a/packages/web/src/components/InsightCard/index.tsx
++++ b/packages/web/src/components/InsightCard/index.tsx
+@@ -15,6 +15,7 @@ import {
+ 	CoThinkerThumbsUpSvgIcon,
+ 	CoThinkerThumbsDownSvgIcon,
+ 	CoThinkerFeedbackSuccessSvgIcon,
++	useTableau,
+ 	useTranslateFn,
+ } from "@angen_frontend/components";
+ import { InsightService, InsightTimeoutError } from "@angen_frontend/services";
+@@ -28,7 +29,7 @@ import type {
+ 	TranslationKey,
+ } from "@angen_frontend/types";
+ import { CopyOutlined, DownOutlined } from "@ant-design/icons";
+-import { FC, useCallback, useEffect, useRef, useState } from "react";
++import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
+ import { InsightGenerateButton } from "./InsightGenerateButton";
+ import {
+ 	DEFAULT_COMMENTARY_ROLES,
+@@ -680,6 +681,9 @@ interface IInsightFilterEntry {
+ 
+ interface IInsightFilterGroup {
+ 	kpiCardId?: string;
++	workbookUrlName?: string;
++	viewUrlName?: string;
++	cardName?: string;
+ 	entries: IInsightFilterEntry[];
+ }
+ 
+@@ -753,11 +757,61 @@ export const flattenInsightFilters = (
+ 
+ const isInsightFilterGroup = (
+ 	value: unknown
+-): value is { kpiCardId?: unknown; filters?: unknown } => {
++): value is {
++	kpiCardId?: unknown;
++	workbookUrlName?: unknown;
++	viewUrlName?: unknown;
++	filters?: unknown;
++} => {
+ 	if (!value || typeof value !== "object") return false;
+-	return "kpiCardId" in value || "filters" in value;
++	return "kpiCardId" in value || "filters" in value || "viewUrlName" in value;
+ };
+ 
++interface IInsightKpiCardView {
++	id?: string;
++	kpiCardId?: string;
++	name: string;
++	urlName: string;
++	workbookUrlName: string;
++}
++
++const collectInsightKpiCardViews = (value: unknown): IInsightKpiCardView[] => {
++	const views: IInsightKpiCardView[] = [];
++	const visited = new WeakSet<object>();
++	const visit = (current: unknown) => {
++		if (!current || typeof current !== "object") return;
++		if (visited.has(current)) return;
++		visited.add(current);
++		if (Array.isArray(current)) {
++			current.forEach(visit);
++			return;
++		}
++		const record = current as Record<string, unknown>;
++		if (
++			typeof record.name === "string" &&
++			typeof record.urlName === "string" &&
++			typeof record.workbookUrlName === "string"
++		) {
++			views.push({
++				name: record.name,
++				urlName: record.urlName,
++				workbookUrlName: record.workbookUrlName,
++				...(typeof record.id === "string" && { id: record.id }),
++				...(typeof record.kpiCardId === "string" && {
++					kpiCardId: record.kpiCardId,
++				}),
++			});
++			return;
++		}
++		Object.values(record).forEach(visit);
++	};
++	visit(value);
++	return views;
++};
++
++const formatKpiCardDisplayName = (name?: string): string =>
++	name?.replace(/\s*KPI Card D$|KPICardD$/, "").trim() ?? "";
++
+ const ORDERED_FILTER_LABELS = [
+ 	"LANGUAGE",
+ 	"YEAR MONTH",
+@@ -784,7 +838,8 @@ const sortInsightFilterEntries = (
+ };
+ 
+ const groupInsightFilters = (
+-	filters?: InsightFilters
++	filters?: InsightFilters,
++	views: IInsightKpiCardView[] = []
+ ): IInsightFilterGroupResult => {
+ 	if (
+ 		Array.isArray(filters) &&
+@@ -792,14 +847,49 @@ const groupInsightFilters = (
+ 		filters.every(isInsightFilterGroup)
+ 	) {
+ 		return {
+-			groups: filters.map((group) => ({
+-				...(typeof group.kpiCardId === "string" && {
+-					kpiCardId: group.kpiCardId,
+-				}),
+-				entries: sortInsightFilterEntries(
+-					flattenInsightFilters(group.filters)
+-				),
+-			})),
++			groups: filters.map((group) => {
++				const kpiCardId =
++					typeof group.kpiCardId === "string"
++						? group.kpiCardId
++						: undefined;
++				const workbookUrlName =
++					typeof group.workbookUrlName === "string"
++						? group.workbookUrlName
++						: undefined;
++				const viewUrlName =
++					typeof group.viewUrlName === "string"
++						? group.viewUrlName
++						: undefined;
++				const matchedView =
++					workbookUrlName && viewUrlName
++						? views.find(
++								(view) =>
++									view.workbookUrlName === workbookUrlName &&
++									view.urlName === viewUrlName
++						  )
++						: undefined;
++				const idMatchedView =
++					!matchedView && kpiCardId
++						? views.find(
++								(view) =>
++									view.kpiCardId === kpiCardId ||
++									view.id === kpiCardId
++						  )
++						: undefined;
++				const cardName = formatKpiCardDisplayName(
++					(matchedView ?? idMatchedView)?.name
++				);
++
++				return {
++					...(kpiCardId && { kpiCardId }),
++					...(workbookUrlName && { workbookUrlName }),
++					...(viewUrlName && { viewUrlName }),
++					...(cardName && { cardName }),
++					entries: sortInsightFilterEntries(
++						flattenInsightFilters(group.filters)
++					),
++				};
++			}),
+ 			kpiCardCount: filters.length,
+ 		};
+ 	}
+@@ -1018,9 +1108,14 @@ const InsightCardFilters: FC<{
+ 								group.kpiCardId ?? `filter-group-${groupIndex}`
+ 							}
+ 						>
+-							{group.kpiCardId && (
+-								<p className="insightCard__kpiCardId">
+-									<span>KPI Card ID:</span> {group.kpiCardId}
++							{(group.cardName ||
++								group.viewUrlName ||
++								group.kpiCardId) && (
++								<p className="insightCard__kpiCardName">
++									<span>KPI Card Name:</span>{" "}
++									{group.cardName ||
++										group.viewUrlName ||
++										group.kpiCardId}
+ 								</p>
+ 							)}
+ 							<div className="insightCard__filterGrid">
+@@ -1247,10 +1342,12 @@ const getInsightCardViewModel = (
+ 	generation: IInsightGenerationState,
+ 	scope: InsightScope,
+ 	panelTitles: string[],
+-	roleProp?: string
++	roleProp?: string,
++	views: IInsightKpiCardView[] = []
+ ) => {
+ 	const backendFilterGroups = groupInsightFilters(
+-		generation.insight?.filters
++		generation.insight?.filters,
++		views
+ 	);
+ 	const panelCount = panelTitles.length;
+ 	const isSuccessful = Boolean(
+@@ -1305,6 +1402,11 @@ export const InsightCard: FC<{
+ 	panelTitles = [],
+ 	role: roleProp,
+ }) => {
++	const tableau = useTableau();
++	const insightKpiCardViews = useMemo(
++		() => collectInsightKpiCardViews(tableau?.projects),
++		[tableau?.projects]
++	);
+ 	const [filtersExpanded, setFiltersExpanded] = useState(false);
+ 	const { cardExpanded, toggleCardExpanded } = useInsightCardViewState(
+ 		cacheKey,
+@@ -1341,7 +1443,13 @@ export const InsightCard: FC<{
+ 		generatedAt,
+ 		editorContent,
+ 		isSuccessful,
+-	} = getInsightCardViewModel(generation, scope, panelTitles, roleProp);
++	} = getInsightCardViewModel(
++		generation,
++		scope,
++		panelTitles,
++		roleProp,
++		insightKpiCardViews
++	);
+ 	const showCardBody = !isSuccessful || cardExpanded;
+ 	const filters = (
+ 		<InsightCardFilters
