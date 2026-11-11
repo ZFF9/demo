@@ -210,7 +210,7 @@ index f709657..9a988f6 100644
  		(InsightService.generate as jest.Mock).mockResolvedValue({
  			summary: "Summary text",
 diff --git a/packages/web/src/components/InsightCard/index.tsx b/packages/web/src/components/InsightCard/index.tsx
-index 2ffa71b..6b7d4dd 100644
+index 2ffa71b..b2a0422 100644
 --- a/packages/web/src/components/InsightCard/index.tsx
 +++ b/packages/web/src/components/InsightCard/index.tsx
 @@ -15,6 +15,7 @@ import {
@@ -221,7 +221,13 @@ index 2ffa71b..6b7d4dd 100644
  	useTranslateFn,
  } from "@angen_frontend/components";
  import { InsightService, InsightTimeoutError } from "@angen_frontend/services";
-@@ -28,7 +29,7 @@ import type {
+@@ -25,10 +26,13 @@ import type {
+ 	InsightFilters,
+ 	InsightFeedbackReason,
+ 	InsightScope,
++	ICustomPagePanelTemplateData,
++	IKPICardView,
++	ITranslatedProject,
  	TranslationKey,
  } from "@angen_frontend/types";
  import { CopyOutlined, DownOutlined } from "@ant-design/icons";
@@ -230,7 +236,7 @@ index 2ffa71b..6b7d4dd 100644
  import { InsightGenerateButton } from "./InsightGenerateButton";
  import {
  	DEFAULT_COMMENTARY_ROLES,
-@@ -680,6 +681,9 @@ interface IInsightFilterEntry {
+@@ -680,6 +684,9 @@ interface IInsightFilterEntry {
  
  interface IInsightFilterGroup {
  	kpiCardId?: string;
@@ -240,7 +246,7 @@ index 2ffa71b..6b7d4dd 100644
  	entries: IInsightFilterEntry[];
  }
  
-@@ -753,11 +757,61 @@ export const flattenInsightFilters = (
+@@ -753,11 +760,34 @@ export const flattenInsightFilters = (
  
  const isInsightFilterGroup = (
  	value: unknown
@@ -256,65 +262,38 @@ index 2ffa71b..6b7d4dd 100644
 +	return "kpiCardId" in value || "filters" in value || "viewUrlName" in value;
  };
  
-+interface IInsightKpiCardView {
-+	id?: string;
-+	kpiCardId?: string;
-+	name: string;
-+	urlName: string;
-+	workbookUrlName: string;
-+}
++const collectTemplateViews = (
++	templateData?: ICustomPagePanelTemplateData
++): IKPICardView[] =>
++	Object.values(templateData ?? {}).flatMap((template) => [
++		...(template.views ?? []),
++		...collectTemplateViews(template.children),
++	]);
 +
-+const collectInsightKpiCardViews = (value: unknown): IInsightKpiCardView[] => {
-+	const views: IInsightKpiCardView[] = [];
-+	const visited = new WeakSet<object>();
-+	const visit = (current: unknown) => {
-+		if (!current || typeof current !== "object") return;
-+		if (visited.has(current)) return;
-+		visited.add(current);
-+		if (Array.isArray(current)) {
-+			current.forEach(visit);
-+			return;
-+		}
-+		const record = current as Record<string, unknown>;
-+		if (
-+			typeof record.name === "string" &&
-+			typeof record.urlName === "string" &&
-+			typeof record.workbookUrlName === "string"
-+		) {
-+			views.push({
-+				name: record.name,
-+				urlName: record.urlName,
-+				workbookUrlName: record.workbookUrlName,
-+				...(typeof record.id === "string" && { id: record.id }),
-+				...(typeof record.kpiCardId === "string" && {
-+					kpiCardId: record.kpiCardId,
-+				}),
-+			});
-+			return;
-+		}
-+		Object.values(record).forEach(visit);
-+	};
-+	visit(value);
-+	return views;
-+};
++const collectProjectViews = (projects?: ITranslatedProject): IKPICardView[] =>
++	Object.values(projects ?? {}).flatMap((project) => [
++		...(project.views ?? []),
++		...collectProjectViews(project.children),
++		...collectTemplateViews(project.templateData),
++	]);
 +
-+const formatKpiCardDisplayName = (name?: string): string =>
-+	name?.replace(/\s*KPI Card D$|KPICardD$/, "").trim() ?? "";
++const formatKpiCardDisplayName = (name: string): string =>
++	name.replace(/\s*KPI Card D$|KPICardD$/, "").trim();
 +
  const ORDERED_FILTER_LABELS = [
  	"LANGUAGE",
  	"YEAR MONTH",
-@@ -784,7 +838,8 @@ const sortInsightFilterEntries = (
+@@ -784,7 +814,8 @@ const sortInsightFilterEntries = (
  };
  
  const groupInsightFilters = (
 -	filters?: InsightFilters
 +	filters?: InsightFilters,
-+	views: IInsightKpiCardView[] = []
++	views: IKPICardView[] = []
  ): IInsightFilterGroupResult => {
  	if (
  		Array.isArray(filters) &&
-@@ -792,14 +847,49 @@ const groupInsightFilters = (
+@@ -792,14 +823,51 @@ const groupInsightFilters = (
  		filters.every(isInsightFilterGroup)
  	) {
  		return {
@@ -327,43 +306,45 @@ index 2ffa71b..6b7d4dd 100644
 -				),
 -			})),
 +			groups: filters.map((group) => {
-+				const kpiCardId =
-+					typeof group.kpiCardId === "string"
-+						? group.kpiCardId
-+						: undefined;
-+				const workbookUrlName =
-+					typeof group.workbookUrlName === "string"
-+						? group.workbookUrlName
-+						: undefined;
-+				const viewUrlName =
-+					typeof group.viewUrlName === "string"
-+						? group.viewUrlName
-+						: undefined;
-+				const matchedView =
-+					workbookUrlName && viewUrlName
-+						? views.find(
-+								(view) =>
-+									view.workbookUrlName === workbookUrlName &&
-+									view.urlName === viewUrlName
-+						  )
-+						: undefined;
-+				const idMatchedView =
-+					!matchedView && kpiCardId
-+						? views.find(
-+								(view) =>
-+									view.kpiCardId === kpiCardId ||
-+									view.id === kpiCardId
-+						  )
-+						: undefined;
-+				const cardName = formatKpiCardDisplayName(
-+					(matchedView ?? idMatchedView)?.name
-+				);
++				let kpiCardId: string | undefined;
++				let workbookUrlName: string | undefined;
++				let viewUrlName: string | undefined;
++
++				if (typeof group.kpiCardId === "string") {
++					kpiCardId = group.kpiCardId;
++				}
++				if (typeof group.workbookUrlName === "string") {
++					workbookUrlName = group.workbookUrlName;
++				}
++				if (typeof group.viewUrlName === "string") {
++					viewUrlName = group.viewUrlName;
++				}
++				let matchedView: IKPICardView | undefined;
++
++				if (workbookUrlName && viewUrlName) {
++					matchedView = views.find(
++						(view) =>
++							view.workbookUrlName === workbookUrlName &&
++							view.urlName === viewUrlName
++					);
++				}
++				if (!matchedView && kpiCardId) {
++					matchedView = views.find(
++						(view) =>
++							view.kpiCardId === kpiCardId ||
++							view.id === kpiCardId
++					);
++				}
++				let cardName: string | undefined;
++				if (matchedView) {
++					cardName = formatKpiCardDisplayName(matchedView.name);
++				}
 +
 +				return {
-+					...(kpiCardId && { kpiCardId }),
-+					...(workbookUrlName && { workbookUrlName }),
-+					...(viewUrlName && { viewUrlName }),
-+					...(cardName && { cardName }),
++					kpiCardId,
++					workbookUrlName,
++					viewUrlName,
++					cardName,
 +					entries: sortInsightFilterEntries(
 +						flattenInsightFilters(group.filters)
 +					),
@@ -372,7 +353,7 @@ index 2ffa71b..6b7d4dd 100644
  			kpiCardCount: filters.length,
  		};
  	}
-@@ -1018,9 +1108,14 @@ const InsightCardFilters: FC<{
+@@ -1018,9 +1086,14 @@ const InsightCardFilters: FC<{
  								group.kpiCardId ?? `filter-group-${groupIndex}`
  							}
  						>
@@ -390,13 +371,13 @@ index 2ffa71b..6b7d4dd 100644
  								</p>
  							)}
  							<div className="insightCard__filterGrid">
-@@ -1247,10 +1342,12 @@ const getInsightCardViewModel = (
+@@ -1247,10 +1320,12 @@ const getInsightCardViewModel = (
  	generation: IInsightGenerationState,
  	scope: InsightScope,
  	panelTitles: string[],
 -	roleProp?: string
 +	roleProp?: string,
-+	views: IInsightKpiCardView[] = []
++	views: IKPICardView[] = []
  ) => {
  	const backendFilterGroups = groupInsightFilters(
 -		generation.insight?.filters
@@ -405,19 +386,19 @@ index 2ffa71b..6b7d4dd 100644
  	);
  	const panelCount = panelTitles.length;
  	const isSuccessful = Boolean(
-@@ -1305,6 +1402,11 @@ export const InsightCard: FC<{
+@@ -1305,6 +1380,11 @@ export const InsightCard: FC<{
  	panelTitles = [],
  	role: roleProp,
  }) => {
 +	const tableau = useTableau();
 +	const insightKpiCardViews = useMemo(
-+		() => collectInsightKpiCardViews(tableau?.projects),
++		() => collectProjectViews(tableau?.projects),
 +		[tableau?.projects]
 +	);
  	const [filtersExpanded, setFiltersExpanded] = useState(false);
  	const { cardExpanded, toggleCardExpanded } = useInsightCardViewState(
  		cacheKey,
-@@ -1341,7 +1443,13 @@ export const InsightCard: FC<{
+@@ -1341,7 +1421,13 @@ export const InsightCard: FC<{
  		generatedAt,
  		editorContent,
  		isSuccessful,
