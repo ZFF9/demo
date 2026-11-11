@@ -1,0 +1,738 @@
+diff --git a/packages/web/src/components/CommentaryCapabilityProvider/index.spec.tsx b/packages/components/src/CommentaryCapabilityProvider/index.spec.tsx
+similarity index 100%
+rename from packages/web/src/components/CommentaryCapabilityProvider/index.spec.tsx
+rename to packages/components/src/CommentaryCapabilityProvider/index.spec.tsx
+diff --git a/packages/components/src/CommentaryCapabilityProvider/index.tsx b/packages/components/src/CommentaryCapabilityProvider/index.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..1f176e4cf334259697bcba4696923ec849cdd9b6
+--- /dev/null
++++ b/packages/components/src/CommentaryCapabilityProvider/index.tsx
+@@ -0,0 +1,97 @@
++import { InsightService } from "@angen_frontend/services";
++import { ICommentaryCapabilityData } from "@angen_frontend/types";
++import {
++	FC,
++	PropsWithChildren,
++	createContext,
++	useCallback,
++	useContext,
++	useEffect,
++	useMemo,
++	useState,
++} from "react";
++
++interface ICommentaryCapabilityContext {
++	loading: boolean;
++	enabled: boolean;
++	canGeneratePage: (
++		activeTabId: string | null,
++		panelIds: string[]
++	) => boolean;
++	canGeneratePanel: (panelId: string) => boolean;
++}
++
++const CommentaryCapabilityContext = createContext<ICommentaryCapabilityContext>(
++	{
++		loading: true,
++		enabled: false,
++		canGeneratePage: () => false,
++		canGeneratePanel: () => false,
++	}
++);
++
++export const CommentaryCapabilityProvider: FC<PropsWithChildren> = ({
++	children,
++}) => {
++	const [capability, setCapability] = useState<ICommentaryCapabilityData>();
++	const [loading, setLoading] = useState(true);
++
++	useEffect(() => {
++		let active = true;
++		InsightService.getCapability()
++			.then((apiCapability) => {
++				if (!active) return;
++				setCapability(apiCapability);
++				setLoading(false);
++			})
++			.catch(() => {
++				if (!active) return;
++				setCapability(undefined);
++				setLoading(false);
++			});
++		return () => {
++			active = false;
++		};
++	}, []);
++
++	const canGeneratePage = useCallback(
++		(activeTabId: string | null, panelIds: string[]) => {
++			return Boolean(
++				!loading &&
++					capability?.enabled &&
++					activeTabId &&
++					panelIds.filter((panelId) =>
++						capability.panelIds.includes(panelId)
++					).length > 1
++			);
++		},
++		[capability, loading]
++	);
++	const canGeneratePanel = useCallback(
++		(panelId: string) => {
++			return Boolean(
++				!loading &&
++					capability?.enabled &&
++					capability.panelIds.includes(panelId)
++			);
++		},
++		[capability, loading]
++	);
++	const value = useMemo(
++		() => ({
++			loading,
++			enabled: !loading && Boolean(capability?.enabled),
++			canGeneratePage,
++			canGeneratePanel,
++		}),
++		[loading, capability, canGeneratePage, canGeneratePanel]
++	);
++	return (
++		<CommentaryCapabilityContext.Provider value={value}>
++			{children}
++		</CommentaryCapabilityContext.Provider>
++	);
++};
++
++export const useCommentaryCapability = () =>
++	useContext(CommentaryCapabilityContext);
+diff --git a/packages/components/src/MenuContent/index.spec.tsx b/packages/components/src/MenuContent/index.spec.tsx
+index b7db7f6d048360ce5c2535b7d806e3f92dcdb16c..8aaf8a157420f152e66227efbe7aa24cde04e19f 100644
+--- a/packages/components/src/MenuContent/index.spec.tsx
++++ b/packages/components/src/MenuContent/index.spec.tsx
+@@ -21,9 +21,20 @@ import { PropsWithChildren, ReactNode } from "react";
+ import { LinkProps, Path, useSearchParams } from "react-router-dom";
+ import { useProjectParams } from "../Hooks/useProjectParams";
+ import { useLocalStorage } from "react-use";
+-import { IConfig } from "@angen_frontend/services";
++import { IConfig, InsightService } from "@angen_frontend/services";
+ import { useTrackingFn } from "../GTMTrackingProvider";
+ import { useUser } from "../UserProvider";
++import { useCommentaryCapability } from "../CommentaryCapabilityProvider";
++
++jest.mock("../CommentaryCapabilityProvider", () => ({
++	useCommentaryCapability: jest.fn(),
++}));
++
++jest.mock("@angen_frontend/services", () => ({
++	InsightService: {
++		getCapability: jest.fn(),
++	},
++}));
+ 
+ type ItemProp = {
+ 	key?: string;
+@@ -259,6 +270,9 @@ describe("Menu Content", () => {
+ 	let mockConfig: DeepPartial<IConfig>;
+ 	let mockGtmDataLayerPushEvent = jest.fn();
+ 	beforeEach(() => {
++		(useCommentaryCapability as jest.Mock).mockReturnValue({
++			enabled: false,
++		});
+ 		mockMenuRecord = {
+ 			"/defaultSection": {
+ 				label: "MockDefaultSection",
+@@ -459,12 +473,45 @@ describe("Menu Content", () => {
+ 	});
+ 
+ 	it("shows the portal when capability is enabled", () => {
+-		render(<MenuContent isCoThinkerEnabled />);
++		(useCommentaryCapability as jest.Mock).mockReturnValue({
++			enabled: true,
++		});
++		render(<MenuContent />);
+ 		expect(
+ 			screen.getByText("sideMenu.sections.coThinkerAdmin")
+ 		).toHaveAttribute("href", "/cothinker-admin");
+ 	});
+ 
++	it("shares one capability request across menu consumers", async () => {
++		const {
++			CommentaryCapabilityProvider,
++			useCommentaryCapability: useSharedCapability,
++		} = jest.requireActual<
++			typeof import("../CommentaryCapabilityProvider")
++		>("../CommentaryCapabilityProvider");
++		(useCommentaryCapability as jest.Mock).mockImplementation(
++			useSharedCapability
++		);
++		(InsightService.getCapability as jest.Mock).mockResolvedValue({
++			enabled: true,
++			panelIds: [],
++		});
++		render(
++			<CommentaryCapabilityProvider>
++				<MenuContent />
++				<MenuContent />
++			</CommentaryCapabilityProvider>
++		);
++
++		expect(
++			screen.queryByText("sideMenu.sections.coThinkerAdmin")
++		).not.toBeInTheDocument();
++		expect(
++			await screen.findAllByText("sideMenu.sections.coThinkerAdmin")
++		).toHaveLength(2);
++		expect(InsightService.getCapability).toHaveBeenCalledTimes(1);
++	});
++
+ 	it("hides the portal when capability is disabled and preserves other menus", async () => {
+ 		render(<MenuContent sections={mockMenuRecord} />);
+ 
+@@ -486,11 +533,17 @@ describe("Menu Content", () => {
+ 		expect(
+ 			screen.queryByText("sideMenu.sections.coThinkerAdmin")
+ 		).not.toBeInTheDocument();
+-		rerender(<MenuContent isCoThinkerEnabled />);
++		(useCommentaryCapability as jest.Mock).mockReturnValue({
++			enabled: true,
++		});
++		rerender(<MenuContent />);
+ 		expect(
+ 			screen.getByText("sideMenu.sections.coThinkerAdmin")
+ 		).toBeInTheDocument();
+-		rerender(<MenuContent isCoThinkerEnabled={false} />);
++		(useCommentaryCapability as jest.Mock).mockReturnValue({
++			enabled: false,
++		});
++		rerender(<MenuContent />);
+ 		expect(
+ 			screen.queryByText("sideMenu.sections.coThinkerAdmin")
+ 		).not.toBeInTheDocument();
+diff --git a/packages/components/src/MenuContent/index.tsx b/packages/components/src/MenuContent/index.tsx
+index 24905d6e43a2a06e0b7972725a1742de9f37691e..1e3dbb7bfcb15e3088013688934f596cf7f0c846 100644
+--- a/packages/components/src/MenuContent/index.tsx
++++ b/packages/components/src/MenuContent/index.tsx
+@@ -1,4 +1,5 @@
+ import { Menu, type MenuProps } from "antd";
++import { useCommentaryCapability } from "../CommentaryCapabilityProvider";
+ import { useProjectParams } from "../Hooks/useProjectParams";
+ import {
+ 	FC,
+@@ -51,7 +52,6 @@ const overrideCustomPageLibraryType = {
+ 
+ export interface IProps {
+ 	sections?: ITranslatedProject;
+-	isCoThinkerEnabled?: boolean;
+ }
+ type MenuItemTypeWithChildren = ItemType<MenuItemType> & {
+ 	children: ItemType<MenuItemType>[];
+@@ -321,10 +321,8 @@ function mapContent(
+ const translateIconMapping = (labelType?: LabelType): ReactNode | undefined =>
+ 	labelType ? MenuIconType[labelType]() : undefined;
+ 
+-export const MenuContent: FC<IProps> = ({
+-	sections = {},
+-	isCoThinkerEnabled = false,
+-}) => {
++export const MenuContent: FC<IProps> = ({ sections = {} }) => {
++	const { enabled: isCoThinkerEnabled } = useCommentaryCapability();
+ 	const [openKeys, setOpenKeys] = useState<string[]>();
+ 	const lastClosedKey = useRef<string>();
+ 	const [lastSelectedMenu, setLastSelectedMenu] = useState<string>();
+diff --git a/packages/components/src/SideMenu/index.spec.tsx b/packages/components/src/SideMenu/index.spec.tsx
+index befbf535c4bff29916c447c46ea9ea4c9229d11d..0cdf00186f70bd6daa9f8bf927d157a0fedd7033 100644
+--- a/packages/components/src/SideMenu/index.spec.tsx
++++ b/packages/components/src/SideMenu/index.spec.tsx
+@@ -36,13 +36,7 @@ jest.mock("../Icons/MenuSvgIcon", () => ({
+ 
+ jest.mock("../MenuContent", () => ({
+ 	__esModule: true,
+-	MenuContent: ({
+-		sections,
+-		isCoThinkerEnabled,
+-	}: {
+-		sections: ITranslatedProject;
+-		isCoThinkerEnabled?: boolean;
+-	}) => {
++	MenuContent: ({ sections }: { sections: ITranslatedProject }) => {
+ 		const renderMenu = (items: ITranslatedProject, parentKey: string) => {
+ 			return Object.entries(items).map(([key, value]) => {
+ 				const fullPath = parentKey + key;
+@@ -57,14 +51,7 @@ jest.mock("../MenuContent", () => ({
+ 			});
+ 		};
+ 
+-		return (
+-			<div
+-				data-testid="mockMenu"
+-				data-portal-enabled={String(isCoThinkerEnabled)}
+-			>
+-				{renderMenu(sections, "")}
+-			</div>
+-		);
++		return <div data-testid="mockMenu">{renderMenu(sections, "")}</div>;
+ 	},
+ }));
+ 
+@@ -78,13 +65,6 @@ jest.mock("../Footer", () => ({
+ }));
+ 
+ describe("Side Menu", () => {
+-	it.each([true, false])("passes capability %s to the menu", (enabled) => {
+-		render(<SideMenu isCoThinkerEnabled={enabled} />);
+-		expect(screen.getByTestId("mockMenu")).toHaveAttribute(
+-			"data-portal-enabled",
+-			String(enabled)
+-		);
+-	});
+ 	let mockMenuRecord: ITranslatedProject;
+ 	beforeEach(() => {
+ 		mockMenuRecord = {
+diff --git a/packages/components/src/SideMenu/index.tsx b/packages/components/src/SideMenu/index.tsx
+index 76ae4e97f52eae298ee2bf2d4c29c76b6ea1b253..31e262fb0b00ba06a67c0e34dd4850d52d1b500f 100644
+--- a/packages/components/src/SideMenu/index.tsx
++++ b/packages/components/src/SideMenu/index.tsx
+@@ -11,14 +11,12 @@ interface IProps {
+ 	bannerPath?: string;
+ 	footerPath?: string;
+ 	onSideMenuToggle?: () => void;
+-	isCoThinkerEnabled?: boolean;
+ }
+ 
+ export const SideMenu: FC<IProps> = ({
+ 	bannerPath,
+ 	footerPath,
+ 	onSideMenuToggle,
+-	isCoThinkerEnabled = false,
+ }) => {
+ 	const { projects } = useTableau();
+ 	const { appVersion } = useConfiguration();
+@@ -43,10 +41,7 @@ export const SideMenu: FC<IProps> = ({
+ 					)}
+ 				</div>
+ 				<div className="menuListContainer">
+-					<MenuContent
+-						sections={projects}
+-						isCoThinkerEnabled={isCoThinkerEnabled}
+-					/>
++					<MenuContent sections={projects} />
+ 				</div>
+ 			</div>
+ 			<div className="footer">
+diff --git a/packages/components/src/index.ts b/packages/components/src/index.ts
+index 57852ca114c88ef6b4551262cf9a0a02771b17cd..8609f65f60d6fb5669b5a2d323282b54a810a265 100644
+--- a/packages/components/src/index.ts
++++ b/packages/components/src/index.ts
+@@ -67,6 +67,10 @@ import { AdvancedFilterModal } from "./Section/AdvancedFilterModal";
+ import type { AdvancedFilterSelectedIds } from "./Section/AdvancedFilterModal";
+ import { AdvancedFilterSelectionDashboard } from "./Section/AdvancedFilterSelectionDashboard";
+ import { AnalyticsProvider, useAnalytics } from "./AnalyticsProvider";
++import {
++	CommentaryCapabilityProvider,
++	useCommentaryCapability,
++} from "./CommentaryCapabilityProvider";
+ import { GenericAvatar } from "./GenericAvatar";
+ import { GenericAnnouncementBanner } from "./GenericAnnouncementBanner";
+ import { Banner } from "./Banner";
+@@ -488,6 +492,8 @@ export {
+ 	useCustomPagePanel,
+ 	useCustomPagePanelSection,
+ 	useCustomPages,
++	CommentaryCapabilityProvider,
++	useCommentaryCapability,
+ 	useCustomView,
+ 	useDateRange,
+ 	useError,
+diff --git a/packages/web/src/components/CommentaryCapabilityProvider/index.tsx b/packages/web/src/components/CommentaryCapabilityProvider/index.tsx
+index 1f176e4cf334259697bcba4696923ec849cdd9b6..716ba394be6528498adc7fa58f8847c3f2daead3 100644
+--- a/packages/web/src/components/CommentaryCapabilityProvider/index.tsx
++++ b/packages/web/src/components/CommentaryCapabilityProvider/index.tsx
+@@ -1,97 +1,4 @@
+-import { InsightService } from "@angen_frontend/services";
+-import { ICommentaryCapabilityData } from "@angen_frontend/types";
+-import {
+-	FC,
+-	PropsWithChildren,
+-	createContext,
+-	useCallback,
+-	useContext,
+-	useEffect,
+-	useMemo,
+-	useState,
+-} from "react";
+-
+-interface ICommentaryCapabilityContext {
+-	loading: boolean;
+-	enabled: boolean;
+-	canGeneratePage: (
+-		activeTabId: string | null,
+-		panelIds: string[]
+-	) => boolean;
+-	canGeneratePanel: (panelId: string) => boolean;
+-}
+-
+-const CommentaryCapabilityContext = createContext<ICommentaryCapabilityContext>(
+-	{
+-		loading: true,
+-		enabled: false,
+-		canGeneratePage: () => false,
+-		canGeneratePanel: () => false,
+-	}
+-);
+-
+-export const CommentaryCapabilityProvider: FC<PropsWithChildren> = ({
+-	children,
+-}) => {
+-	const [capability, setCapability] = useState<ICommentaryCapabilityData>();
+-	const [loading, setLoading] = useState(true);
+-
+-	useEffect(() => {
+-		let active = true;
+-		InsightService.getCapability()
+-			.then((apiCapability) => {
+-				if (!active) return;
+-				setCapability(apiCapability);
+-				setLoading(false);
+-			})
+-			.catch(() => {
+-				if (!active) return;
+-				setCapability(undefined);
+-				setLoading(false);
+-			});
+-		return () => {
+-			active = false;
+-		};
+-	}, []);
+-
+-	const canGeneratePage = useCallback(
+-		(activeTabId: string | null, panelIds: string[]) => {
+-			return Boolean(
+-				!loading &&
+-					capability?.enabled &&
+-					activeTabId &&
+-					panelIds.filter((panelId) =>
+-						capability.panelIds.includes(panelId)
+-					).length > 1
+-			);
+-		},
+-		[capability, loading]
+-	);
+-	const canGeneratePanel = useCallback(
+-		(panelId: string) => {
+-			return Boolean(
+-				!loading &&
+-					capability?.enabled &&
+-					capability.panelIds.includes(panelId)
+-			);
+-		},
+-		[capability, loading]
+-	);
+-	const value = useMemo(
+-		() => ({
+-			loading,
+-			enabled: !loading && Boolean(capability?.enabled),
+-			canGeneratePage,
+-			canGeneratePanel,
+-		}),
+-		[loading, capability, canGeneratePage, canGeneratePanel]
+-	);
+-	return (
+-		<CommentaryCapabilityContext.Provider value={value}>
+-			{children}
+-		</CommentaryCapabilityContext.Provider>
+-	);
+-};
+-
+-export const useCommentaryCapability = () =>
+-	useContext(CommentaryCapabilityContext);
++export {
++	CommentaryCapabilityProvider,
++	useCommentaryCapability,
++} from "@angen_frontend/components";
+diff --git a/packages/web/src/components/UserWrapper/index.spec.tsx b/packages/web/src/components/UserWrapper/index.spec.tsx
+index 251899f761b78be9674e14557cb030777a52b3ea..9ce15b0f8d56fb06a86820e1111687264d140568 100644
+--- a/packages/web/src/components/UserWrapper/index.spec.tsx
++++ b/packages/web/src/components/UserWrapper/index.spec.tsx
+@@ -1,6 +1,6 @@
+ import { UserWrapper } from "./index";
+ import { render, screen, waitFor } from "@testing-library/react";
+-import { InsightService, UserService } from "@angen_frontend/services";
++import { UserService } from "@angen_frontend/services";
+ import { useAsyncWithLoading } from "../../hook";
+ import { PropsWithChildren } from "react";
+ import {
+@@ -28,9 +28,6 @@ jest.mock("@angen_frontend/services", () => ({
+ 	UserService: {
+ 		getProfile: jest.fn(),
+ 	},
+-	InsightService: {
+-		getCapability: jest.fn(),
+-	},
+ }));
+ 
+ jest.mock("../../hook", () => ({
+@@ -71,10 +68,6 @@ describe("User Wrapper", () => {
+ 		};
+ 
+ 		(UserService.getProfile as jest.Mock).mockResolvedValue(mockUser);
+-		(InsightService.getCapability as jest.Mock).mockResolvedValue({
+-			enabled: false,
+-			pages: [],
+-		});
+ 		(useAnalytics as jest.Mock).mockReturnValue({
+ 			pageViewAttributes: {
+ 				browserResolution: "900px * 500px",
+diff --git a/packages/web/src/components/UserWrapper/index.tsx b/packages/web/src/components/UserWrapper/index.tsx
+index 410793f95b6537fdebf51f85a871eda4a584afb6..6fbcad084c09ca4174fc497e65c03b7fa3fbd572 100644
+--- a/packages/web/src/components/UserWrapper/index.tsx
++++ b/packages/web/src/components/UserWrapper/index.tsx
+@@ -3,7 +3,6 @@ import { useAnalytics, UserProvider } from "@angen_frontend/components";
+ import { UserService } from "@angen_frontend/services";
+ import { useAsyncWithLoading } from "../../hook";
+ import { AnalyticsEventType, ApiName } from "@angen_frontend/types";
+-import { CommentaryCapabilityProvider } from "../CommentaryCapabilityProvider";
+ 
+ export const UserWrapper: FC<PropsWithChildren> = ({ children }) => {
+ 	const { pageViewAttributes } = useAnalytics();
+@@ -28,13 +27,7 @@ export const UserWrapper: FC<PropsWithChildren> = ({ children }) => {
+ 	if (fetchDataError?.message) {
+ 		return <>{fetchDataError?.message}</>;
+ 	} else if (profile) {
+-		return (
+-			<UserProvider profile={profile}>
+-				<CommentaryCapabilityProvider>
+-					{children}
+-				</CommentaryCapabilityProvider>
+-			</UserProvider>
+-		);
++		return <UserProvider profile={profile}>{children}</UserProvider>;
+ 	} else {
+ 		return <></>;
+ 	}
+diff --git a/packages/web/src/pages/contexts/index.spec.tsx b/packages/web/src/pages/contexts/index.spec.tsx
+index 42b5ef3234b9156125f83b83acdbc8281ea5d19b..99218614f7108733b8c25533fb67c4c892bd1f54 100644
+--- a/packages/web/src/pages/contexts/index.spec.tsx
++++ b/packages/web/src/pages/contexts/index.spec.tsx
+@@ -38,6 +38,9 @@ jest.mock("@angen_frontend/components", () => ({
+ 	ErrorProvider: ({ children }: PropsWithChildren) => {
+ 		return <div>{children}</div>;
+ 	},
++	CommentaryCapabilityProvider: ({ children }: PropsWithChildren) => (
++		<div data-testid="mock-capability-provider">{children}</div>
++	),
+ }));
+ jest.mock("../../components/ConfigurationWrapper", () => ({
+ 	__esModule: true,
+@@ -81,7 +84,7 @@ jest.mock("../../components/TableauWrapper", () => ({
+ jest.mock("../../components/UserWrapper", () => ({
+ 	__esModule: true,
+ 	UserWrapper: ({ children }: PropsWithChildren) => {
+-		return <div>{children}</div>;
++		return <div data-testid="mock-user-wrapper">{children}</div>;
+ 	},
+ }));
+ jest.mock("../../components/LocalStorageVersionChecker", () => ({
+@@ -117,7 +120,7 @@ jest.mock("../../components/GTMTrackingWrapper", () => ({
+ 	GTMTrackingWrapper: ({
+ 		children,
+ 	}: ComponentProps<typeof GTMTrackingWrapper>) => {
+-		return <div>{children}</div>;
++		return <div data-testid="mock-gtm-wrapper">{children}</div>;
+ 	},
+ }));
+ jest.mock("../../components/ConnectivityNotification", () => ({
+@@ -156,11 +159,20 @@ describe("Contexts", () => {
+ 
+ 		expect(screen.getByText("SG")).toBeInTheDocument();
+ 		expect(screen.getByTestId("mock-theme-wrapper")).toBeInTheDocument();
++		expect(
++			screen.queryByTestId("mock-capability-provider")
++		).not.toBeInTheDocument();
+ 	});
+ 
+ 	it("should render MainContexts", () => {
+ 		render(<MainContexts />);
+ 
+ 		expect(screen.getByTestId("mock-tableau-wrapper")).toBeInTheDocument();
++		expect(screen.getByTestId("mock-user-wrapper")).toContainElement(
++			screen.getByTestId("mock-capability-provider")
++		);
++		expect(screen.getByTestId("mock-capability-provider")).toContainElement(
++			screen.getByTestId("mock-gtm-wrapper")
++		);
+ 	});
+ });
+diff --git a/packages/web/src/pages/contexts/index.tsx b/packages/web/src/pages/contexts/index.tsx
+index 233db16771612953c07da0c55b969cb1de297253..b297d46de3c56c8c0ec2acc6ee5f97797f2132c2 100644
+--- a/packages/web/src/pages/contexts/index.tsx
++++ b/packages/web/src/pages/contexts/index.tsx
+@@ -4,6 +4,7 @@ import {
+ 	TargetTypeFilterProvider,
+ 	TemplateSizeProvider,
+ 	ErrorProvider,
++	CommentaryCapabilityProvider,
+ } from "@angen_frontend/components";
+ import type { Country } from "@angen_frontend/types";
+ import { FC } from "react";
+@@ -45,28 +46,30 @@ export const MainContexts: FC = () => {
+ 	return (
+ 		<TableauWrapper>
+ 			<UserWrapper>
+-				<GTMTrackingWrapper>
+-					<TableauSession>
+-						<ModuleTabWrapper>
+-							<GlobalFilterWrapper>
+-								<TargetTypeFilterProvider>
+-									<DateRangeProvider>
+-										<TemplateSizeProvider>
+-											<ErrorProvider>
+-												<UserAnnouncementWrapper>
+-													<UserReportWrapper>
+-														<ConnectivityNotification />
+-														<Outlet />
+-													</UserReportWrapper>
+-												</UserAnnouncementWrapper>
+-											</ErrorProvider>
+-										</TemplateSizeProvider>
+-									</DateRangeProvider>
+-								</TargetTypeFilterProvider>
+-							</GlobalFilterWrapper>
+-						</ModuleTabWrapper>
+-					</TableauSession>
+-				</GTMTrackingWrapper>
++				<CommentaryCapabilityProvider>
++					<GTMTrackingWrapper>
++						<TableauSession>
++							<ModuleTabWrapper>
++								<GlobalFilterWrapper>
++									<TargetTypeFilterProvider>
++										<DateRangeProvider>
++											<TemplateSizeProvider>
++												<ErrorProvider>
++													<UserAnnouncementWrapper>
++														<UserReportWrapper>
++															<ConnectivityNotification />
++															<Outlet />
++														</UserReportWrapper>
++													</UserAnnouncementWrapper>
++												</ErrorProvider>
++											</TemplateSizeProvider>
++										</DateRangeProvider>
++									</TargetTypeFilterProvider>
++								</GlobalFilterWrapper>
++							</ModuleTabWrapper>
++						</TableauSession>
++					</GTMTrackingWrapper>
++				</CommentaryCapabilityProvider>
+ 			</UserWrapper>
+ 		</TableauWrapper>
+ 	);
+diff --git a/packages/web/src/sectionTemplates/sideMenuWrapper/index.spec.tsx b/packages/web/src/sectionTemplates/sideMenuWrapper/index.spec.tsx
+index e6f2edb9129d1d2cf7f71724feb060ecd1f03484..873274b5e040bd6ff20d629dd1ff7babdd63b0ee 100644
+--- a/packages/web/src/sectionTemplates/sideMenuWrapper/index.spec.tsx
++++ b/packages/web/src/sectionTemplates/sideMenuWrapper/index.spec.tsx
+@@ -3,11 +3,6 @@ import { SideMenuWrapper } from "./index";
+ import { render, screen, waitFor } from "@testing-library/react";
+ import { ComponentProps, PropsWithChildren } from "react";
+ import { useWindowSize } from "react-use";
+-import { useCommentaryCapability } from "../../components/CommentaryCapabilityProvider";
+-
+-jest.mock("../../components/CommentaryCapabilityProvider", () => ({
+-	useCommentaryCapability: jest.fn(),
+-}));
+ 
+ let mockBannerPath: string | undefined;
+ let mockFooterPath: string | undefined;
+@@ -16,19 +11,10 @@ jest.mock("@angen_frontend/components", () => ({
+ 	SiderLayout: ({ children }: PropsWithChildren) => {
+ 		return <div>{children}</div>;
+ 	},
+-	SideMenu: ({
+-		bannerPath,
+-		footerPath,
+-		isCoThinkerEnabled,
+-	}: ComponentProps<typeof SideMenu>) => {
++	SideMenu: ({ bannerPath, footerPath }: ComponentProps<typeof SideMenu>) => {
+ 		mockBannerPath = bannerPath;
+ 		mockFooterPath = footerPath;
+-		return (
+-			<div
+-				data-testid="mock-sidemenu"
+-				data-portal-enabled={String(isCoThinkerEnabled)}
+-			/>
+-		);
++		return <div data-testid="mock-sidemenu" />;
+ 	},
+ 	GenericDrawer: () => {
+ 		return <div data-testid="mock-generic-drawer" />;
+@@ -60,7 +46,6 @@ jest.mock("react-use", () => ({
+ }));
+ 
+ beforeEach(() => {
+-	(useCommentaryCapability as jest.Mock).mockReturnValue({ enabled: false });
+ 	(useConfiguration as jest.Mock).mockReturnValue({
+ 		sixCardsTemplateWithSideMenuMaxWidth: 1530,
+ 	});
+@@ -71,29 +56,6 @@ beforeEach(() => {
+ });
+ 
+ describe("Side Menu Wrapper", () => {
+-	it("updates the menu when the shared capability changes", () => {
+-		const { rerender } = render(<SideMenuWrapper />);
+-		expect(screen.getByTestId("mock-sidemenu")).toHaveAttribute(
+-			"data-portal-enabled",
+-			"false"
+-		);
+-		(useCommentaryCapability as jest.Mock).mockReturnValue({
+-			enabled: true,
+-		});
+-		rerender(<SideMenuWrapper />);
+-		expect(screen.getByTestId("mock-sidemenu")).toHaveAttribute(
+-			"data-portal-enabled",
+-			"true"
+-		);
+-		(useCommentaryCapability as jest.Mock).mockReturnValue({
+-			enabled: false,
+-		});
+-		rerender(<SideMenuWrapper />);
+-		expect(screen.getByTestId("mock-sidemenu")).toHaveAttribute(
+-			"data-portal-enabled",
+-			"false"
+-		);
+-	});
+ 	it("should render side menu based on theme when new theme is enabled", async () => {
+ 		render(
+ 			<SideMenuWrapper>
+diff --git a/packages/web/src/sectionTemplates/sideMenuWrapper/index.tsx b/packages/web/src/sectionTemplates/sideMenuWrapper/index.tsx
+index 90ff81405d374f4627a9d337f06d6f254e1d5ba7..e5559287d13ab7207a52df132d14d88b80cfcfcf 100644
+--- a/packages/web/src/sectionTemplates/sideMenuWrapper/index.tsx
++++ b/packages/web/src/sectionTemplates/sideMenuWrapper/index.tsx
+@@ -9,7 +9,6 @@ import {
+ import { FC, PropsWithChildren, useMemo } from "react";
+ import { useWindowSize } from "react-use";
+ import classNames from "classnames";
+-import { useCommentaryCapability } from "../../components/CommentaryCapabilityProvider";
+ import "./index.scss";
+ 
+ interface IProps {
+@@ -23,7 +22,6 @@ export const SideMenuWrapper: FC<PropsWithChildren<IProps>> = ({
+ 	onSideMenuToggle,
+ }) => {
+ 	const { sixCardsTemplateWithSideMenuMaxWidth } = useConfiguration();
+-	const { enabled } = useCommentaryCapability();
+ 
+ 	const sideMenuWidth = "233";
+ 
+@@ -47,11 +45,10 @@ export const SideMenuWrapper: FC<PropsWithChildren<IProps>> = ({
+ 					bannerPath="/icons/logo-angen-new.svg"
+ 					footerPath="/icons/logo-angen-shorthand-new.svg"
+ 					onSideMenuToggle={onSideMenuToggle}
+-					isCoThinkerEnabled={enabled}
+ 				/>
+ 			</SiderLayout>
+ 		),
+-		[onSideMenuToggle, enabled]
++		[onSideMenuToggle]
+ 	);
+ 
+ 	return (
