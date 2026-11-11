@@ -1,0 +1,636 @@
+diff --git a/packages/components/src/Hooks/useAdminPortalPermissions/index.spec.ts b/packages/components/src/Hooks/useAdminPortalPermissions/index.spec.ts
+new file mode 100644
+index 0000000..702a5f9
+--- /dev/null
++++ b/packages/components/src/Hooks/useAdminPortalPermissions/index.spec.ts
+@@ -0,0 +1,120 @@
++import { act, renderHook, waitFor } from "@testing-library/react";
++import { InsightService } from "@angen_frontend/services";
++import type { IAdminPortalPermissions } from "@angen_frontend/services";
++import { useUser } from "../../UserProvider";
++import { useAdminPortalPermissions } from "./index";
++
++jest.mock("@angen_frontend/services", () => ({
++	InsightService: { getAdminPortalPermissions: jest.fn() },
++}));
++
++jest.mock("../../UserProvider", () => ({ useUser: jest.fn() }));
++
++describe("useAdminPortalPermissions", () => {
++	const getPermissions = jest.mocked(
++		InsightService.getAdminPortalPermissions
++	);
++	const permissions = {
++		readGroups: [" Reader-Group "],
++		writeGroups: [" Writer-Group "],
++	};
++
++	beforeEach(() => {
++		jest.resetAllMocks();
++		(useUser as jest.Mock).mockReturnValue({
++			profile: { shortenedAdGroupsForGtm: ["reader-group"] },
++		});
++		getPermissions.mockResolvedValue(permissions);
++	});
++
++	it.each([
++		[["reader-group"], "read"],
++		[["writer-group"], "write"],
++		[["reader-group", "writer-group"], "write"],
++		[["  ReAdEr-GrOuP  "], "read"],
++		[["unrelated-group"], "none"],
++		[[], "none"],
++	])("resolves groups %j to %s", async (groups, access) => {
++		(useUser as jest.Mock).mockReturnValue({
++			profile: { shortenedAdGroupsForGtm: groups },
++		});
++		const { result } = renderHook(() => useAdminPortalPermissions());
++		expect(result.current.access).toBeNull();
++		await waitFor(() => expect(result.current.access).toBe(access));
++		expect(result.current.permissionError).toBe("");
++	});
++
++	it("does not match blank group names", async () => {
++		(useUser as jest.Mock).mockReturnValue({
++			profile: { shortenedAdGroupsForGtm: [" "] },
++		});
++		getPermissions.mockResolvedValue({
++			readGroups: [""],
++			writeGroups: [" "],
++		});
++		const { result } = renderHook(() => useAdminPortalPermissions());
++		await waitFor(() => expect(result.current.access).toBe("none"));
++	});
++
++	it("keeps access pending until the request completes", async () => {
++		let resolve!: (value: IAdminPortalPermissions) => void;
++		getPermissions.mockReturnValue(
++			new Promise((done) => {
++				resolve = done;
++			})
++		);
++		const { result } = renderHook(() => useAdminPortalPermissions());
++		expect(result.current.access).toBeNull();
++		await act(async () => resolve(permissions));
++		expect(result.current.access).toBe("read");
++	});
++
++	it("reports errors and reloads permissions on retry", async () => {
++		getPermissions.mockRejectedValueOnce(
++			new Error("Permission service unavailable")
++		);
++		const { result } = renderHook(() => useAdminPortalPermissions());
++		await waitFor(() =>
++			expect(result.current.permissionError).toBe(
++				"Permission service unavailable"
++			)
++		);
++		expect(result.current.access).toBeNull();
++		act(() => result.current.retry());
++		expect(result.current.permissionError).toBe("");
++		await waitFor(() => expect(result.current.access).toBe("read"));
++		expect(getPermissions).toHaveBeenCalledTimes(2);
++	});
++
++	it("skips requests when disabled and loads when enabled", async () => {
++		const { result, rerender } = renderHook(
++			({ enabled }) => useAdminPortalPermissions(enabled),
++			{ initialProps: { enabled: false } }
++		);
++		expect(getPermissions).not.toHaveBeenCalled();
++		expect(result.current.access).toBeNull();
++		rerender({ enabled: true });
++		await waitFor(() => expect(result.current.access).toBe("read"));
++		rerender({ enabled: false });
++		expect(result.current.access).toBeNull();
++	});
++
++	it("ignores the previous user's late response", async () => {
++		let resolve!: (value: IAdminPortalPermissions) => void;
++		getPermissions.mockReturnValueOnce(
++			new Promise((done) => {
++				resolve = done;
++			})
++		);
++		const { result, rerender } = renderHook(() =>
++			useAdminPortalPermissions()
++		);
++		(useUser as jest.Mock).mockReturnValue({
++			profile: { shortenedAdGroupsForGtm: ["unrelated-group"] },
++		});
++		rerender();
++		await waitFor(() => expect(result.current.access).toBe("none"));
++		await act(async () => resolve(permissions));
++		expect(result.current.access).toBe("none");
++	});
++});
+diff --git a/packages/components/src/Hooks/useAdminPortalPermissions/index.ts b/packages/components/src/Hooks/useAdminPortalPermissions/index.ts
+new file mode 100644
+index 0000000..095bde4
+--- /dev/null
++++ b/packages/components/src/Hooks/useAdminPortalPermissions/index.ts
+@@ -0,0 +1,59 @@
++import { useCallback, useEffect, useState } from "react";
++import { InsightService } from "@angen_frontend/services";
++import type { IAdminPortalPermissions } from "@angen_frontend/services";
++import { useUser } from "../../UserProvider";
++
++type AdminPortalAccess = "write" | "read" | "none";
++
++const resolveAdminPortalAccess = (
++	userGroups: string[],
++	permissions: IAdminPortalPermissions
++): AdminPortalAccess => {
++	const groups = new Set(
++		userGroups.map((group) => group.trim().toLowerCase()).filter(Boolean)
++	);
++	const matches = (configuredGroups: string[]) =>
++		configuredGroups.some((group) => {
++			const normalized = group.trim().toLowerCase();
++			return normalized !== "" && groups.has(normalized);
++		});
++
++	if (matches(permissions.writeGroups)) return "write";
++	if (matches(permissions.readGroups)) return "read";
++	return "none";
++};
++
++export const useAdminPortalPermissions = (enabled = true) => {
++	const { profile } = useUser();
++	const [access, setAccess] = useState<AdminPortalAccess | null>(null);
++	const [permissionError, setPermissionError] = useState("");
++	const [retryKey, setRetryKey] = useState(0);
++	const retry = useCallback(() => setRetryKey((value) => value + 1), []);
++
++	useEffect(() => {
++		let mounted = true;
++		setAccess(null);
++		setPermissionError("");
++		if (!enabled) return;
++
++		InsightService.getAdminPortalPermissions()
++			.then((permissions) => {
++				if (mounted) {
++					setAccess(
++						resolveAdminPortalAccess(
++							profile?.shortenedAdGroupsForGtm || [],
++							permissions
++						)
++					);
++				}
++			})
++			.catch((error: Error) => {
++				if (mounted) setPermissionError(error.message);
++			});
++		return () => {
++			mounted = false;
++		};
++	}, [enabled, profile, retryKey]);
++
++	return { access, permissionError, retry };
++};
+diff --git a/packages/components/src/MenuContent/index.spec.tsx b/packages/components/src/MenuContent/index.spec.tsx
+index 7293435..4cf5469 100644
+--- a/packages/components/src/MenuContent/index.spec.tsx
++++ b/packages/components/src/MenuContent/index.spec.tsx
+@@ -24,6 +24,11 @@ import { useLocalStorage } from "react-use";
+ import { IConfig } from "@angen_frontend/services";
+ import { useTrackingFn } from "../GTMTrackingProvider";
+ import { useUser } from "../UserProvider";
++import { useAdminPortalPermissions } from "../Hooks/useAdminPortalPermissions";
++
++jest.mock("../Hooks/useAdminPortalPermissions", () => ({
++	useAdminPortalPermissions: jest.fn(),
++}));
+ 
+ type ItemProp = {
+ 	key?: string;
+@@ -418,6 +423,11 @@ describe("Menu Content", () => {
+ 		(useUser as jest.Mock).mockReturnValue({
+ 			profile: { mobileDefaultLandingPage: "/mobilePage" },
+ 		});
++		(useAdminPortalPermissions as jest.Mock).mockReturnValue({
++			access: "write",
++			permissionError: "",
++			retry: jest.fn(),
++		});
+ 
+ 		(useLocalStorage as jest.Mock).mockImplementation((_, value) => [
+ 			value,
+@@ -449,6 +459,52 @@ describe("Menu Content", () => {
+ 		jest.resetAllMocks();
+ 	});
+ 
++	it.each(["read", "write"])("shows Portal for %s access", (access) => {
++		mockConfig.menuRedirectUrl = {
++			...mockConfig.menuRedirectUrl,
++			coThinkerAdmin: "/cothinker-admin",
++		};
++		(useAdminPortalPermissions as jest.Mock).mockReturnValue({ access });
++		render(<MenuContent />);
++		expect(
++			screen.getByText("sideMenu.sections.coThinkerAdmin").closest("a")
++		).toHaveAttribute("href", "/cothinker-admin");
++		expect(useAdminPortalPermissions).toHaveBeenCalledWith(true);
++	});
++
++	it.each([
++		{ access: "none", permissionError: "" },
++		{ access: null, permissionError: "" },
++		{ access: null, permissionError: "Permission service unavailable" },
++	])(
++		"hides Portal for permission state %j without hiding other links",
++		(state) => {
++			mockConfig.menuRedirectUrl = {
++				...mockConfig.menuRedirectUrl,
++				coThinkerAdmin: "/cothinker-admin",
++			};
++			(useAdminPortalPermissions as jest.Mock).mockReturnValue(state);
++			render(<MenuContent />);
++			expect(
++				screen.queryByText("sideMenu.sections.coThinkerAdmin")
++			).not.toBeInTheDocument();
++			expect(
++				screen.getByText("sideMenu.sections.angenHomePage").closest("a")
++			).toHaveAttribute("href", "/home");
++			expect(
++				screen.getByText("sideMenu.sections.help&Support").closest("a")
++			).toHaveAttribute("href", "https://example.com");
++		}
++	);
++
++	it("hides Portal and disables permission loading when its link is absent", () => {
++		render(<MenuContent />);
++		expect(
++			screen.queryByText("sideMenu.sections.coThinkerAdmin")
++		).not.toBeInTheDocument();
++		expect(useAdminPortalPermissions).toHaveBeenCalledWith(false);
++	});
++
+ 	it("should render", async () => {
+ 		render(<MenuContent />);
+ 
+diff --git a/packages/components/src/MenuContent/index.tsx b/packages/components/src/MenuContent/index.tsx
+index f2bbf51..25290da 100644
+--- a/packages/components/src/MenuContent/index.tsx
++++ b/packages/components/src/MenuContent/index.tsx
+@@ -38,6 +38,7 @@ import PathfinderSvgIcon from "../Icons/PathfinderSvgIcon";
+ import { useLocalStorage } from "react-use";
+ import { useTrackingFn } from "../GTMTrackingProvider";
+ import { useUser } from "../UserProvider";
++import { useAdminPortalPermissions } from "../Hooks/useAdminPortalPermissions";
+ import MxDashboardSvgIcon from "../Icons/MxDashboardIcon";
+ import AllianceManagementSvgIcon from "../Icons/AllianceManagementIcon";
+ import CXAnalyticsSvgIcon from "../Icons/CXAnalyticsIcon";
+@@ -341,6 +342,9 @@ export const MenuContent: FC<IProps> = ({ sections = {} }) => {
+ 		tabsForMultipleModule,
+ 		sideBarModuleGroups,
+ 	} = useConfiguration();
++	const { access } = useAdminPortalPermissions(
++		Boolean(menuRedirectUrl.coThinkerAdmin)
++	);
+ 
+ 	const [reloadFullPage] = useLocalStorage(
+ 		"triggerFullPageReload",
+@@ -482,33 +486,35 @@ export const MenuContent: FC<IProps> = ({ sections = {} }) => {
+ 	);
+ 
+ 	const menuItems = useMemo(() => {
++		const otherSections: ITranslatedProject = {
++			"/other_platforms": {
++				iconSuffixType: LabelType.EXTERNAL_LINK,
++				label: {
++					[`sideMenu.sections.${otherSectionConfig.otherOrHomePageLabelKey}`]:
++						{},
++				},
++				url: otherSectionConfig.otherOrHomePageLink,
++			},
++		};
++		if (
++			otherSectionConfig.coThinkerAdminLink &&
++			(access === "read" || access === "write")
++		) {
++			otherSections["/cothinker_admin"] = {
++				iconSuffixType: LabelType.EXTERNAL_LINK,
++				label: { "sideMenu.sections.coThinkerAdmin": {} },
++				url: otherSectionConfig.coThinkerAdminLink,
++			};
++		}
++		otherSections["/help&Support"] = {
++			iconSuffixType: LabelType.EXTERNAL_LINK,
++			label: { "sideMenu.sections.help&Support": {} },
++			url: otherSectionConfig.helpAndSupportLink,
++		};
+ 		const otherItems = mapContent(
+ 			translateLabel,
+ 			translateIconMapping,
+-			{
+-				"/other_platforms": {
+-					iconSuffixType: LabelType.EXTERNAL_LINK,
+-					label: {
+-						[`sideMenu.sections.${otherSectionConfig.otherOrHomePageLabelKey}`]:
+-							{},
+-					},
+-					url: otherSectionConfig.otherOrHomePageLink,
+-				},
+-				"/cothinker_admin": {
+-					iconSuffixType: LabelType.EXTERNAL_LINK,
+-					label: {
+-						"sideMenu.sections.coThinkerAdmin": {},
+-					},
+-					url: otherSectionConfig.coThinkerAdminLink,
+-				},
+-				"/help&Support": {
+-					iconSuffixType: LabelType.EXTERNAL_LINK,
+-					label: {
+-						"sideMenu.sections.help&Support": {},
+-					},
+-					url: otherSectionConfig.helpAndSupportLink,
+-				},
+-			},
++			otherSections,
+ 			searchParam.toString(),
+ 			false,
+ 			"",
+@@ -602,6 +608,7 @@ export const MenuContent: FC<IProps> = ({ sections = {} }) => {
+ 		items,
+ 		searchParam,
+ 		otherSectionConfig,
++		access,
+ 		handleGtmEvent,
+ 		favouriteItems,
+ 		sideBarModuleGroups,
+diff --git a/packages/components/src/index.ts b/packages/components/src/index.ts
+index 57852ca..a33204f 100644
+--- a/packages/components/src/index.ts
++++ b/packages/components/src/index.ts
+@@ -210,6 +210,7 @@ import { UserProvider, useUser } from "./UserProvider";
+ import { YearMonthGlobalFilter } from "./Section/GlobalFilter/YearMonthGlobalFilter";
+ import { UnderConstruction } from "./UnderConstruction";
+ import { useFetchAdvancedFilter } from "./Hooks/useFetchAdvancedFilter";
++import { useAdminPortalPermissions } from "./Hooks/useAdminPortalPermissions";
+ import { useAdvancedFilterSwapRegionItem } from "./Hooks/useAdvancedFilterSwapRegionItem";
+ import { useDataRecencyViewSwap } from "./Hooks/useDataRecencyViewSwap";
+ import { useIsMobile } from "./Hooks/useIsMobile";
+@@ -492,6 +493,7 @@ export {
+ 	useDateRange,
+ 	useError,
+ 	useFetchAdvancedFilter,
++	useAdminPortalPermissions,
+ 	useAdvancedFilterSwapRegionItem,
+ 	useDataRecencyViewSwap,
+ 	useLoading,
+diff --git a/packages/web/src/pages/coThinkerAdmin/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/index.spec.tsx
+index cf0fd4c..ad26d99 100644
+--- a/packages/web/src/pages/coThinkerAdmin/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/index.spec.tsx
+@@ -1,6 +1,5 @@
+ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+-import { useUser } from "@angen_frontend/components";
+-import { InsightService } from "@angen_frontend/services";
++import { useAdminPortalPermissions } from "@angen_frontend/components";
+ import { CoThinkerAdmin } from "./index";
+ 
+ jest.mock("@angen_frontend/components", () => ({
+@@ -16,7 +15,7 @@ jest.mock("@angen_frontend/components", () => ({
+ 			{children}
+ 		</button>
+ 	),
+-	useUser: jest.fn(),
++	useAdminPortalPermissions: jest.fn(),
+ 	TrendChartsSvgIcon: () => <span />,
+ 	DocumentCheckedSvgIcon: () => <span />,
+ 	CoThinkerEditSvgIcon: () => <span />,
+@@ -49,15 +48,6 @@ jest.mock("../../components/UserWrapper", () => ({
+ 	UserWrapper: ({ children }: { children: React.ReactNode }) => children,
+ }));
+ 
+-jest.mock("@angen_frontend/services", () => ({
+-	InsightService: {
+-		getAdminPortalPermissions: jest.fn().mockResolvedValue({
+-			readGroups: ["reader-group"],
+-			writeGroups: ["admin-group"],
+-		}),
+-	},
+-}));
+-
+ jest.mock("./components/OverviewTab", () => ({
+ 	__esModule: true,
+ 	OverviewTab: () => <div data-testid="mock-overview-tab">Overview Tab</div>,
+@@ -89,17 +79,15 @@ jest.mock("./components/KnowledgeDocTab", () => ({
+ }));
+ 
+ describe("CoThinkerAdmin Shell Component", () => {
+-	const getPermissions =
+-		InsightService.getAdminPortalPermissions as jest.Mock;
++	const usePermissions = useAdminPortalPermissions as jest.Mock;
++	const retry = jest.fn();
+ 
+ 	beforeEach(() => {
+ 		jest.clearAllMocks();
+-		(useUser as jest.Mock).mockReturnValue({
+-			profile: { shortenedAdGroupsForGtm: ["ADMIN-GROUP"] },
+-		});
+-		getPermissions.mockResolvedValue({
+-			readGroups: ["reader-group"],
+-			writeGroups: ["admin-group"],
++		usePermissions.mockReturnValue({
++			access: "write",
++			permissionError: "",
++			retry,
+ 		});
+ 	});
+ 
+@@ -134,23 +122,25 @@ describe("CoThinkerAdmin Shell Component", () => {
+ 	});
+ 
+ 	it("shows no access when the user matches neither group", async () => {
+-		getPermissions.mockResolvedValue({
+-			readGroups: ["different-reader"],
+-			writeGroups: ["different-writer"],
++		usePermissions.mockReturnValue({
++			access: "none",
++			permissionError: "",
++			retry,
+ 		});
+ 		render(<CoThinkerAdmin />);
+ 		expect(
+ 			await screen.findByText("You do not have access to Admin Portal.")
+ 		).toBeInTheDocument();
++		expect(
++			screen.queryByTestId("mock-overview-tab")
++		).not.toBeInTheDocument();
+ 	});
+ 
+-	it("grants read access case-insensitively and hides write capability", async () => {
+-		(useUser as jest.Mock).mockReturnValue({
+-			profile: { shortenedAdGroupsForGtm: ["  ReAdEr-GrOuP "] },
+-		});
+-		getPermissions.mockResolvedValue({
+-			readGroups: ["reader-group"],
+-			writeGroups: ["admin-group"],
++	it("keeps read access without write capability", async () => {
++		usePermissions.mockReturnValue({
++			access: "read",
++			permissionError: "",
++			retry,
+ 		});
+ 		render(<CoThinkerAdmin />);
+ 		await screen.findByTestId("mock-overview-tab");
+@@ -164,19 +154,53 @@ describe("CoThinkerAdmin Shell Component", () => {
+ 		).toHaveAttribute("data-can-write", "false");
+ 	});
+ 
+-	it("shows an error and retries permission loading", async () => {
+-		getPermissions.mockRejectedValueOnce(
+-			new Error("Permission service unavailable")
++	it("passes write capability to both editable tabs", () => {
++		render(<CoThinkerAdmin />);
++		fireEvent.click(screen.getByText("Prompt Management"));
++		expect(
++			screen.getByTestId("mock-prompt-management-tab")
++		).toHaveAttribute("data-can-write", "true");
++		fireEvent.click(screen.getByText("Knowledge Doc Container"));
++		expect(screen.getByTestId("mock-knowledge-doc-tab")).toHaveAttribute(
++			"data-can-write",
++			"true"
+ 		);
++	});
++
++	it("shows loading without rendering the admin content", () => {
++		usePermissions.mockReturnValue({
++			access: null,
++			permissionError: "",
++			retry,
++		});
+ 		render(<CoThinkerAdmin />);
++		expect(screen.getByText("Loading permissions...")).toBeInTheDocument();
++		expect(
++			screen.queryByTestId("mock-overview-tab")
++		).not.toBeInTheDocument();
++	});
++
++	it("shows an error and retries permission loading", async () => {
++		usePermissions.mockReturnValue({
++			access: null,
++			permissionError: "Permission service unavailable",
++			retry,
++		});
++		const { rerender } = render(<CoThinkerAdmin />);
+ 		expect(
+ 			await screen.findByText("Permission service unavailable")
+ 		).toBeInTheDocument();
+-		getPermissions.mockResolvedValue({
+-			readGroups: [],
+-			writeGroups: ["admin-group"],
+-		});
++		expect(
++			screen.queryByTestId("mock-overview-tab")
++		).not.toBeInTheDocument();
+ 		fireEvent.click(screen.getByText("Retry"));
++		expect(retry).toHaveBeenCalledTimes(1);
++		usePermissions.mockReturnValue({
++			access: "write",
++			permissionError: "",
++			retry,
++		});
++		rerender(<CoThinkerAdmin />);
+ 		expect(
+ 			await screen.findByTestId("mock-overview-tab")
+ 		).toBeInTheDocument();
+diff --git a/packages/web/src/pages/coThinkerAdmin/index.tsx b/packages/web/src/pages/coThinkerAdmin/index.tsx
+index 7d0880f..e862747 100644
+--- a/packages/web/src/pages/coThinkerAdmin/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/index.tsx
+@@ -1,4 +1,4 @@
+-import { FC, useEffect, useState } from "react";
++import { FC, useState } from "react";
+ import { OverviewTab } from "./components/OverviewTab";
+ import { LogAuditTab } from "./components/LogAuditTab";
+ import { PromptManagementTab } from "./components/PromptManagementTab";
+@@ -10,10 +10,8 @@ import {
+ 	FolderOpenedSvgIcon,
+ 	GenericButtonV2,
+ 	Text,
+-	useUser,
++	useAdminPortalPermissions,
+ } from "@angen_frontend/components";
+-import { InsightService } from "@angen_frontend/services";
+-import type { IAdminPortalPermissions } from "@angen_frontend/services";
+ import { UserWrapper } from "../../components/UserWrapper";
+ import { TranslationEntry } from "@angen_frontend/types";
+ import "./index.scss";
+@@ -26,26 +24,6 @@ export interface IIconProps {
+ }
+ 
+ type TabKey = "overview" | "logAudit" | "promptManagement" | "knowledgeDoc";
+-type AdminPortalAccess = "write" | "read" | "none";
+-
+-const resolveAdminPortalAccess = (
+-	userGroups: string[],
+-	permissions: IAdminPortalPermissions
+-): AdminPortalAccess => {
+-	const groups = new Set(
+-		userGroups.map((group) => group.trim().toLowerCase()).filter(Boolean)
+-	);
+-	const matches = (configuredGroups: string[]) =>
+-		configuredGroups.some((group) => {
+-			const normalized = group.trim().toLowerCase();
+-			return normalized !== "" && groups.has(normalized);
+-		});
+-
+-	if (matches(permissions.writeGroups)) return "write";
+-	if (matches(permissions.readGroups)) return "read";
+-	return "none";
+-};
+-
+ interface ITabItem {
+ 	key: TabKey;
+ 	labelEntry: TranslationEntry;
+@@ -77,33 +55,7 @@ const TABS: ITabItem[] = [
+ 
+ const CoThinkerAdminContent: FC = () => {
+ 	const [activeTab, setActiveTab] = useState<TabKey>("overview");
+-	const { profile } = useUser();
+-	const [access, setAccess] = useState<AdminPortalAccess | null>(null);
+-	const [permissionError, setPermissionError] = useState<string>("");
+-	const [retryKey, setRetryKey] = useState(0);
+-
+-	useEffect(() => {
+-		let mounted = true;
+-		setAccess(null);
+-		setPermissionError("");
+-		InsightService.getAdminPortalPermissions()
+-			.then((permissions) => {
+-				if (mounted) {
+-					setAccess(
+-						resolveAdminPortalAccess(
+-							profile?.shortenedAdGroupsForGtm || [],
+-							permissions
+-						)
+-					);
+-				}
+-			})
+-			.catch((error: Error) => {
+-				if (mounted) setPermissionError(error.message);
+-			});
+-		return () => {
+-			mounted = false;
+-		};
+-	}, [profile, retryKey]);
++	const { access, permissionError, retry } = useAdminPortalPermissions();
+ 
+ 	const canWrite = access === "write";
+ 
+@@ -111,10 +63,7 @@ const CoThinkerAdminContent: FC = () => {
+ 		return (
+ 			<div className="admin-permission-state" role="alert">
+ 				<span>{permissionError}</span>
+-				<GenericButtonV2
+-					type="link"
+-					onClick={() => setRetryKey((value) => value + 1)}
+-				>
++				<GenericButtonV2 type="link" onClick={retry}>
+ 					<Text entry={{ "cothinker.admin.permissionRetry": {} }} />
+ 				</GenericButtonV2>
+ 			</div>
