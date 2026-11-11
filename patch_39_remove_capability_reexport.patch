@@ -1,0 +1,123 @@
+diff --git a/packages/web/src/components/CommentaryCapabilityProvider/index.tsx b/packages/web/src/components/CommentaryCapabilityProvider/index.tsx
+deleted file mode 100644
+index 716ba394be6528498adc7fa58f8847c3f2daead3..0000000000000000000000000000000000000000
+--- a/packages/web/src/components/CommentaryCapabilityProvider/index.tsx
++++ /dev/null
+@@ -1,4 +0,0 @@
+-export {
+-	CommentaryCapabilityProvider,
+-	useCommentaryCapability,
+-} from "@angen_frontend/components";
+diff --git a/packages/web/src/components/CustomPageInsightProvider/index.spec.tsx b/packages/web/src/components/CustomPageInsightProvider/index.spec.tsx
+index c75a6e2ef5ed550c734927488859e09216303f6c..6bd9bf9299259a8790c9e0af3ff63dad00c3736f 100644
+--- a/packages/web/src/components/CustomPageInsightProvider/index.spec.tsx
++++ b/packages/web/src/components/CustomPageInsightProvider/index.spec.tsx
+@@ -13,19 +13,6 @@ import {
+ } from ".";
+ import { DEFAULT_COMMENTARY_ROLES } from "../InsightCard";
+ 
+-jest.mock("../CommentaryCapabilityProvider", () => {
+-	const canGeneratePage = (tabId: string | null, panelIds: string[]) =>
+-		tabId === "tab-a" && panelIds.length > 0;
+-	const canGeneratePanel = (panelId: string) => panelId === "panel-a";
+-	return {
+-		useCommentaryCapability: () => ({
+-			loading: false,
+-			canGeneratePage,
+-			canGeneratePanel,
+-		}),
+-	};
+-});
+-
+ jest.mock("@angen_frontend/types", () => ({
+ 	__esModule: true,
+ 	AdditionalFilters: {
+@@ -64,34 +51,44 @@ jest.mock("@angen_frontend/services", () => ({
+ 	},
+ }));
+ 
+-jest.mock("@angen_frontend/components", () => ({
+-	useConfiguration: () => ({ language: "en" }),
+-	useGlobalFilter: () => ({
+-		selectedGlobalFilter: {
+-			yearMonth: "202612",
+-			period: "MAT",
+-			currency: "USD",
+-		},
+-	}),
+-	useCustomPages: () => ({
+-		viewOnlyFiltersInIndexedDb: {
+-			"panel-a:kpi-a": {
+-				selectedKey: "Bar:NonAgg",
+-				trendChartFilter: {
+-					"Bar:NonAgg": { "View By": "Org 1" },
++jest.mock("@angen_frontend/components", () => {
++	const canGeneratePage = (tabId: string | null, panelIds: string[]) =>
++		tabId === "tab-a" && panelIds.length > 0;
++	const canGeneratePanel = (panelId: string) => panelId === "panel-a";
++	return {
++		useCommentaryCapability: () => ({
++			loading: false,
++			canGeneratePage,
++			canGeneratePanel,
++		}),
++		useConfiguration: () => ({ language: "en" }),
++		useGlobalFilter: () => ({
++			selectedGlobalFilter: {
++				yearMonth: "202612",
++				period: "MAT",
++				currency: "USD",
++			},
++		}),
++		useCustomPages: () => ({
++			viewOnlyFiltersInIndexedDb: {
++				"panel-a:kpi-a": {
++					selectedKey: "Bar:NonAgg",
++					trendChartFilter: {
++						"Bar:NonAgg": { "View By": "Org 1" },
++					},
+ 				},
+ 			},
+-		},
+-	}),
+-	useUser: () => ({
+-		profile: {
+-			email: "test@example.com",
+-			roles: [],
+-			shortenedAdGroupsForGtm: [],
+-		},
+-	}),
+-	useIndexedDB: () => [undefined, jest.fn(), false],
+-}));
++		}),
++		useUser: () => ({
++			profile: {
++				email: "test@example.com",
++				roles: [],
++				shortenedAdGroupsForGtm: [],
++			},
++		}),
++		useIndexedDB: () => [undefined, jest.fn(), false],
++	};
++});
+ 
+ const customPageData = {
+ 	id: "page-1",
+diff --git a/packages/web/src/components/CustomPageInsightProvider/index.tsx b/packages/web/src/components/CustomPageInsightProvider/index.tsx
+index ed6358fa71553d39f324a9fdbc86c53e31c096f1..f52dd4469714dfcc9d606747a17dcc10bda0eb24 100644
+--- a/packages/web/src/components/CustomPageInsightProvider/index.tsx
++++ b/packages/web/src/components/CustomPageInsightProvider/index.tsx
+@@ -21,12 +21,12 @@ import {
+ 	useState,
+ } from "react";
+ import {
++	useCommentaryCapability,
+ 	useConfiguration,
+ 	useCustomPages,
+ 	useGlobalFilter,
+ 	useUser,
+ } from "@angen_frontend/components";
+-import { useCommentaryCapability } from "../CommentaryCapabilityProvider";
+ import {
+ 	DEFAULT_COMMENTARY_ROLES,
+ 	getInsightCacheKey,
