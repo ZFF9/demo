@@ -1,0 +1,118 @@
+diff --git a/packages/web/src/components/InsightCard/index.spec.tsx b/packages/web/src/components/InsightCard/index.spec.tsx
+index 1852fdf..f709657 100644
+--- a/packages/web/src/components/InsightCard/index.spec.tsx
++++ b/packages/web/src/components/InsightCard/index.spec.tsx
+@@ -165,6 +165,8 @@ jest.mock("@angen_frontend/components", () => ({
+ 			onChange={(event) => onChange(event.target.value)}
+ 		/>
+ 	),
++	useTranslateFn: () => (key: string) =>
++		(({ "language.en": "EN" } as Record<string, string>)[key] || ""),
+ 	GenericSelect: ({
+ 		value,
+ 		options,
+@@ -1202,6 +1204,7 @@ describe("InsightCard", () => {
+ 		expect(screen.getByText("KPI-1")).toBeInTheDocument();
+ 		expect(screen.getByText("KPI-2")).toBeInTheDocument();
+ 		expect(screen.getByText("Language")).toBeInTheDocument();
++		expect(screen.getByText("EN")).toBeInTheDocument();
+ 		expect(screen.getByText("Date Range")).toBeInTheDocument();
+ 		expect(screen.getByText("Month")).toBeInTheDocument();
+ 		expect(screen.getByText("1")).toBeInTheDocument();
+@@ -1215,6 +1218,30 @@ describe("InsightCard", () => {
+ 		expect(screen.queryByText("KPI-1")).not.toBeInTheDocument();
+ 	});
+ 
++	it("translates language values and falls back for missing translations", async () => {
++		(InsightService.generate as jest.Mock).mockResolvedValue({
++			summary: "Summary text",
++			filters: {
++				parameters: {
++					LANGUAGE: "en",
++					CURRENCY: "en",
++					"DATE RANGE": "ko",
++				},
++			},
++		});
++		render(<TestInsightCard />);
++
++		fireEvent.click(
++			screen.getByRole("button", { name: "Generate Insight" })
++		);
++		await screen.findByText("Generation Complete");
++		fireEvent.click(screen.getByRole("button", { name: "Show All" }));
++
++		expect(screen.getByText("EN")).toBeInTheDocument();
++		expect(screen.getByText("en")).toBeInTheDocument();
++		expect(screen.getByText("ko")).toBeInTheDocument();
++	});
++
+ 	it("hides the Panel scope summary", async () => {
+ 		(InsightService.generate as jest.Mock).mockResolvedValue({
+ 			summary: "Summary text",
+diff --git a/packages/web/src/components/InsightCard/index.tsx b/packages/web/src/components/InsightCard/index.tsx
+index 5be6353..2ffa71b 100644
+--- a/packages/web/src/components/InsightCard/index.tsx
++++ b/packages/web/src/components/InsightCard/index.tsx
+@@ -15,6 +15,7 @@ import {
+ 	CoThinkerThumbsUpSvgIcon,
+ 	CoThinkerThumbsDownSvgIcon,
+ 	CoThinkerFeedbackSuccessSvgIcon,
++	useTranslateFn,
+ } from "@angen_frontend/components";
+ import { InsightService, InsightTimeoutError } from "@angen_frontend/services";
+ import type {
+@@ -24,6 +25,7 @@ import type {
+ 	InsightFilters,
+ 	InsightFeedbackReason,
+ 	InsightScope,
++	TranslationKey,
+ } from "@angen_frontend/types";
+ import { CopyOutlined, DownOutlined } from "@ant-design/icons";
+ import { FC, useCallback, useEffect, useRef, useState } from "react";
+@@ -686,6 +688,21 @@ interface IInsightFilterGroupResult {
+ 	kpiCardCount: number;
+ }
+ 
++const InsightCardFilterEntry: FC<IInsightFilterEntry> = ({ label, value }) => {
++	const translate = useTranslateFn();
++	const displayValue =
++		label.toUpperCase() === "LANGUAGE"
++			? translate(`language.${value}` as TranslationKey) || value
++			: value;
++
++	return (
++		<div className="insightCard__filterValue">
++			<span>{label}</span>
++			<strong>{displayValue}</strong>
++		</div>
++	);
++};
++
+ const isEmptyFilterValue = (value: unknown): boolean => {
+ 	if (value === null || typeof value === "undefined" || value === "")
+ 		return true;
+@@ -1007,17 +1024,12 @@ const InsightCardFilters: FC<{
+ 								</p>
+ 							)}
+ 							<div className="insightCard__filterGrid">
+-								{group.entries.map(
+-									({ label, value }, index) => (
+-										<div
+-											className="insightCard__filterValue"
+-											key={`${label}:${value}:${index}`}
+-										>
+-											<span>{label}</span>
+-											<strong>{value}</strong>
+-										</div>
+-									)
+-								)}
++								{group.entries.map((entry, index) => (
++									<InsightCardFilterEntry
++										{...entry}
++										key={`${entry.label}:${entry.value}:${index}`}
++									/>
++								))}
+ 							</div>
+ 						</div>
+ 					))}
