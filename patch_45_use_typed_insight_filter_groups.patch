@@ -1,0 +1,160 @@
+diff --git a/packages/types/src/index.ts b/packages/types/src/index.ts
+index e7c6644..bde3481 100644
+--- a/packages/types/src/index.ts
++++ b/packages/types/src/index.ts
+@@ -324,7 +324,24 @@ export interface IInsightCommentarySection {
+ 	citations?: unknown[];
+ }
+ 
+-export type InsightFilters = Record<string, unknown> | unknown[];
++export type InsightFilterValue =
++	| string
++	| number
++	| boolean
++	| null
++	| InsightFilterValue[]
++	| { [key: string]: InsightFilterValue };
++
++export interface IInsightFilterGroup {
++	kpiCardId?: string;
++	workbookUrlName?: string;
++	viewUrlName?: string;
++	filters?: Record<string, InsightFilterValue>;
++}
++
++export type InsightFilters =
++	| Record<string, InsightFilterValue>
++	| IInsightFilterGroup[];
+ 
+ export interface IInsightGenerateApiResponse {
+ 	code: number;
+diff --git a/packages/web/src/components/InsightCard/index.tsx b/packages/web/src/components/InsightCard/index.tsx
+index b9259a7..a607754 100644
+--- a/packages/web/src/components/InsightCard/index.tsx
++++ b/packages/web/src/components/InsightCard/index.tsx
+@@ -28,6 +28,7 @@ import type {
+ 	IInsightGeneratePayload,
+ 	IInsightGenerateResponse,
+ 	InsightFilters,
++	InsightFilterValue,
+ 	InsightFeedbackReason,
+ 	InsightScope,
+ 	ICustomPagePanelTemplateData,
+@@ -686,7 +687,7 @@ interface IInsightFilterEntry {
+ 	value: string;
+ }
+ 
+-interface IInsightFilterGroup {
++interface IInsightFilterGroupDisplay {
+ 	kpiCardId?: string;
+ 	workbookUrlName?: string;
+ 	viewUrlName?: string;
+@@ -695,7 +696,7 @@ interface IInsightFilterGroup {
+ }
+ 
+ interface IInsightFilterGroupResult {
+-	groups: IInsightFilterGroup[];
++	groups: IInsightFilterGroupDisplay[];
+ 	kpiCardCount: number;
+ }
+ 
+@@ -723,17 +724,14 @@ const InsightCardFilterEntry: FC<IInsightFilterEntry> = ({ label, value }) => {
+ 	);
+ };
+ 
+-const isEmptyFilterValue = (value: unknown): boolean => {
+-	if (value === null || typeof value === "undefined" || value === "")
+-		return true;
++const isEmptyFilterValue = (value: InsightFilterValue): boolean => {
++	if (value === null || value === "") return true;
+ 	if (Array.isArray(value)) return value.length === 0;
+-	return (
+-		typeof value === "object" && Object.keys(value as object).length === 0
+-	);
++	return typeof value === "object" && Object.keys(value).length === 0;
+ };
+ 
+ export const flattenInsightFilters = (
+-	filters?: InsightFilters | unknown,
++	filters?: InsightFilterValue,
+ 	path: string[] = []
+ ): IInsightFilterEntry[] => {
+ 	if (!filters || isEmptyFilterValue(filters)) return [];
+@@ -762,27 +760,12 @@ export const flattenInsightFilters = (
+ 				: [];
+ 		}
+ 		if (typeof value === "object") {
+-			return flattenInsightFilters(
+-				value as Record<string, unknown>,
+-				nextPath
+-			);
++			return flattenInsightFilters(value, nextPath);
+ 		}
+ 		return [{ label: key, value: String(value) }];
+ 	});
+ };
+ 
+-const isInsightFilterGroup = (
+-	value: unknown
+-): value is {
+-	kpiCardId?: unknown;
+-	workbookUrlName?: unknown;
+-	viewUrlName?: unknown;
+-	filters?: unknown;
+-} => {
+-	if (!value || typeof value !== "object") return false;
+-	return "kpiCardId" in value || "filters" in value || "viewUrlName" in value;
+-};
+-
+ const collectTemplateViews = (
+ 	templateData?: ICustomPagePanelTemplateData
+ ): IKPICardView[] =>
+@@ -830,26 +813,10 @@ const groupInsightFilters = (
+ 	filters?: InsightFilters,
+ 	views: IKPICardView[] = []
+ ): IInsightFilterGroupResult => {
+-	if (
+-		Array.isArray(filters) &&
+-		filters.length > 0 &&
+-		filters.every(isInsightFilterGroup)
+-	) {
++	if (Array.isArray(filters) && filters.length > 0) {
+ 		return {
+ 			groups: filters.map((group) => {
+-				let kpiCardId: string | undefined;
+-				let workbookUrlName: string | undefined;
+-				let viewUrlName: string | undefined;
+-
+-				if (typeof group.kpiCardId === "string") {
+-					kpiCardId = group.kpiCardId;
+-				}
+-				if (typeof group.workbookUrlName === "string") {
+-					workbookUrlName = group.workbookUrlName;
+-				}
+-				if (typeof group.viewUrlName === "string") {
+-					viewUrlName = group.viewUrlName;
+-				}
++				const { kpiCardId, workbookUrlName, viewUrlName } = group;
+ 				let matchedView: IKPICardView | undefined;
+ 
+ 				if (workbookUrlName && viewUrlName) {
+@@ -885,6 +852,10 @@ const groupInsightFilters = (
+ 		};
+ 	}
+ 
++	if (Array.isArray(filters)) {
++		return { groups: [], kpiCardCount: 0 };
++	}
++
+ 	const entries = sortInsightFilterEntries(flattenInsightFilters(filters));
+ 	return {
+ 		groups: entries.length ? [{ entries }] : [],
+@@ -1112,7 +1083,7 @@ const InsightCardFailure: FC<{
+ 
+ const InsightCardFilters: FC<{
+ 	filtersExpanded: boolean;
+-	filterGroups: IInsightFilterGroup[];
++	filterGroups: IInsightFilterGroupDisplay[];
+ 	role: string;
+ 	scopeSummary?: string;
+ 	onToggle: () => void;
