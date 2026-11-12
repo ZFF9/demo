@@ -1,0 +1,113 @@
+diff --git a/packages/components/src/MenuContent/index.spec.tsx b/packages/components/src/MenuContent/index.spec.tsx
+index ff36a2f..0961721 100644
+--- a/packages/components/src/MenuContent/index.spec.tsx
++++ b/packages/components/src/MenuContent/index.spec.tsx
+@@ -25,11 +25,16 @@ import { IConfig, InsightService } from "@angen_frontend/services";
+ import { useTrackingFn } from "../GTMTrackingProvider";
+ import { useUser } from "../UserProvider";
+ import { useCommentaryCapability } from "../CommentaryCapabilityProvider";
++import { useAdminPortalPermissions } from "../Hooks/useAdminPortalPermissions";
+ 
+ jest.mock("../CommentaryCapabilityProvider", () => ({
+ 	useCommentaryCapability: jest.fn(),
+ }));
+ 
++jest.mock("../Hooks/useAdminPortalPermissions", () => ({
++	useAdminPortalPermissions: jest.fn(),
++}));
++
+ jest.mock("@angen_frontend/services", () => ({
+ 	InsightService: {
+ 		getCapability: jest.fn(),
+@@ -474,6 +479,9 @@ describe("Menu Content", () => {
+ 			...mockConfig.menuRedirectUrl,
+ 			coThinkerAdmin: "/cothinker-admin",
+ 		};
++		(useCommentaryCapability as jest.Mock).mockReturnValue({
++			enabled: true,
++		});
+ 		(useAdminPortalPermissions as jest.Mock).mockReturnValue({ access });
+ 		render(<MenuContent />);
+ 		expect(
+@@ -482,6 +490,24 @@ describe("Menu Content", () => {
+ 		expect(useAdminPortalPermissions).toHaveBeenCalledWith(true);
+ 	});
+ 
++	it("hides Portal when capability is enabled but access is none", () => {
++		mockConfig.menuRedirectUrl = {
++			...mockConfig.menuRedirectUrl,
++			coThinkerAdmin: "/cothinker-admin",
++		};
++		(useCommentaryCapability as jest.Mock).mockReturnValue({
++			enabled: true,
++		});
++		(useAdminPortalPermissions as jest.Mock).mockReturnValue({
++			access: "none",
++		});
++		render(<MenuContent />);
++
++		expect(
++			screen.queryByText("sideMenu.sections.coThinkerAdmin")
++		).not.toBeInTheDocument();
++	});
++
+ 	it.each([
+ 		{ access: "none", permissionError: "" },
+ 		{ access: null, permissionError: "" },
+@@ -508,6 +534,10 @@ describe("Menu Content", () => {
+ 	);
+ 
+ 	it("hides Portal and disables permission loading when its link is absent", () => {
++		mockConfig.menuRedirectUrl = {
++			...mockConfig.menuRedirectUrl,
++			coThinkerAdmin: undefined,
++		};
+ 		render(<MenuContent />);
+ 		expect(
+ 			screen.queryByText("sideMenu.sections.coThinkerAdmin")
+diff --git a/packages/components/src/MenuContent/index.tsx b/packages/components/src/MenuContent/index.tsx
+index 6982110..9dbe2b6 100644
+--- a/packages/components/src/MenuContent/index.tsx
++++ b/packages/components/src/MenuContent/index.tsx
+@@ -488,31 +488,6 @@ export const MenuContent: FC<IProps> = ({ sections = {} }) => {
+ 	);
+ 
+ 	const menuItems = useMemo(() => {
+-		const otherSections: ITranslatedProject = {
+-			"/other_platforms": {
+-				iconSuffixType: LabelType.EXTERNAL_LINK,
+-				label: {
+-					[`sideMenu.sections.${otherSectionConfig.otherOrHomePageLabelKey}`]:
+-						{},
+-				},
+-				url: otherSectionConfig.otherOrHomePageLink,
+-			},
+-		};
+-		if (
+-			otherSectionConfig.coThinkerAdminLink &&
+-			(access === "read" || access === "write")
+-		) {
+-			otherSections["/cothinker_admin"] = {
+-				iconSuffixType: LabelType.EXTERNAL_LINK,
+-				label: { "sideMenu.sections.coThinkerAdmin": {} },
+-				url: otherSectionConfig.coThinkerAdminLink,
+-			};
+-		}
+-		otherSections["/help&Support"] = {
+-			iconSuffixType: LabelType.EXTERNAL_LINK,
+-			label: { "sideMenu.sections.help&Support": {} },
+-			url: otherSectionConfig.helpAndSupportLink,
+-		};
+ 		const otherItems = mapContent(
+ 			translateLabel,
+ 			translateIconMapping,
+@@ -525,7 +500,8 @@ export const MenuContent: FC<IProps> = ({ sections = {} }) => {
+ 					},
+ 					url: otherSectionConfig.otherOrHomePageLink,
+ 				},
+-				...(isCoThinkerEnabled
++				...(isCoThinkerEnabled &&
++				(access === "read" || access === "write")
+ 					? {
+ 							"/cothinker_admin": {
+ 								iconSuffixType: LabelType.EXTERNAL_LINK,
