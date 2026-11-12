@@ -1,0 +1,111 @@
+diff --git a/packages/web/src/components/InsightCard/index.spec.tsx b/packages/web/src/components/InsightCard/index.spec.tsx
+index 9a988f6..7b446c5 100644
+--- a/packages/web/src/components/InsightCard/index.spec.tsx
++++ b/packages/web/src/components/InsightCard/index.spec.tsx
+@@ -47,6 +47,16 @@ jest.mock("@angen_frontend/services", () => ({
+ }));
+ 
+ jest.mock("@angen_frontend/components", () => ({
++	Text: ({
++		entry,
++	}: {
++		entry: Record<string, Record<string, string | number>>;
++	}) => {
++		const translations: Record<string, string> = {
++			"filter.advanced.options.marketDefinition.title": "J&J Brand(s)",
++		};
++		return translations[Object.keys(entry)[0]] || "";
++	},
+ 	GenericButtonV2: ({
+ 		children,
+ 		loading,
+@@ -166,8 +176,13 @@ jest.mock("@angen_frontend/components", () => ({
+ 			onChange={(event) => onChange(event.target.value)}
+ 		/>
+ 	),
+-	useTranslateFn: () => (key: string) =>
+-		(({ "language.en": "EN" } as Record<string, string>)[key] || ""),
++	useTranslateFn: () => (key: string) => {
++		const translations: Record<string, string> = {
++			"language.en": "EN",
++			"filter.advanced.options.marketDefinition.title": "J&J Brand(s)",
++		};
++		return translations[key] || "";
++	},
+ 	useTableau: () => ({ projects: mockTableauProjects }),
+ 	GenericSelect: ({
+ 		value,
+@@ -2176,4 +2191,36 @@ describe("InsightCard", () => {
+ 			"GEOGRAPHY LVL1",
+ 		]);
+ 	});
++
++	it("translates exact advanced-filter keys and falls back to interface labels", async () => {
++		(InsightService.generate as jest.Mock).mockResolvedValue({
++			content: "Generated content",
++			filters: {
++				parameters: {
++					marketDefinition: "DARZALEX",
++					geography: "Japan",
++					"J&J BRAND(S)": "DARZALEX",
++					customField: "value",
++				},
++			},
++		});
++		const { container } = render(<TestInsightCard />);
++
++		fireEvent.click(
++			screen.getByRole("button", { name: "Generate Insight" })
++		);
++		await screen.findByText("Generation Complete");
++		fireEvent.click(screen.getByRole("button", { name: "Show All" }));
++
++		const filterLabels = Array.from(
++			container.querySelectorAll(".insightCard__filterValue span")
++		).map((element) => element.textContent);
++
++		expect(filterLabels).toEqual([
++			"J&J Brand(s)",
++			"geography",
++			"J&J BRAND(S)",
++			"customField",
++		]);
++	});
+ });
+diff --git a/packages/web/src/components/InsightCard/index.tsx b/packages/web/src/components/InsightCard/index.tsx
+index b2a0422..3bbe3f0 100644
+--- a/packages/web/src/components/InsightCard/index.tsx
++++ b/packages/web/src/components/InsightCard/index.tsx
+@@ -15,6 +15,7 @@ import {
+ 	CoThinkerThumbsUpSvgIcon,
+ 	CoThinkerThumbsDownSvgIcon,
+ 	CoThinkerFeedbackSuccessSvgIcon,
++	Text,
+ 	useTableau,
+ 	useTranslateFn,
+ } from "@angen_frontend/components";
+@@ -697,6 +698,9 @@ interface IInsightFilterGroupResult {
+ 
+ const InsightCardFilterEntry: FC<IInsightFilterEntry> = ({ label, value }) => {
+ 	const translate = useTranslateFn();
++	const labelTranslationKey =
++		`filter.advanced.options.${label}.title` as TranslationKey;
++	const translatedLabel = translate(labelTranslationKey);
+ 	const displayValue =
+ 		label.toUpperCase() === "LANGUAGE"
+ 			? translate(`language.${value}` as TranslationKey) || value
+@@ -704,7 +708,13 @@ const InsightCardFilterEntry: FC<IInsightFilterEntry> = ({ label, value }) => {
+ 
+ 	return (
+ 		<div className="insightCard__filterValue">
+-			<span>{label}</span>
++			<span>
++				{translatedLabel ? (
++					<Text entry={{ [labelTranslationKey]: {} }} />
++				) : (
++					label
++				)}
++			</span>
+ 			<strong>{displayValue}</strong>
+ 		</div>
+ 	);
