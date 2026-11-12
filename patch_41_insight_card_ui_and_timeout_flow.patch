@@ -1,0 +1,2091 @@
+diff --git a/packages/components/src/Icons/CoThinkerFailedWarningSvgIcon/index.spec.tsx b/packages/components/src/Icons/CoThinkerFailedWarningSvgIcon/index.spec.tsx
+new file mode 100644
+index 0000000..7c5ebbe
+--- /dev/null
++++ b/packages/components/src/Icons/CoThinkerFailedWarningSvgIcon/index.spec.tsx
+@@ -0,0 +1,19 @@
++import "@testing-library/jest-dom";
++import { render, screen, waitFor } from "@testing-library/react";
++import CoThinkerFailedWarningSvgIcon from "./index";
++
++jest.mock("@ant-design/icons", () => ({
++	__esModule: true,
++	default: () => <div data-testid="fakeAntIcon">fake icon</div>,
++}));
++
++describe("CoThinkerFailedWarningSvgIcon", () => {
++	it("should render without errors", async () => {
++		render(<CoThinkerFailedWarningSvgIcon />);
++
++		await waitFor(() => {
++			const iconElement = screen.getByTestId("fakeAntIcon");
++			expect(iconElement).toBeInTheDocument();
++		});
++	});
++});
+diff --git a/packages/components/src/Icons/CoThinkerFailedWarningSvgIcon/index.tsx b/packages/components/src/Icons/CoThinkerFailedWarningSvgIcon/index.tsx
+new file mode 100644
+index 0000000..a34769b
+--- /dev/null
++++ b/packages/components/src/Icons/CoThinkerFailedWarningSvgIcon/index.tsx
+@@ -0,0 +1,105 @@
++import Icon from "@ant-design/icons";
++import { FC } from "react";
++
++interface IProps {
++	className?: string;
++	onClick?: () => void;
++}
++
++const CoThinkerFailedWarningSvg: FC = () => (
++	<svg
++		width="72"
++		height="74"
++		viewBox="0 0 145 150"
++		fill="none"
++		xmlns="http://www.w3.org/2000/svg"
++	>
++		<path
++			d="M75.4434 128.284C110.687 128.284 139.258 99.5668 139.258 64.1421C139.258 28.7174 110.687 0 75.4434 0C40.1994 0 11.6285 28.7174 11.6285 64.1421C11.6285 99.5668 40.1994 128.284 75.4434 128.284Z"
++			fill="url(#coThinkerFailedWarningRadial0)"
++		/>
++		<path
++			d="M5.95606 44.4714C9.24549 44.4714 11.9121 41.7911 11.9121 38.4848C11.9121 35.1785 9.24549 32.4982 5.95606 32.4982C2.66662 32.4982 0 35.1785 0 38.4848C0 41.7911 2.66662 44.4714 5.95606 44.4714Z"
++			fill="#F6B5AF"
++		/>
++		<path
++			d="M135.506 16.7138C138.795 16.7138 141.462 14.0336 141.462 10.7272C141.462 7.42094 138.795 4.74065 135.506 4.74065C132.216 4.74065 129.55 7.42094 129.55 10.7272C129.55 14.0336 132.216 16.7138 135.506 16.7138Z"
++			fill="#F6B5AF"
++		/>
++		<path
++			d="M13.9266 108.659C16.9027 108.659 19.3154 106.234 19.3154 103.243C19.3154 100.251 16.9027 97.8264 13.9266 97.8264C10.9504 97.8264 8.53777 100.251 8.53777 103.243C8.53777 106.234 10.9504 108.659 13.9266 108.659Z"
++			fill="#F4C6C1"
++		/>
++		<path
++			d="M139.593 108.659C142.569 108.659 144.982 106.234 144.982 103.243C144.982 100.251 142.569 97.8264 139.593 97.8264C136.617 97.8264 134.204 100.251 134.204 103.243C134.204 106.234 136.617 108.659 139.593 108.659Z"
++			fill="#F4C6C1"
++		/>
++		<path
++			d="M72.3317 34.8065C73.9715 31.9526 78.0875 31.9526 79.7273 34.8065L105.711 80.0381C107.351 82.8921 105.293 86.465 102.013 86.465H50.0459C46.7663 86.465 44.7083 82.8921 46.3481 80.0381L72.3317 34.8065Z"
++			strokeWidth="3.6197"
++			strokeLinejoin="round"
++			stroke="url(#coThinkerFailedWarningLinear1)"
++		/>
++		<path
++			d="M76.0295 50.2383V67.9371"
++			strokeWidth="3.6197"
++			strokeLinecap="round"
++			stroke="#E73522"
++		/>
++		<path
++			d="M76.0295 79.9956C78.096 79.9956 79.7713 78.3117 79.7713 76.2346C79.7713 74.1574 78.096 72.4736 76.0295 72.4736C73.9629 72.4736 72.2877 74.1574 72.2877 76.2346C72.2877 78.3117 73.9629 79.9956 76.0295 79.9956Z"
++			fill="#E73522"
++		/>
++		<path
++			d="M75.4433 150C108.86 150 135.949 146.021 135.949 141.113C135.949 136.205 108.86 132.227 75.4433 132.227C42.0268 132.227 14.9374 136.205 14.9374 141.113C14.9374 146.021 42.0268 150 75.4433 150Z"
++			fill="url(#coThinkerFailedWarningLinear2)"
++		/>
++		<defs>
++			<radialGradient
++				id="coThinkerFailedWarningRadial0"
++				cx="0"
++				cy="0"
++				r="1"
++				gradientUnits="userSpaceOnUse"
++				gradientTransform="translate(75.4434 64.1421) rotate(90) scale(66.9929 66.6511)"
++			>
++				<stop stopColor="#FFF9F7" />
++				<stop offset="0.68" stopColor="#FFDAD4" />
++				<stop offset="1" stopColor="#FFC7C0" stopOpacity="0.92" />
++			</radialGradient>
++			<linearGradient
++				id="coThinkerFailedWarningLinear1"
++				x1="49.6167"
++				y1="32.5389"
++				x2="102.739"
++				y2="90.8959"
++				gradientUnits="userSpaceOnUse"
++			>
++				<stop stopColor="#F0442D" />
++				<stop offset="1" stopColor="#E02B1B" />
++			</linearGradient>
++			<linearGradient
++				id="coThinkerFailedWarningLinear2"
++				x1="14.9374"
++				y1="141.113"
++				x2="135.949"
++				y2="141.113"
++				gradientUnits="userSpaceOnUse"
++			>
++				<stop stopColor="#D6D2D7" stopOpacity="0" />
++				<stop offset="0.5" stopColor="#BDB8C0" />
++				<stop offset="1" stopColor="#D6D2D7" stopOpacity="0" />
++			</linearGradient>
++		</defs>
++	</svg>
++);
++
++const CoThinkerFailedWarningSvgIcon: FC<IProps> = ({ className, onClick }) => (
++	<Icon
++		component={CoThinkerFailedWarningSvg}
++		className={className}
++		onClick={onClick}
++	/>
++);
++
++export default CoThinkerFailedWarningSvgIcon;
+diff --git a/packages/components/src/Icons/CoThinkerGeneratingSparkleSvgIcon/index.spec.tsx b/packages/components/src/Icons/CoThinkerGeneratingSparkleSvgIcon/index.spec.tsx
+new file mode 100644
+index 0000000..6b44390
+--- /dev/null
++++ b/packages/components/src/Icons/CoThinkerGeneratingSparkleSvgIcon/index.spec.tsx
+@@ -0,0 +1,19 @@
++import "@testing-library/jest-dom";
++import { render, screen, waitFor } from "@testing-library/react";
++import CoThinkerGeneratingSparkleSvgIcon from "./index";
++
++jest.mock("@ant-design/icons", () => ({
++	__esModule: true,
++	default: () => <div data-testid="fakeAntIcon">fake icon</div>,
++}));
++
++describe("CoThinkerGeneratingSparkleSvgIcon", () => {
++	it("should render without errors", async () => {
++		render(<CoThinkerGeneratingSparkleSvgIcon />);
++
++		await waitFor(() => {
++			const iconElement = screen.getByTestId("fakeAntIcon");
++			expect(iconElement).toBeInTheDocument();
++		});
++	});
++});
+diff --git a/packages/components/src/Icons/CoThinkerGeneratingSparkleSvgIcon/index.tsx b/packages/components/src/Icons/CoThinkerGeneratingSparkleSvgIcon/index.tsx
+new file mode 100644
+index 0000000..99f21c5
+--- /dev/null
++++ b/packages/components/src/Icons/CoThinkerGeneratingSparkleSvgIcon/index.tsx
+@@ -0,0 +1,95 @@
++import Icon from "@ant-design/icons";
++import { FC } from "react";
++
++interface IProps {
++	className?: string;
++	onClick?: () => void;
++}
++
++const CoThinkerGeneratingSparkleSvg: FC = () => (
++	<svg
++		width="36"
++		height="39"
++		viewBox="0 0 73 78"
++		fill="none"
++		xmlns="http://www.w3.org/2000/svg"
++	>
++		<path
++			d="M36.9736 64.3737C54.7499 64.3737 69.1605 49.9632 69.1605 32.1869C69.1605 14.4105 54.7499 0 36.9736 0C19.1973 0 4.78676 14.4105 4.78676 32.1869C4.78676 49.9632 19.1973 64.3737 36.9736 64.3737Z"
++			fill="url(#coThinkerGeneratingSparkleRadial0)"
++		/>
++		<path
++			d="M1.60934 34.9111C2.49816 34.9111 3.21869 34.1905 3.21869 33.3017C3.21869 32.4129 2.49816 31.6924 1.60934 31.6924C0.720527 31.6924 0 32.4129 0 33.3017C0 34.1905 0.720527 34.9111 1.60934 34.9111Z"
++			fill="#C9BEFF"
++		/>
++		<path
++			d="M12.1732 8.50091C13.062 8.50091 13.7826 7.78039 13.7826 6.89157C13.7826 6.00275 13.062 5.28223 12.1732 5.28223C11.2844 5.28223 10.5639 6.00275 10.5639 6.89157C10.5639 7.78039 11.2844 8.50091 12.1732 8.50091Z"
++			fill="#B5A6FF"
++		/>
++		<path
++			d="M70.1674 47.9016C70.9969 47.9016 71.6694 47.2291 71.6694 46.3995C71.6694 45.57 70.9969 44.8975 70.1674 44.8975C69.3378 44.8975 68.6653 45.57 68.6653 46.3995C68.6653 47.2291 69.3378 47.9016 70.1674 47.9016Z"
++			fill="#C0B4FF"
++		/>
++		<path
++			d="M37.315 12C39.6855 22.4477 46.0068 28.8568 56.6301 31.315C46.0068 33.7733 39.6855 40.1824 37.315 50.6301C34.9446 40.1824 28.6233 33.7733 18 31.315C28.6233 28.8568 34.9446 22.4477 37.315 12Z"
++			fill="url(#coThinkerGeneratingSparkleLinear1)"
++		/>
++		<path
++			d="M65.9418 9.65625C66.6928 13.0895 68.8386 15.2353 72.3792 16.0936C68.8386 16.9519 66.6928 19.0977 65.9418 22.531C65.1908 19.0977 63.045 16.9519 59.5044 16.0936C63.045 15.2353 65.1908 13.0895 65.9418 9.65625Z"
++			fill="#A18CF8"
++		/>
++		<path
++			d="M36.9736 78.0002C55.935 78.0002 71.3063 75.7426 71.3063 72.9576C71.3063 70.1727 55.935 67.915 36.9736 67.915C18.0122 67.915 2.64098 70.1727 2.64098 72.9576C2.64098 75.7426 18.0122 78.0002 36.9736 78.0002Z"
++			fill="url(#coThinkerGeneratingSparkleLinear2)"
++		/>
++		<defs>
++			<radialGradient
++				id="coThinkerGeneratingSparkleRadial0"
++				cx="0"
++				cy="0"
++				r="1"
++				gradientUnits="userSpaceOnUse"
++				gradientTransform="translate(36.9736 32.1869) rotate(90) scale(33.2598)"
++			>
++				<stop stopColor="#FBF9FF" />
++				<stop offset="1" stopColor="#F2EDFF" />
++			</radialGradient>
++			<linearGradient
++				id="coThinkerGeneratingSparkleLinear1"
++				x1="23.2677"
++				y1="16.3898"
++				x2="53.1182"
++				y2="49.7521"
++				gradientUnits="userSpaceOnUse"
++			>
++				<stop stopColor="#9A7CF8" />
++				<stop offset="1" stopColor="#624CD5" />
++			</linearGradient>
++			<linearGradient
++				id="coThinkerGeneratingSparkleLinear2"
++				x1="2.64098"
++				y1="72.9576"
++				x2="71.3063"
++				y2="72.9576"
++				gradientUnits="userSpaceOnUse"
++			>
++				<stop stopColor="#D6D2D7" stopOpacity="0" />
++				<stop offset="0.5" stopColor="#BDB8C0" />
++				<stop offset="1" stopColor="#D6D2D7" stopOpacity="0" />
++			</linearGradient>
++		</defs>
++	</svg>
++);
++
++const CoThinkerGeneratingSparkleSvgIcon: FC<IProps> = ({
++	className,
++	onClick,
++}) => (
++	<Icon
++		component={CoThinkerGeneratingSparkleSvg}
++		className={className}
++		onClick={onClick}
++	/>
++);
++
++export default CoThinkerGeneratingSparkleSvgIcon;
+diff --git a/packages/components/src/Icons/CoThinkerRadarLogoSvgIcon/index.spec.tsx b/packages/components/src/Icons/CoThinkerRadarLogoSvgIcon/index.spec.tsx
+new file mode 100644
+index 0000000..56c9a94
+--- /dev/null
++++ b/packages/components/src/Icons/CoThinkerRadarLogoSvgIcon/index.spec.tsx
+@@ -0,0 +1,19 @@
++import "@testing-library/jest-dom";
++import { render, screen, waitFor } from "@testing-library/react";
++import CoThinkerRadarLogoSvgIcon from "./index";
++
++jest.mock("@ant-design/icons", () => ({
++	__esModule: true,
++	default: () => <div data-testid="fakeAntIcon">fake icon</div>,
++}));
++
++describe("CoThinkerRadarLogoSvgIcon", () => {
++	it("should render without errors", async () => {
++		render(<CoThinkerRadarLogoSvgIcon />);
++
++		await waitFor(() => {
++			const iconElement = screen.getByTestId("fakeAntIcon");
++			expect(iconElement).toBeInTheDocument();
++		});
++	});
++});
+diff --git a/packages/components/src/Icons/CoThinkerRadarLogoSvgIcon/index.tsx b/packages/components/src/Icons/CoThinkerRadarLogoSvgIcon/index.tsx
+new file mode 100644
+index 0000000..dd8c78d
+--- /dev/null
++++ b/packages/components/src/Icons/CoThinkerRadarLogoSvgIcon/index.tsx
+@@ -0,0 +1,123 @@
++import Icon from "@ant-design/icons";
++import { FC } from "react";
++
++interface IProps {
++	className?: string;
++	onClick?: () => void;
++}
++
++const CoThinkerRadarLogoSvg: FC = () => (
++	<svg
++		width="79"
++		height="14"
++		viewBox="0 0 193 29"
++		fill="none"
++		xmlns="http://www.w3.org/2000/svg"
++	>
++		<circle
++			cx="14.0982"
++			cy="14.1217"
++			r="12.1683"
++			strokeWidth="3.8597"
++			stroke="#E8E6E3"
++		/>
++		<path
++			d="M28.1963 14.0982C28.1963 12.2468 27.8317 10.4135 27.1232 8.70303C26.4147 6.99256 25.3762 5.43839 24.0671 4.12926C22.7579 2.82012 21.2038 1.78166 19.4933 1.07316C17.7828 0.36466 15.9496 -8.09272e-08 14.0982 0L14.0982 3.83831C15.4455 3.83831 16.7797 4.10369 18.0244 4.6193C19.2692 5.1349 20.4003 5.89064 21.353 6.84335C22.3057 7.79607 23.0614 8.92711 23.577 10.1719C24.0926 11.4167 24.358 12.7508 24.358 14.0982H28.1963Z"
++			fill="#EB1700"
++		/>
++		<path
++			d="M28.1963 14.1217C28.1963 12.2703 27.8317 10.4371 27.1232 8.72659C26.4147 7.01612 25.3762 5.46195 24.0671 4.15281C22.7579 2.84368 21.2038 1.80522 19.4933 1.09672C17.7828 0.388217 15.9496 0.0235577 14.0982 0.0235577L14.0982 14.1217H28.1963Z"
++			fill="url(#coThinkerRadarLogoPaint0)"
++		/>
++		<line
++			x1="14.1577"
++			y1="0"
++			x2="14.1577"
++			y2="28.2201"
++			strokeWidth="0.142766"
++			stroke="#C1BBB3"
++		/>
++		<line
++			x1="28.1963"
++			y1="14.205"
++			x2="0"
++			y2="14.205"
++			strokeWidth="0.142766"
++			stroke="#C1BBB3"
++		/>
++		<path
++			d="M20.8435 11.7956L16.8112 14.1101L20.8435 16.4246L12.6925 21.1048V16.4796L8.56598 18.7902V9.42997L12.6925 11.7995V16.4757L16.819 14.1317L12.6925 11.7445V7.11542L20.8435 11.7956Z"
++			fill="#EB1700"
++		/>
++		<path
++			d="M50.782 15.7947C52.4666 18.5073 54.1513 21.1627 55.8359 23.8753H51.4672L46.7274 16.1374H43.6437V23.8753H39.6176V3.88801H48.5548C52.5808 3.88801 55.1792 6.14371 55.1792 9.85564C55.1792 12.7966 53.5231 15.0523 50.782 15.7947ZM43.6437 6.97176V13.0536H47.6697C50.1252 13.0536 51.0389 11.7973 51.0389 9.9984C51.0389 8.19955 50.1252 6.97176 47.6697 6.97176H43.6437Z"
++			fill="#564C47"
++		/>
++		<path
++			d="M74.7346 23.8753H70.68L69.1952 19.2211L68.1673 16.0803L65.5404 7.8569L63.0277 16.0803L62.0569 19.2211L60.6293 23.8753H56.6604L62.9706 3.88801H68.1673L74.7346 23.8753Z"
++			fill="#564C47"
++		/>
++		<path
++			d="M83.7677 3.88801C89.1928 3.88801 93.333 6.97176 93.333 13.6532C93.333 20.3347 89.1928 23.8753 83.7677 23.8753H76.3153V3.88801H83.7677ZM80.3413 20.6773H83.0538C86.5088 20.6773 89.1928 18.9641 89.1928 13.9102C89.1928 8.77061 86.5088 7.05742 83.0538 7.05742H80.3413V20.6773Z"
++			fill="#564C47"
++		/>
++		<path
++			d="M111.572 23.8753H107.517L106.032 19.2211L105.004 16.0803L102.377 7.8569L99.8648 16.0803L98.894 19.2211L97.4663 23.8753H93.4974L99.8077 3.88801H105.004L111.572 23.8753Z"
++			fill="#564C47"
++		/>
++		<path
++			d="M124.317 15.7947C126.001 18.5073 127.686 21.1627 129.371 23.8753H125.002L120.262 16.1374H117.178V23.8753H113.152V3.88801H122.089C126.115 3.88801 128.714 6.14371 128.714 9.85564C128.714 12.7966 127.058 15.0523 124.317 15.7947ZM117.178 6.97176V13.0536H121.204C123.66 13.0536 124.574 11.7973 124.574 9.9984C124.574 8.19955 123.66 6.97176 121.204 6.97176H117.178Z"
++			fill="#564C47"
++		/>
++		<path
++			d="M132.518 24.3321C131.062 24.3321 130.091 23.3613 130.091 21.9051C130.091 20.506 131.062 19.4781 132.518 19.4781C133.946 19.4781 134.973 20.506 134.973 21.9051C134.973 23.3613 133.946 24.3321 132.518 24.3321Z"
++			fill="#EB1700"
++		/>
++		<path
++			d="M153.847 23.8753H149.793L148.308 19.2211L147.28 16.0803L144.653 7.8569L142.14 16.0803L141.17 19.2211L139.742 23.8753H135.773L142.083 3.88801H147.28L153.847 23.8753Z"
++			fill="#EB1700"
++		/>
++		<path
++			d="M159.454 23.8753H155.428V3.88801H159.454V23.8753Z"
++			fill="#EB1700"
++		/>
++		<path
++			d="M144.658 7.85258L149.786 23.8662H139.744L144.658 7.85258Z"
++			fill="url(#coThinkerRadarLogoPaint1)"
++		/>
++		<defs>
++			<linearGradient
++				id="coThinkerRadarLogoPaint0"
++				x1="24.0918"
++				y1="4.15188"
++				x2="14.1101"
++				y2="14.1336"
++				gradientUnits="userSpaceOnUse"
++			>
++				<stop stopColor="#EB1700" stopOpacity="0.8" />
++				<stop offset="1" stopColor="white" stopOpacity="0" />
++			</linearGradient>
++			<linearGradient
++				id="coThinkerRadarLogoPaint1"
++				x1="144.765"
++				y1="7.85258"
++				x2="144.765"
++				y2="23.8662"
++				gradientUnits="userSpaceOnUse"
++			>
++				<stop stopColor="#EB1700" stopOpacity="0.6" />
++				<stop offset="1" stopColor="white" stopOpacity="0" />
++			</linearGradient>
++		</defs>
++	</svg>
++);
++
++const CoThinkerRadarLogoSvgIcon: FC<IProps> = ({ className, onClick }) => (
++	<Icon
++		component={CoThinkerRadarLogoSvg}
++		className={className}
++		onClick={onClick}
++	/>
++);
++
++export default CoThinkerRadarLogoSvgIcon;
+diff --git a/packages/components/src/Icons/CoThinkerSummaryDocSvgIcon/index.spec.tsx b/packages/components/src/Icons/CoThinkerSummaryDocSvgIcon/index.spec.tsx
+new file mode 100644
+index 0000000..5fdb592
+--- /dev/null
++++ b/packages/components/src/Icons/CoThinkerSummaryDocSvgIcon/index.spec.tsx
+@@ -0,0 +1,19 @@
++import "@testing-library/jest-dom";
++import { render, screen, waitFor } from "@testing-library/react";
++import CoThinkerSummaryDocSvgIcon from "./index";
++
++jest.mock("@ant-design/icons", () => ({
++	__esModule: true,
++	default: () => <div data-testid="fakeAntIcon">fake icon</div>,
++}));
++
++describe("CoThinkerSummaryDocSvgIcon", () => {
++	it("should render without errors", async () => {
++		render(<CoThinkerSummaryDocSvgIcon />);
++
++		await waitFor(() => {
++			const iconElement = screen.getByTestId("fakeAntIcon");
++			expect(iconElement).toBeInTheDocument();
++		});
++	});
++});
+diff --git a/packages/components/src/Icons/CoThinkerSummaryDocSvgIcon/index.tsx b/packages/components/src/Icons/CoThinkerSummaryDocSvgIcon/index.tsx
+new file mode 100644
+index 0000000..18728d0
+--- /dev/null
++++ b/packages/components/src/Icons/CoThinkerSummaryDocSvgIcon/index.tsx
+@@ -0,0 +1,33 @@
++import Icon from "@ant-design/icons";
++import { FC } from "react";
++
++interface IProps {
++	className?: string;
++	onClick?: () => void;
++}
++
++const CoThinkerSummaryDocSvg: FC = () => (
++	<svg
++		width="20"
++		height="20"
++		viewBox="0 0 40 40"
++		fill="none"
++		xmlns="http://www.w3.org/2000/svg"
++	>
++		<rect width="40" height="40" rx="10" fill="white" />
++		<path
++			d="M14.25 10C13.0162 10 12 11.0162 12 12.25V27.75C12 28.9837 13.0162 30 14.25 30H25.75C26.9838 30 28 28.9837 28 27.75V12.25C28 11.0162 26.9838 10 25.75 10H14.25ZM14.25 11.5H25.75C26.1733 11.5 26.5 11.8268 26.5 12.25V27.75C26.5 28.1732 26.1733 28.5 25.75 28.5H14.25C13.8268 28.5 13.5 28.1732 13.5 27.75V12.25C13.5 11.8268 13.8268 11.5 14.25 11.5ZM16.25 13.5C16.1506 13.4986 16.0519 13.517 15.9597 13.554C15.8675 13.5911 15.7836 13.6461 15.7128 13.7159C15.642 13.7857 15.5858 13.8688 15.5474 13.9605C15.5091 14.0522 15.4893 14.1506 15.4893 14.25C15.4893 14.3494 15.5091 14.4478 15.5474 14.5395C15.5858 14.6312 15.642 14.7143 15.7128 14.7841C15.7836 14.8539 15.8675 14.9089 15.9597 14.946C16.0519 14.983 16.1506 15.0014 16.25 15H23.75C23.8494 15.0014 23.9481 14.983 24.0403 14.946C24.1325 14.9089 24.2164 14.8539 24.2872 14.7841C24.358 14.7143 24.4142 14.6312 24.4526 14.5395C24.4909 14.4478 24.5107 14.3494 24.5107 14.25C24.5107 14.1506 24.4909 14.0522 24.4526 13.9605C24.4142 13.8688 24.358 13.7857 24.2872 13.7159C24.2164 13.6461 24.1325 13.5911 24.0403 13.554C23.9481 13.517 23.8494 13.4986 23.75 13.5H16.25ZM16.25 18C16.1506 17.9986 16.0519 18.017 15.9597 18.054C15.8675 18.0911 15.7836 18.1461 15.7128 18.2159C15.642 18.2857 15.5858 18.3688 15.5474 18.4605C15.5091 18.5522 15.4893 18.6506 15.4893 18.75C15.4893 18.8494 15.5091 18.9478 15.5474 19.0395C15.5858 19.1312 15.642 19.2143 15.7128 19.2841C15.7836 19.3539 15.8675 19.4089 15.9597 19.446C16.0519 19.483 16.1506 19.5014 16.25 19.5H20.75C20.8494 19.5014 20.9481 19.483 21.0403 19.446C21.1325 19.4089 21.2165 19.3539 21.2872 19.2841C21.358 19.2143 21.4142 19.1312 21.4526 19.0395C21.4909 18.9478 21.5107 18.8494 21.5107 18.75C21.5107 18.6506 21.4909 18.5522 21.4526 18.4605C21.4142 18.3688 21.358 18.2857 21.2872 18.2159C21.2165 18.1461 21.1325 18.0911 21.0403 18.054C20.9481 18.017 20.8494 17.9986 20.75 18H16.25ZM23.75 18C23.5511 18 23.3603 18.079 23.2197 18.2197C23.079 18.3603 23 18.5511 23 18.75C23 18.9489 23.079 19.1397 23.2197 19.2803C23.3603 19.421 23.5511 19.5 23.75 19.5C23.9489 19.5 24.1397 19.421 24.2803 19.2803C24.421 19.1397 24.5 21.9489 24.5 18.75C24.5 18.5511 24.421 18.3603 24.2803 18.2197C24.1397 18.079 23.9489 18 23.75 18ZM16.25 21C16.1506 20.9986 16.0519 21.017 15.9597 21.054C15.8675 21.0911 15.7836 21.1461 15.7128 21.2159C15.642 21.2857 15.5858 21.3688 15.5474 21.4605C15.5091 21.5522 15.4893 21.6506 15.4893 21.75C15.4893 21.8494 15.5091 21.9478 15.5474 22.0395C15.5858 22.1312 15.642 22.2143 15.7128 22.2841C15.7836 22.3539 15.8675 22.4089 15.9597 22.446C16.0519 22.483 16.1506 22.5014 16.25 22.5H19.25C19.3494 22.5014 19.4481 22.483 19.5403 22.446C19.6325 22.4089 19.7165 22.3539 19.7872 22.2841C19.858 22.2143 19.9142 22.1312 19.9526 22.0395C19.9909 21.9478 20.0107 21.8494 20.0107 21.75C20.0107 21.6506 19.9909 21.5522 19.9526 21.4605C19.9142 21.3688 19.858 21.2857 19.7872 21.2159C19.7165 21.1461 19.6325 21.0911 19.5403 21.054C19.4481 21.017 19.3494 20.9986 19.25 21H16.25ZM23.75 21C23.5511 21 23.3603 21.079 23.2197 21.2197C23.079 21.3603 23 21.5511 23 21.75C23 21.9489 23.079 22.1397 23.2197 22.2803C23.3603 22.421 23.5511 22.5 23.75 22.5C23.9489 22.5 24.1397 22.421 24.2803 22.2803C24.421 22.1397 24.5 21.9489 24.5 21.75C24.5 21.5511 24.421 21.3603 24.2803 21.2197C24.1397 21.079 23.9489 21 23.75 21ZM16.25 24C16.1506 23.9986 16.0519 24.017 15.9597 24.054C15.8675 24.0911 15.7836 24.1461 15.7128 24.2159C15.642 24.2857 15.5858 24.3688 15.5474 24.4605C15.5091 24.5522 15.4893 24.6506 15.4893 24.75C15.4893 24.8494 15.5091 24.9478 15.5474 25.0395C15.5858 25.1312 15.642 25.2143 15.7128 25.2841C15.7836 25.3539 15.8675 25.4089 15.9597 25.446C16.0519 25.483 16.1506 25.5014 16.25 25.5H20.75C20.8494 25.5014 20.9481 25.483 21.0403 25.446C21.1325 25.4089 21.2165 25.3539 21.2872 25.2841C21.358 25.2143 21.4142 25.1312 21.4526 25.0395C21.4909 24.9478 21.5107 24.8494 21.5107 24.75C21.5107 24.6506 21.4909 24.5522 21.4526 24.4605C21.4142 24.3688 21.358 24.2857 21.2872 24.2159C21.2165 24.1461 21.1325 24.0911 21.0403 24.054C20.9481 24.017 20.8494 23.9986 20.75 24H16.25ZM23.75 24C23.5511 24 23.3603 24.079 23.2197 24.2197C23.079 24.3603 23 24.5511 23 24.75C23 24.9489 23.079 25.1397 23.2197 25.2803C23.3603 25.421 23.5511 25.5 23.75 25.5C23.9489 25.5 24.1397 25.421 24.2803 25.2803C24.421 25.1397 24.5 24.9489 24.5 24.75C24.5 24.5511 24.421 24.3603 24.2803 24.2197C24.1397 24.079 23.9489 24 23.75 24Z"
++			fill="black"
++		/>
++	</svg>
++);
++
++const CoThinkerSummaryDocSvgIcon: FC<IProps> = ({ className, onClick }) => (
++	<Icon
++		component={CoThinkerSummaryDocSvg}
++		className={className}
++		onClick={onClick}
++	/>
++);
++
++export default CoThinkerSummaryDocSvgIcon;
+diff --git a/packages/components/src/index.ts b/packages/components/src/index.ts
+index 8f04755..a84866b 100644
+--- a/packages/components/src/index.ts
++++ b/packages/components/src/index.ts
+@@ -60,6 +60,10 @@ import CoThinkerFilterSvgIcon from "./Icons/CoThinkerFilterSvgIcon";
+ import CoThinkerThumbsUpSvgIcon from "./Icons/CoThinkerThumbsUpSvgIcon";
+ import CoThinkerThumbsDownSvgIcon from "./Icons/CoThinkerThumbsDownSvgIcon";
+ import CoThinkerFeedbackSuccessSvgIcon from "./Icons/CoThinkerFeedbackSuccessSvgIcon";
++import CoThinkerRadarLogoSvgIcon from "./Icons/CoThinkerRadarLogoSvgIcon";
++import CoThinkerSummaryDocSvgIcon from "./Icons/CoThinkerSummaryDocSvgIcon";
++import CoThinkerGeneratingSparkleSvgIcon from "./Icons/CoThinkerGeneratingSparkleSvgIcon";
++import CoThinkerFailedWarningSvgIcon from "./Icons/CoThinkerFailedWarningSvgIcon";
+ 
+ import { AdminPanelHeader } from "./Section/AdminPanel/header";
+ import { AdvancedFilterButton } from "./AdvancedFilterButton";
+@@ -361,6 +365,10 @@ export {
+ 	CoThinkerThumbsUpSvgIcon,
+ 	CoThinkerThumbsDownSvgIcon,
+ 	CoThinkerFeedbackSuccessSvgIcon,
++	CoThinkerRadarLogoSvgIcon,
++	CoThinkerSummaryDocSvgIcon,
++	CoThinkerGeneratingSparkleSvgIcon,
++	CoThinkerFailedWarningSvgIcon,
+ 	AdminPanelProvider,
+ 	ConfigurationProvider,
+ 	CustomPagePanelEditProvider,
+diff --git a/packages/web/src/components/InsightCard/InsightGenerateButton/index.spec.tsx b/packages/web/src/components/InsightCard/InsightGenerateButton/index.spec.tsx
+index 563292a..8c4f9b5 100644
+--- a/packages/web/src/components/InsightCard/InsightGenerateButton/index.spec.tsx
++++ b/packages/web/src/components/InsightCard/InsightGenerateButton/index.spec.tsx
+@@ -109,7 +109,30 @@ describe("InsightGenerateButton", () => {
+ 		expect(generateMock).toHaveBeenCalledTimes(1);
+ 	});
+ 
+-	it("disables the button when generating or disabled prop is true", () => {
++	it("calls generation.refreshResult when generation is in timeout state", () => {
++		const generateMock = jest.fn().mockResolvedValue(undefined);
++		const refreshResultMock = jest.fn().mockResolvedValue(undefined);
++		const onGenerateMock = jest.fn();
++		render(
++			<InsightGenerateButton
++				config={defaultConfig}
++				generation={{
++					...defaultGeneration,
++					isTimeout: true,
++					generate: generateMock,
++					refreshResult: refreshResultMock,
++				}}
++				onGenerate={onGenerateMock}
++			/>
++		);
++
++		fireEvent.click(screen.getByRole("button"));
++		expect(refreshResultMock).toHaveBeenCalledTimes(1);
++		expect(generateMock).not.toHaveBeenCalled();
++		expect(onGenerateMock).not.toHaveBeenCalled();
++	});
++
++	it("disables the button when generating, refreshing, or disabled prop is true", () => {
+ 		const { rerender } = render(
+ 			<InsightGenerateButton
+ 				config={defaultConfig}
+@@ -122,6 +145,18 @@ describe("InsightGenerateButton", () => {
+ 
+ 		expect(screen.getByRole("button")).toBeDisabled();
+ 
++		rerender(
++			<InsightGenerateButton
++				config={defaultConfig}
++				generation={{
++					...defaultGeneration,
++					isRefreshing: true,
++				}}
++			/>
++		);
++
++		expect(screen.getByRole("button")).toBeDisabled();
++
+ 		rerender(
+ 			<InsightGenerateButton
+ 				config={defaultConfig}
+diff --git a/packages/web/src/components/InsightCard/InsightGenerateButton/index.tsx b/packages/web/src/components/InsightCard/InsightGenerateButton/index.tsx
+index c99f4ed..54b720c 100644
+--- a/packages/web/src/components/InsightCard/InsightGenerateButton/index.tsx
++++ b/packages/web/src/components/InsightCard/InsightGenerateButton/index.tsx
+@@ -15,18 +15,31 @@ export const InsightGenerateButton: FC<{
+ 	className?: string;
+ 	label?: string;
+ 	disabled?: boolean;
+-}> = ({ config, generation, onGenerate, className, label, disabled }) => (
+-	<GenericButtonV2
+-		className={["insightGenerateButton", className]
+-			.filter(Boolean)
+-			.join(" ")}
+-		type="primary"
+-		disabled={disabled || generation.isGenerating}
+-		prefixIcon={
+-			<GenerateSparkleSvgIcon className="insightGenerateButton__icon" />
++}> = ({ config, generation, onGenerate, className, label, disabled }) => {
++	const handleClick = () => {
++		if (generation.isTimeout && generation.refreshResult) {
++			return generation.refreshResult();
+ 		}
+-		onClick={onGenerate ?? generation.generate}
+-	>
+-		{label ?? config.actionLabel ?? DEFAULT_ACTION_LABEL}
+-	</GenericButtonV2>
+-);
++		return (onGenerate ?? generation.generate)();
++	};
++
++	return (
++		<GenericButtonV2
++			className={["insightGenerateButton", className]
++				.filter(Boolean)
++				.join(" ")}
++			type="primary"
++			disabled={
++				disabled ||
++				generation.isGenerating ||
++				Boolean(generation.isRefreshing)
++			}
++			prefixIcon={
++				<GenerateSparkleSvgIcon className="insightGenerateButton__icon" />
++			}
++			onClick={handleClick}
++		>
++			{label ?? config.actionLabel ?? DEFAULT_ACTION_LABEL}
++		</GenericButtonV2>
++	);
++};
+diff --git a/packages/web/src/components/InsightCard/index.scss b/packages/web/src/components/InsightCard/index.scss
+index 3f6107c..c7414d8 100644
+--- a/packages/web/src/components/InsightCard/index.scss
++++ b/packages/web/src/components/InsightCard/index.scss
+@@ -2,28 +2,55 @@
+ 	position: relative;
+ 	display: flex;
+ 	flex-direction: column;
+-	gap: 18px;
+-	margin: 16px 0 0 8px;
+-	border: 1px solid #0f68b2;
+-	border-left: 0;
+-	border-radius: 0 5px 5px 0;
++	gap: 16px;
++	margin: 16px 0 0;
++	border-radius: 6px;
+ 	padding: 24px;
+-	background: #ffffff;
++	background: linear-gradient(90deg, #fef4f2 0%, #fff2ea 50%, #fff8e5 100%);
+ 	color: #564c47;
+ 
+ 	&--loading {
+-		min-height: 320px;
++		min-height: 256px;
+ 	}
+ 
+-	&::before {
+-		position: absolute;
+-		top: -1px;
+-		bottom: -1px;
+-		left: -8px;
+-		width: 8px;
+-		border-radius: 5px 0 0 5px;
+-		background: linear-gradient(180deg, #0f68b2 8%, #8c3bbb 95%);
+-		content: "";
++	&__brandRow {
++		display: flex;
++		align-items: center;
++		gap: 6px;
++		min-height: 15px;
++	}
++
++	&__brandPowerText {
++		color: #564c47;
++		font-size: 10px;
++		font-weight: 700;
++		line-height: 14px;
++	}
++
++	&__brandLogoGroup {
++		display: inline-flex;
++		align-items: center;
++		gap: 6px;
++	}
++
++	&__brandLogo {
++		display: block;
++		width: 69px;
++		height: 12px;
++	}
++
++	&__betaBadge {
++		display: inline-flex;
++		align-items: center;
++		justify-content: center;
++		width: 39px;
++		height: 15px;
++		border-radius: 30px;
++		background: #716c68;
++		color: #ffffff;
++		font-size: 8px;
++		font-weight: 700;
++		line-height: 1;
+ 	}
+ 
+ 	&__header {
+@@ -53,7 +80,7 @@
+ 
+ 	&__title {
+ 		margin: 0;
+-		color: #564c47;
++		color: #000000;
+ 		font-size: 16px;
+ 		font-weight: 700;
+ 		line-height: normal;
+@@ -78,7 +105,7 @@
+ 		&--loading {
+ 			padding: 4px 16px;
+ 			min-height: 27px;
+-			background: rgba(84, 25, 128, 0.12);
++			background: rgba(177, 155, 235, 0.2);
+ 			color: #541980;
+ 		}
+ 
+@@ -128,6 +155,11 @@
+ 		}
+ 	}
+ 
++	&__metaLabel {
++		color: #000000;
++		font-weight: 700;
++	}
++
+ 	&__headerActions {
+ 		display: flex;
+ 		align-items: center;
+@@ -360,120 +392,232 @@
+ 		}
+ 	}
+ 
+-	&__loading {
++	&__loading,
++	&__pending {
+ 		display: flex;
+ 		align-items: center;
+-		gap: 10px;
+-		margin-top: 10px;
+-		color: #655d58;
++		gap: 20px;
++		min-width: 0;
++	}
++
++	&__stateIcon {
++		display: block;
++		flex: 0 0 38px;
++		width: 38px;
++		height: 42px;
++	}
++
++	&__stateCopy {
++		display: flex;
++		flex-direction: column;
++		gap: 6px;
++		min-width: 0;
++	}
++
++	&__stateTitle {
++		margin: 0;
++		color: #000000;
++		font-size: 14px;
++		font-weight: 700;
++		line-height: 19px;
++	}
++
++	&__stateDescription {
++		margin: 0;
++		color: #564c47;
+ 		font-size: 12px;
+-		font-weight: 600;
++		font-weight: 400;
++		line-height: 19px;
++		word-break: break-word;
++	}
++
++	&__takeaways {
++		display: flex;
++		flex-direction: column;
++		align-items: flex-start;
++		gap: 8px;
++		min-width: 0;
++	}
++
++	&__takeawaysLabel {
++		margin: 0;
++		color: #a39992;
++		font-size: 10px;
++		font-weight: 700;
++		line-height: normal;
++		letter-spacing: 0;
++		text-transform: uppercase;
++	}
++
++	&__takeawaysSummary {
++		margin: 0;
++		color: #000000;
++		font-size: 12px;
++		font-weight: 400;
+ 		line-height: 18px;
++		white-space: pre-wrap;
++		word-break: break-word;
+ 	}
+ 
+-	&__loadingDots {
++	&__summaryToggle {
++		--btn-height: 19px;
++		--btn-padding-inline: 0;
++		--btn-padding-block: 0;
++		--btn-border: none;
++		--btn-default-bg: transparent;
++		--btn-hover-bg: transparent;
++		--btn-default-color: #eb1700;
++		--btn-hover-color: #9e0000;
++
+ 		display: inline-flex;
+ 		align-items: center;
+ 		gap: 6px;
+ 		flex: 0 0 auto;
++		color: #eb1700;
++		font-size: 10px;
++		font-weight: 700;
++		line-height: 19px;
++		text-decoration: underline;
+ 
+-		span {
+-			width: 8px;
+-			height: 8px;
+-			border-radius: 50%;
+-			background: #eb1700;
+-			animation: insightCommentaryDotPulse 1.2s ease-in-out infinite;
+-		}
+-
+-		span:nth-child(2) {
+-			background: rgba(235, 23, 0, 0.5);
+-			animation-delay: 0.15s;
++		svg {
++			width: 10px;
++			height: 10px;
++			transition: transform 0.2s ease;
+ 		}
+ 
+-		span:nth-child(3) {
+-			background: rgba(235, 23, 0, 0.25);
+-			animation-delay: 0.3s;
++		&[aria-expanded="true"] svg {
++			transform: rotate(180deg);
+ 		}
+ 	}
+ 
+-	&__sections {
+-		display: grid;
+-		gap: 32px;
+-		min-width: 0;
+-
+-		> div {
+-			display: flex;
+-			align-items: flex-start;
+-			gap: 16px;
+-			min-width: 0;
+-		}
++	&__summaryPanel {
++		display: flex;
++		flex-direction: column;
++		width: 100%;
++		box-sizing: border-box;
++		border-radius: 6px;
++		overflow: hidden;
++	}
+ 
+-		> div > div {
+-			min-width: 0;
+-		}
++	&__summaryHeader {
++		display: flex;
++		align-items: center;
++		gap: 6px;
++		padding: 12px 16px;
++		background: #edeae8;
++	}
+ 
+-		h3 {
+-			margin: 0 0 8px;
+-			color: #a39992;
+-			font-size: 10px;
+-			font-weight: 700;
+-			line-height: normal;
+-			letter-spacing: 0;
+-			text-transform: uppercase;
+-		}
++	&__summaryHeaderIcon {
++		display: block;
++		flex: 0 0 11px;
++		width: 11px;
++		height: 14px;
++	}
+ 
+-		p {
+-			margin: 0;
+-			color: #000000;
+-			font-size: 12px;
+-			line-height: 18px;
+-			white-space: pre-wrap;
+-			word-break: break-word;
+-		}
++	&__summaryHeaderTitle {
++		color: #7c726d;
++		font-size: 12px;
++		font-weight: 700;
++		line-height: 19px;
+ 	}
+ 
+-	&__sectionIcon {
+-		display: inline-flex;
+-		align-items: center;
+-		justify-content: center;
+-		flex: 0 0 32px;
+-		width: 32px;
+-		height: 32px;
+-		border-radius: 4px;
+-		background: #f1efed;
++	&__summaryBody {
++		padding: 16px;
++		background: #f8f6f4;
++	}
+ 
+-		img {
+-			width: 20px;
+-			height: 20px;
+-			object-fit: contain;
+-		}
++	&__summaryText {
++		margin: 0;
++		color: #000000;
++		font-size: 12px;
++		font-weight: 400;
++		line-height: 18px;
++		white-space: pre-wrap;
++		word-break: break-word;
+ 	}
+ 
+ 	&__failure {
+-		display: grid;
+-		grid-template-columns: minmax(0, 1fr) auto;
+-		align-items: center;
++		display: flex;
++		align-items: flex-start;
+ 		gap: 20px;
+-		border-left: 3px solid #eb1700;
+-		padding: 14px;
+-		background: #f8f7f6;
++		min-width: 0;
++	}
+ 
+-		p {
+-			margin: 6px 0 12px;
+-		}
++	&__failureIcon {
++		display: block;
++		flex: 0 0 60px;
++		width: 60px;
++		height: 67px;
++	}
++
++	&__failureBody {
++		display: flex;
++		flex-direction: column;
++		align-items: flex-start;
++		gap: 12px;
++		min-width: 0;
+ 	}
+ 
+ 	&__failureCopy {
++		display: flex;
++		flex-direction: column;
++		gap: 6px;
+ 		min-width: 0;
+ 	}
+ 
+ 	&__failureActions {
+ 		display: flex;
+ 		align-items: center;
+-		gap: 8px;
++		gap: 6px;
+ 		flex-wrap: wrap;
+ 	}
+ 
++	&__failureCloseBtn {
++		--btn-width: 56px;
++		--btn-height: 23px;
++		--btn-padding-inline: 14px;
++		--btn-padding-block: 2px;
++		--btn-border: 1px solid #a19995;
++		--btn-border-radius: 24px;
++		--btn-default-bg: #ffffff;
++		--btn-hover-bg: #f8f6f4;
++		--btn-default-color: #564c47;
++		--btn-hover-color: #2f2a27;
++		--btn-font-size: 10px;
++		--btn-font-weight: 700;
++
++		min-width: 56px;
++		height: 23px;
++		border-radius: 24px;
++		font-size: 10px;
++		font-weight: 700;
++		line-height: 19px;
++	}
++
++	&__failureRetryBtn {
++		--btn-width: 56px;
++		--btn-height: 23px;
++		--btn-padding-inline: 14px;
++		--btn-padding-block: 2px;
++		--btn-border: none;
++		--btn-border-radius: 24px;
++		--btn-default-bg: #eb1700;
++		--btn-hover-bg: #c91400;
++		--btn-default-color: #ffffff;
++		--btn-hover-color: #ffffff;
++		--btn-font-size: 10px;
++		--btn-font-weight: 700;
++
++		min-width: 56px;
++		height: 23px;
++		border-radius: 24px;
++		background: #eb1700;
++		color: #ffffff;
++		font-size: 10px;
++		font-weight: 700;
++		line-height: 19px;
++	}
++
+ 	&__stale,
+ 	&__error {
+ 		margin: 0;
+diff --git a/packages/web/src/components/InsightCard/index.spec.tsx b/packages/web/src/components/InsightCard/index.spec.tsx
+index 7b446c5..5d64093 100644
+--- a/packages/web/src/components/InsightCard/index.spec.tsx
++++ b/packages/web/src/components/InsightCard/index.spec.tsx
+@@ -215,6 +215,20 @@ jest.mock("@angen_frontend/components", () => ({
+ 	CoThinkerCompleteTickSvgIcon: ({ className }: { className?: string }) => (
+ 		<span className={className}>complete-tick</span>
+ 	),
++	CoThinkerRadarLogoSvgIcon: ({ className }: { className?: string }) => (
++		<span className={className}>radar-logo</span>
++	),
++	CoThinkerSummaryDocSvgIcon: ({ className }: { className?: string }) => (
++		<span className={className}>summary-doc</span>
++	),
++	CoThinkerGeneratingSparkleSvgIcon: ({
++		className,
++	}: {
++		className?: string;
++	}) => <span className={className}>generating-sparkle</span>,
++	CoThinkerFailedWarningSvgIcon: ({ className }: { className?: string }) => (
++		<span className={className}>failed-warning</span>
++	),
+ 	CoThinkerThumbsUpSvgIcon: ({ className }: { className?: string }) => (
+ 		<span className={className}>thumbs-up</span>
+ 	),
+@@ -408,6 +422,7 @@ describe("InsightCard", () => {
+ 
+ 	it("collects click-time context and displays backend text", async () => {
+ 		(InsightService.generate as jest.Mock).mockResolvedValue({
++			summary: "Backend summary text",
+ 			content: "Backend generated text",
+ 			criticalInsight: "Backend generated text",
+ 			correlationId: "correlation-1",
+@@ -419,8 +434,12 @@ describe("InsightCard", () => {
+ 		);
+ 
+ 		expect(
+-			await screen.findByText("Backend generated text")
++			await screen.findByText("Backend summary text")
+ 		).toBeInTheDocument();
++		fireEvent.click(
++			screen.getByRole("button", { name: "View Insights Summary" })
++		);
++		expect(screen.getByText("Backend generated text")).toBeInTheDocument();
+ 		expect(buildPayload).toHaveBeenCalledTimes(1);
+ 		expect(InsightService.generate).toHaveBeenCalled();
+ 		expect((InsightService.generate as jest.Mock).mock.calls[0][0]).toEqual(
+@@ -545,6 +564,7 @@ describe("InsightCard", () => {
+ 
+ 	it("collapses and restores the successful commentary body", async () => {
+ 		(InsightService.generate as jest.Mock).mockResolvedValue({
++			summary: "Generated text",
+ 			content: "Generated text",
+ 			criticalInsight: "Generated text",
+ 			correlationId: "correlation-1",
+@@ -721,8 +741,9 @@ describe("InsightCard", () => {
+ 				showGenerateButton={false}
+ 			/>
+ 		);
++		expect(screen.getByText("Generating Insight")).toBeInTheDocument();
+ 		expect(
+-			screen.getByText("Generating AI Commentary")
++			screen.getByText("Generating your insights...")
+ 		).toBeInTheDocument();
+ 
+ 		rerender(
+@@ -730,7 +751,10 @@ describe("InsightCard", () => {
+ 				config={config}
+ 				generation={{
+ 					...baseGeneration,
+-					insight: { criticalInsight: "Replacement insight" },
++					insight: {
++						summary: "Replacement insight",
++						criticalInsight: "Replacement insight",
++					},
+ 				}}
+ 				cacheKey="regeneration-cache"
+ 				showGenerateButton={false}
+@@ -908,6 +932,7 @@ describe("InsightCard", () => {
+ 
+ 	it("keeps old text and feedback available when filters become stale", async () => {
+ 		(InsightService.generate as jest.Mock).mockResolvedValue({
++			summary: "Generated text",
+ 			content: "Generated text",
+ 			criticalInsight: "Generated text",
+ 			correlationId: "correlation-1",
+@@ -932,6 +957,7 @@ describe("InsightCard", () => {
+ 
+ 	it("shows an error and allows retrying after generation fails", async () => {
+ 		let resolveRetry!: (value: {
++			summary: string;
+ 			content: string;
+ 			criticalInsight: string;
+ 			correlationId: string;
+@@ -954,7 +980,9 @@ describe("InsightCard", () => {
+ 			screen.getByRole("button", { name: "Generate Insight" })
+ 		);
+ 		expect(
+-			await screen.findByText("AI Commentary is unavailable")
++			await screen.findByText(
++				"We are not able to generate insights right now."
++			)
+ 		).toBeInTheDocument();
+ 		const failedStatus = screen.getByText("Generation Failed");
+ 		const failedIcon = screen.getByTestId("insight-header-failed-icon");
+@@ -972,8 +1000,8 @@ describe("InsightCard", () => {
+ 			screen.queryByText("Generation Complete")
+ 		).not.toBeInTheDocument();
+ 		expect(
+-			screen.queryByRole("button", { name: "Hide AI Commentary" })
+-		).not.toBeInTheDocument();
++			screen.getByRole("button", { name: "Hide AI Commentary" })
++		).toBeInTheDocument();
+ 		expect(
+ 			screen.getByText(
+ 				"The commentary could not be generated from the current visible context."
+@@ -985,12 +1013,14 @@ describe("InsightCard", () => {
+ 		expect(
+ 			screen.queryByTestId("insight-header-failed-icon")
+ 		).not.toBeInTheDocument();
++		expect(screen.getByText("Generating Insight")).toBeInTheDocument();
+ 		expect(
+-			screen.getByText("Generating... estimated 15 sec")
++			screen.getByText("Generating your insights...")
+ 		).toBeInTheDocument();
+ 
+ 		await act(async () => {
+ 			resolveRetry({
++				summary: "Generated after retry",
+ 				content: "Generated after retry",
+ 				criticalInsight: "Generated after retry",
+ 				correlationId: "correlation-2",
+@@ -1023,12 +1053,7 @@ describe("InsightCard", () => {
+ 			screen.getByRole("button", { name: "Generate Insight" })
+ 		);
+ 
+-		expect(
+-			screen.getByText("Generating... estimated 15 sec")
+-		).toBeInTheDocument();
+-		expect(
+-			screen.queryByText("Generating Insight")
+-		).not.toBeInTheDocument();
++		expect(screen.getByText("Generating Insight")).toBeInTheDocument();
+ 		const headerLoadingIcon = screen.getByTestId(
+ 			"insight-header-loading-icon"
+ 		);
+@@ -1045,19 +1070,20 @@ describe("InsightCard", () => {
+ 			screen.getByRole("button", { name: "Show All" })
+ 		).toBeInTheDocument();
+ 		expect(
+-			screen.getByText("Generating AI Commentary")
++			screen.getByText("Generating your insights...")
+ 		).toBeInTheDocument();
+ 		expect(
+-			screen.queryByRole("button", { name: "Hide AI Commentary" })
+-		).not.toBeInTheDocument();
++			screen.getByText(
++				"Analysing the selected context and filters to identify the most relevant takeaways. This usually takes a few seconds."
++			)
++		).toBeInTheDocument();
+ 		expect(
+-			screen.queryByRole("button", { name: "Show AI Commentary" })
+-		).not.toBeInTheDocument();
+-		expect(screen.getAllByTestId("insight-loading-dot")).toHaveLength(3);
++			screen.getByRole("button", { name: "Hide AI Commentary" })
++		).toBeInTheDocument();
+ 		expect(
+ 			screen.queryByText("Generation Complete")
+ 		).not.toBeInTheDocument();
+-		expect(screen.queryByText(/Generated:/)).not.toBeInTheDocument();
++		expect(screen.getByText("Generated")).toBeInTheDocument();
+ 		expect(
+ 			screen.queryByRole("button", { name: "Like" })
+ 		).not.toBeInTheDocument();
+@@ -1155,15 +1181,13 @@ describe("InsightCard", () => {
+ 			screen.getByRole("button", { name: "Generate Insight" })
+ 		);
+ 
+-		expect(await screen.findByText("Critical text")).toBeInTheDocument();
+-		expect(screen.queryByText("Summary")).not.toBeInTheDocument();
+-		expect(screen.queryByText("Summary text")).not.toBeInTheDocument();
++		expect(await screen.findByText("Summary text")).toBeInTheDocument();
+ 		expect(
+ 			screen.queryByText("Full backend content")
+ 		).not.toBeInTheDocument();
+ 		expect(screen.getByText("Key Takeaways")).toBeInTheDocument();
+ 		expect(screen.queryByText("Critical Insight")).not.toBeInTheDocument();
+-		expect(screen.getByText("Critical text")).toBeInTheDocument();
++		expect(screen.queryByText("Critical text")).not.toBeInTheDocument();
+ 		expect(screen.queryByText("Recommendations")).not.toBeInTheDocument();
+ 		expect(screen.queryByText("Recommended text")).not.toBeInTheDocument();
+ 		expect(screen.getByText(/request-1/)).toBeInTheDocument();
+@@ -1172,6 +1196,16 @@ describe("InsightCard", () => {
+ 		expect(screen.queryByText("BU Marketing")).not.toBeInTheDocument();
+ 		expect(screen.queryByText("MAT")).not.toBeInTheDocument();
+ 
++		fireEvent.click(
++			screen.getByRole("button", { name: "View Insights Summary" })
++		);
++		expect(screen.getByText("Insights Summary")).toBeInTheDocument();
++		expect(screen.getByText("Critical text")).toBeInTheDocument();
++		fireEvent.click(
++			screen.getByRole("button", { name: "Hide Insights Summary" })
++		);
++		expect(screen.queryByText("Critical text")).not.toBeInTheDocument();
++
+ 		fireEvent.click(screen.getByRole("button", { name: "Show All" }));
+ 		expect(screen.getByText("BU Marketing")).toBeInTheDocument();
+ 		expect(screen.getByText("Period")).toBeInTheDocument();
+@@ -1449,7 +1483,7 @@ describe("InsightCard", () => {
+ 		fireEvent.click(
+ 			screen.getByRole("button", { name: "Generate Insight" })
+ 		);
+-		await screen.findByText("Critical text");
++		await screen.findByText("Summary text");
+ 		expect(container.querySelector(".insightCard__panelTitles")).toBeNull();
+ 		fireEvent.click(screen.getByRole("button", { name: "Show All" }));
+ 		expect(screen.getAllByText("First panel")).toHaveLength(2);
+@@ -1461,7 +1495,7 @@ describe("InsightCard", () => {
+ 		).toContainElement(
+ 			container.querySelector(".insightCard__panelTitles")
+ 		);
+-		expect(screen.queryByText("Summary text")).not.toBeInTheDocument();
++		expect(screen.queryByText("Critical text")).not.toBeInTheDocument();
+ 	});
+ 
+ 	it("does not render panel title chips for panel scope", async () => {
+@@ -1474,18 +1508,18 @@ describe("InsightCard", () => {
+ 		fireEvent.click(
+ 			screen.getByRole("button", { name: "Generate Insight" })
+ 		);
+-		await screen.findByText("Critical text");
++		await screen.findByText("Generation Complete");
+ 		fireEvent.click(screen.getByRole("button", { name: "Show All" }));
+ 		expect(screen.queryByText("Panel title")).not.toBeInTheDocument();
+ 		expect(container.querySelector(".insightCard__panelTitles")).toBeNull();
+ 	});
+ 
+-	it("does not render summary or content as commentary sections", async () => {
++	it("does not render summary toggle or content when criticalInsight is missing", async () => {
+ 		(InsightService.generate as jest.Mock).mockResolvedValue({
+ 			summary: "Summary-only text",
+ 			content: "Content-only text",
+ 		});
+-		const { container } = render(<TestInsightCard />);
++		render(<TestInsightCard />);
+ 
+ 		fireEvent.click(
+ 			screen.getByRole("button", { name: "Generate Insight" })
+@@ -1494,12 +1528,11 @@ describe("InsightCard", () => {
+ 		expect(
+ 			await screen.findByText("Generation Complete")
+ 		).toBeInTheDocument();
+-		expect(screen.queryByText("Summary")).not.toBeInTheDocument();
+-		expect(screen.queryByText("Summary-only text")).not.toBeInTheDocument();
++		expect(screen.getByText("Summary-only text")).toBeInTheDocument();
+ 		expect(screen.queryByText("Content-only text")).not.toBeInTheDocument();
+ 		expect(
+-			container.querySelectorAll(".insightCard__sections > div")
+-		).toHaveLength(0);
++			screen.queryByRole("button", { name: "View Insights Summary" })
++		).not.toBeInTheDocument();
+ 	});
+ 
+ 	it("copies the generated request id", async () => {
+@@ -1517,7 +1550,8 @@ describe("InsightCard", () => {
+ 		fireEvent.click(
+ 			screen.getByRole("button", { name: "Generate Insight" })
+ 		);
+-		const copyButton = await screen.findByRole("button", {
++		await screen.findByText("Generation Complete");
++		const copyButton = screen.getByRole("button", {
+ 			name: "Copy Request ID",
+ 		});
+ 		jest.useFakeTimers();
+@@ -1564,7 +1598,7 @@ describe("InsightCard", () => {
+ 		expect(
+ 			await screen.findByText("Generation Complete")
+ 		).toBeInTheDocument();
+-		expect(screen.queryByText("Cached summary")).not.toBeInTheDocument();
++		expect(screen.getByText("Cached summary")).toBeInTheDocument();
+ 		expect(screen.getByText("COMMERCIAL")).toBeInTheDocument();
+ 		expect(
+ 			screen.getByRole("button", { name: "Hide AI Commentary" })
+@@ -1596,8 +1630,8 @@ describe("InsightCard", () => {
+ 			screen.queryByText("Full backend content must not be added")
+ 		).not.toBeInTheDocument();
+ 		expect(
+-			screen.queryByText("Summary must not be added")
+-		).not.toBeInTheDocument();
++			screen.getByText("Summary must not be added")
++		).toBeInTheDocument();
+ 		expect(
+ 			screen.queryByText("Recommendation must not be added")
+ 		).not.toBeInTheDocument();
+@@ -1705,7 +1739,7 @@ describe("InsightCard", () => {
+ 		expect(buildInsightTextEditorHtml("   ")).toBe("");
+ 	});
+ 
+-	it("renders timeout message and renders Refresh button when generation times out", async () => {
++	it("renders timeout message without card action buttons when generation times out", async () => {
+ 		const { InsightTimeoutError } = jest.requireMock(
+ 			"@angen_frontend/services"
+ 		);
+@@ -1724,8 +1758,8 @@ describe("InsightCard", () => {
+ 			)
+ 		).toBeInTheDocument();
+ 		expect(
+-			screen.getByRole("button", { name: "Refresh" })
+-		).toBeInTheDocument();
++			screen.queryByRole("button", { name: "Refresh" })
++		).not.toBeInTheDocument();
+ 		expect(
+ 			screen.queryByRole("button", { name: "Close" })
+ 		).not.toBeInTheDocument();
+@@ -1767,6 +1801,7 @@ describe("InsightCard", () => {
+ 			savedAt: "2026-08-14T00:00:00.000Z",
+ 		};
+ 		(InsightService.getResult as jest.Mock).mockResolvedValue({
++			summary: "Restored from polling result",
+ 			criticalInsight: "Restored from polling result",
+ 			requestId: "REQ-POLL-1",
+ 			correlationId: "CORR-POLL-1",
+@@ -1785,7 +1820,7 @@ describe("InsightCard", () => {
+ 		).toBeInTheDocument();
+ 	});
+ 
+-	it("keeps timeout message and renders Refresh button when polling returns null indicating still processing", async () => {
++	it("keeps timeout message without card action buttons when polling returns null indicating still processing", async () => {
+ 		mockCachedInsight = {
+ 			schemaVersion: 2,
+ 			cacheKey: "page-cache",
+@@ -1807,8 +1842,8 @@ describe("InsightCard", () => {
+ 			)
+ 		).toBeInTheDocument();
+ 		expect(
+-			screen.getByRole("button", { name: "Refresh" })
+-		).toBeInTheDocument();
++			screen.queryByRole("button", { name: "Refresh" })
++		).not.toBeInTheDocument();
+ 		expect(
+ 			screen.queryByRole("button", { name: "Close" })
+ 		).not.toBeInTheDocument();
+@@ -1847,7 +1882,7 @@ describe("InsightCard", () => {
+ 			screen.getByRole("button", { name: "Retry" })
+ 		).toBeInTheDocument();
+ 	});
+-	it("calls getResult and renders completed insight when Refresh button is clicked and result is ready", async () => {
++	it("calls getResult and renders completed insight when Generate Insight button is clicked in timeout state and result is ready", async () => {
+ 		const { InsightTimeoutError } = jest.requireMock(
+ 			"@angen_frontend/services"
+ 		);
+@@ -1855,7 +1890,8 @@ describe("InsightCard", () => {
+ 			new InsightTimeoutError("Request timeout", "CORR-REFRESH-1")
+ 		);
+ 		(InsightService.getResult as jest.Mock).mockResolvedValue({
+-			criticalInsight: "Loaded via Refresh button",
++			summary: "Loaded via Generate button refresh",
++			criticalInsight: "Loaded via Generate button refresh",
+ 			requestId: "CORR-REFRESH-1",
+ 			correlationId: "CORR-REFRESH-1",
+ 		});
+@@ -1872,21 +1908,22 @@ describe("InsightCard", () => {
+ 			)
+ 		).toBeInTheDocument();
+ 
+-		const refreshButton = screen.getByRole("button", { name: "Refresh" });
+-		fireEvent.click(refreshButton);
++		fireEvent.click(
++			screen.getByRole("button", { name: "Generate Insight" })
++		);
+ 
+ 		expect(InsightService.getResult).toHaveBeenCalledWith({
+ 			requestId: "CORR-REFRESH-1",
+ 		});
+ 		expect(
+-			await screen.findByText("Loaded via Refresh button")
++			await screen.findByText("Loaded via Generate button refresh")
+ 		).toBeInTheDocument();
+ 		expect(
+ 			await screen.findByText("Generation Complete")
+ 		).toBeInTheDocument();
+ 	});
+ 
+-	it("keeps timeout message when Refresh button is clicked and getResult still returns null", async () => {
++	it("keeps timeout message when Generate Insight button is clicked in timeout state and getResult still returns null", async () => {
+ 		const { InsightTimeoutError } = jest.requireMock(
+ 			"@angen_frontend/services"
+ 		);
+@@ -1907,8 +1944,9 @@ describe("InsightCard", () => {
+ 			)
+ 		).toBeInTheDocument();
+ 
+-		const refreshButton = screen.getByRole("button", { name: "Refresh" });
+-		fireEvent.click(refreshButton);
++		fireEvent.click(
++			screen.getByRole("button", { name: "Generate Insight" })
++		);
+ 
+ 		expect(InsightService.getResult).toHaveBeenCalledWith({
+ 			requestId: "CORR-REFRESH-2",
+@@ -1919,11 +1957,11 @@ describe("InsightCard", () => {
+ 			)
+ 		).toBeInTheDocument();
+ 		expect(
+-			screen.getByRole("button", { name: "Refresh" })
+-		).toBeInTheDocument();
++			screen.queryByRole("button", { name: "Refresh" })
++		).not.toBeInTheDocument();
+ 	});
+ 
+-	it("renders failure message when Refresh button is clicked and getResult throws an error", async () => {
++	it("renders failure message when Generate Insight button is clicked in timeout state and getResult throws an error", async () => {
+ 		const { InsightTimeoutError } = jest.requireMock(
+ 			"@angen_frontend/services"
+ 		);
+@@ -1946,8 +1984,9 @@ describe("InsightCard", () => {
+ 			)
+ 		).toBeInTheDocument();
+ 
+-		const refreshButton = screen.getByRole("button", { name: "Refresh" });
+-		fireEvent.click(refreshButton);
++		fireEvent.click(
++			screen.getByRole("button", { name: "Generate Insight" })
++		);
+ 
+ 		expect(InsightService.getResult).toHaveBeenCalledWith({
+ 			requestId: "CORR-REFRESH-ERR",
+@@ -1959,8 +1998,56 @@ describe("InsightCard", () => {
+ 		).toBeInTheDocument();
+ 		expect(screen.getByText("Generation Failed")).toBeInTheDocument();
+ 		expect(
+-			screen.queryByRole("button", { name: "Refresh" })
+-		).not.toBeInTheDocument();
++			screen.getByRole("button", { name: "Close" })
++		).toBeInTheDocument();
++		expect(
++			screen.getByRole("button", { name: "Retry" })
++		).toBeInTheDocument();
++	});
++
++	it("renders pending generation state when generationStarted is true without insight or error and hides card after Close", async () => {
++		const pendingGeneration: IInsightGenerationState = {
++			isGenerating: false,
++			generationStarted: true,
++			isStale: false,
++			metadata: [],
++			generate: jest.fn(),
++			refreshResult: jest.fn(),
++			reset: jest.fn(),
++			setFeedback: jest.fn(),
++			submitFeedback: jest.fn(),
++		};
++		const { unmount } = render(
++			<InsightCard
++				config={config}
++				generation={pendingGeneration}
++				showGenerateButton={false}
++			/>
++		);
++		expect(
++			screen.getByText(
++				"Your AI-generated insight is just one click away."
++			)
++		).toBeInTheDocument();
++		expect(
++			screen.getByText(
++				"Click on 'Generate Master Commentary' to uncover what matters most in this tab."
++			)
++		).toBeInTheDocument();
++		unmount();
++
++		(InsightService.generate as jest.Mock).mockRejectedValue(
++			new Error("Standard failure")
++		);
++		render(<TestInsightCard />);
++		fireEvent.click(
++			screen.getByRole("button", { name: "Generate Insight" })
++		);
++		expect(
++			await screen.findByRole("button", { name: "Close" })
++		).toBeInTheDocument();
++		fireEvent.click(screen.getByRole("button", { name: "Close" }));
++		expect(screen.queryByTestId("insight-card")).not.toBeInTheDocument();
+ 	});
+ 
+ 	it("handles clipboard failure gracefully when copying requestId", async () => {
+@@ -1984,7 +2071,8 @@ describe("InsightCard", () => {
+ 			screen.getByRole("button", { name: "Generate Insight" })
+ 		);
+ 
+-		const copyBtn = await screen.findByRole("button", {
++		await screen.findByText("Generation Complete");
++		const copyBtn = screen.getByRole("button", {
+ 			name: "Copy Request ID",
+ 		});
+ 		fireEvent.click(copyBtn);
+diff --git a/packages/web/src/components/InsightCard/index.tsx b/packages/web/src/components/InsightCard/index.tsx
+index 3bbe3f0..b9259a7 100644
+--- a/packages/web/src/components/InsightCard/index.tsx
++++ b/packages/web/src/components/InsightCard/index.tsx
+@@ -3,7 +3,6 @@ import {
+ 	GenericModalV2,
+ 	GenericTextArea,
+ 	useIndexedDB,
+-	CriticalInsightIcon,
+ 	HeaderSparkleSvgIcon,
+ 	ProtectSvgIcon,
+ 	RoleUserSvgIcon,
+@@ -15,6 +14,10 @@ import {
+ 	CoThinkerThumbsUpSvgIcon,
+ 	CoThinkerThumbsDownSvgIcon,
+ 	CoThinkerFeedbackSuccessSvgIcon,
++	CoThinkerRadarLogoSvgIcon,
++	CoThinkerSummaryDocSvgIcon,
++	CoThinkerGeneratingSparkleSvgIcon,
++	CoThinkerFailedWarningSvgIcon,
+ 	Text,
+ 	useTableau,
+ 	useTranslateFn,
+@@ -990,47 +993,123 @@ const useInsightCardViewState = (
+ 	return { cardExpanded, toggleCardExpanded };
+ };
+ 
+-const InsightCardFailure: FC<{
+-	config: IInsightCardConfig;
+-	generation: IInsightGenerationState;
+-}> = ({ config, generation }) => (
+-	<div className="insightCard__failure">
+-		<div className="insightCard__failureCopy">
+-			<strong>AI Commentary is unavailable</strong>
+-			<p>
+-				{generation.isTimeout
+-					? "The request is still being processed in the background. Please refresh the page later."
+-					: "The commentary could not be generated from the current visible context."}
+-			</p>
++const InsightCardBrandRow: FC = () => (
++	<div className="insightCard__brandRow">
++		<span className="insightCard__brandPowerText">Powered By</span>
++		<div className="insightCard__brandLogoGroup">
++			<CoThinkerRadarLogoSvgIcon className="insightCard__brandLogo" />
++			<span className="insightCard__betaBadge">BETA</span>
+ 		</div>
+-		<div className="insightCard__failureActions">
+-			{generation.isTimeout ? (
++	</div>
++);
++
++const InsightCardFooter: FC<{
++	isSuccessful?: boolean;
++	showAddToTextEditor?: boolean;
++	onAddToTextEditor?: (content: string) => Promise<void>;
++	isAddingToTextEditor?: boolean;
++	editorContent?: string;
++	disabled?: boolean;
++	feedback?: IInsightCacheSnapshot["feedback"];
++	onAdd?: () => void;
++	onFeedback?: (sentiment: "LIKE" | "DISLIKE") => void;
++}> = ({
++	isSuccessful = false,
++	showAddToTextEditor = false,
++	onAddToTextEditor,
++	isAddingToTextEditor = false,
++	editorContent = "",
++	disabled,
++	feedback,
++	onAdd,
++	onFeedback,
++}) => (
++	<div className="insightCard__footer">
++		<p className="insightCard__disclaimer">
++			<ProtectSvgIcon className="insightCard__disclaimerIcon" />
++			{AI_DISCLAIMER}
++		</p>
++		{isSuccessful && showAddToTextEditor && onAddToTextEditor && (
++			<GenericButtonV2
++				type="primary"
++				loading={isAddingToTextEditor}
++				disabled={disabled || isAddingToTextEditor || !editorContent}
++				className="insightCard__addButton"
++				onClick={onAdd}
++				prefixIcon={<EditSvgIcon />}
++			>
++				Add to Text Editor
++			</GenericButtonV2>
++		)}
++		{isSuccessful && onFeedback && (
++			<div className="insightCard__feedback">
+ 				<GenericButtonV2
+-					type="primary"
+-					disabled={config.disabled}
+-					loading={generation.isRefreshing}
+-					onClick={generation.refreshResult}
++					aria-label="Like"
++					className="insightCard__feedbackButton"
++					disabled={disabled}
++					aria-pressed={feedback?.sentiment === "LIKE"}
++					title="Like"
++					onClick={() => onFeedback("LIKE")}
+ 				>
+-					Refresh
++					<CoThinkerThumbsUpSvgIcon />
+ 				</GenericButtonV2>
+-			) : (
+-				<>
+-					<GenericButtonV2 onClick={generation.reset}>
+-						Close
+-					</GenericButtonV2>
+-					<GenericButtonV2
+-						type="primary"
+-						disabled={config.disabled}
+-						onClick={generation.generate}
+-					>
+-						Retry
+-					</GenericButtonV2>
+-				</>
+-			)}
+-		</div>
++				<GenericButtonV2
++					aria-label="Dislike"
++					className="insightCard__feedbackButton"
++					disabled={disabled}
++					aria-pressed={feedback?.sentiment === "DISLIKE"}
++					title="Dislike"
++					onClick={() => onFeedback("DISLIKE")}
++				>
++					<CoThinkerThumbsDownSvgIcon />
++				</GenericButtonV2>
++			</div>
++		)}
+ 	</div>
+ );
+ 
++const InsightCardFailure: FC<{
++	config: IInsightCardConfig;
++	generation: IInsightGenerationState;
++}> = ({ config, generation }) => (
++	<>
++		<div className="insightCard__failure">
++			<CoThinkerFailedWarningSvgIcon className="insightCard__failureIcon" />
++			<div className="insightCard__failureBody">
++				<div className="insightCard__failureCopy">
++					<div className="insightCard__stateTitle">
++						We are not able to generate insights right now.
++					</div>
++					<p className="insightCard__stateDescription">
++						{generation.isTimeout
++							? "The request is still being processed in the background. Please refresh the page later."
++							: "The commentary could not be generated from the current visible context."}
++					</p>
++				</div>
++				{!generation.isTimeout && (
++					<div className="insightCard__failureActions">
++						<GenericButtonV2
++							className="insightCard__failureCloseBtn"
++							onClick={generation.reset}
++						>
++							Close
++						</GenericButtonV2>
++						<GenericButtonV2
++							className="insightCard__failureRetryBtn"
++							type="primary"
++							disabled={config.disabled}
++							onClick={generation.generate}
++						>
++							Retry
++						</GenericButtonV2>
++					</div>
++				)}
++			</div>
++		</div>
++		<InsightCardFooter />
++	</>
++);
++
+ const InsightCardFilters: FC<{
+ 	filtersExpanded: boolean;
+ 	filterGroups: IInsightFilterGroup[];
+@@ -1053,7 +1132,7 @@ const InsightCardFilters: FC<{
+ 			<div className="insightCard__filterSummary">
+ 				<span className="insightCard__filterTitle">
+ 					<CoThinkerFilterSvgIcon />
+-					<strong>Analysis Context &amp; Filters</strong>
++					<span>Analysis Context &amp; Filters</span>
+ 				</span>
+ 				<span className="insightCard__primaryFilter">
+ 					<RoleUserSvgIcon className="insightCard__primaryFilterIcon" />
+@@ -1145,7 +1224,7 @@ const InsightCardHeader: FC<{
+ 		<div className="insightCard__titleRow">
+ 			<HeaderSparkleSvgIcon className="insightCard__headerIcon" />
+ 			<div className="insightCard__heading">
+-				<h2 className="insightCard__title">AI-Generated Insights</h2>
++				<div className="insightCard__title">AI-Generated Insights</div>
+ 			</div>
+ 			{generation.isGenerating && (
+ 				<span className="insightCard__status insightCard__status--loading">
+@@ -1153,7 +1232,7 @@ const InsightCardHeader: FC<{
+ 						className="insightCard__statusLoadingIcon"
+ 						data-testid="insight-header-loading-icon"
+ 					/>
+-					Generating... estimated 15 sec
++					Generating Insight
+ 				</span>
+ 			)}
+ 			{generation.generateError && (
+@@ -1172,51 +1251,43 @@ const InsightCardHeader: FC<{
+ 				</span>
+ 			)}
+ 		</div>
+-		{isSuccessful && (
+-			<div className="insightCard__headerActions">
+-				<div className="insightCard__generatedInfo">
+-					{generatedAt && (
+-						<span>
+-							<strong>Generated:</strong> {generatedAt}
+-						</span>
+-					)}
+-					{requestId && (
+-						<span className="insightCard__requestId">
+-							<strong>Request ID:</strong> {requestId}
+-							<GenericButtonV2
+-								aria-label="Copy Request ID"
+-								title="Copy Request ID"
+-								className="insightCard__copyButton"
+-								onClick={onCopyRequestId}
+-							>
+-								<CopyOutlined />
+-							</GenericButtonV2>
+-							{copiedRequestId && (
+-								<span role="status">Copied</span>
+-							)}
+-						</span>
+-					)}
+-					{generation.insight?.model && (
+-						<span>
+-							<strong>Model:</strong> {generation.insight.model}
+-						</span>
+-					)}
+-				</div>
+-				<GenericButtonV2
+-					aria-expanded={cardExpanded}
+-					aria-label={
+-						cardExpanded
+-							? "Hide AI Commentary"
+-							: "Show AI Commentary"
+-					}
+-					className="insightCard__cardToggle"
+-					onClick={onToggleCard}
+-				>
+-					{cardExpanded ? "Hide" : "Show"}
+-					<DownOutlined aria-hidden="true" />
+-				</GenericButtonV2>
++		<div className="insightCard__headerActions">
++			<div className="insightCard__generatedInfo">
++				<span>
++					<span className="insightCard__metaLabel">Generated</span>:{" "}
++					{generatedAt || "-"}
++				</span>
++				<span className="insightCard__requestId">
++					<span className="insightCard__metaLabel">Request ID</span>:{" "}
++					{requestId || "-"}
++					<GenericButtonV2
++						aria-label="Copy Request ID"
++						title="Copy Request ID"
++						className="insightCard__copyButton"
++						disabled={!requestId}
++						onClick={onCopyRequestId}
++					>
++						<CopyOutlined />
++					</GenericButtonV2>
++					{copiedRequestId && <span role="status">Copied</span>}
++				</span>
++				<span>
++					<span className="insightCard__metaLabel">Model</span>:{" "}
++					{generation.insight?.model || "-"}
++				</span>
+ 			</div>
+-		)}
++			<GenericButtonV2
++				aria-expanded={cardExpanded}
++				aria-label={
++					cardExpanded ? "Hide AI Commentary" : "Show AI Commentary"
++				}
++				className="insightCard__cardToggle"
++				onClick={onToggleCard}
++			>
++				{cardExpanded ? "Hide" : "Show"}
++				<DownOutlined aria-hidden="true" />
++			</GenericButtonV2>
++		</div>
+ 	</div>
+ );
+ 
+@@ -1224,19 +1295,45 @@ const InsightCardLoading: FC<{ filters: JSX.Element }> = ({ filters }) => (
+ 	<>
+ 		{filters}
+ 		<div className="insightCard__loading" role="status">
+-			<span className="insightCard__loadingDots" aria-hidden="true">
+-				{[0, 1, 2].map((dot) => (
+-					<span data-testid="insight-loading-dot" key={dot} />
+-				))}
+-			</span>
+-			<span>Generating AI Commentary</span>
++			<CoThinkerGeneratingSparkleSvgIcon className="insightCard__stateIcon" />
++			<div className="insightCard__stateCopy">
++				<div className="insightCard__stateTitle">
++					Generating your insights...
++				</div>
++				<p className="insightCard__stateDescription">
++					Analysing the selected context and filters to identify the
++					most relevant takeaways. This usually takes a few seconds.
++				</p>
++			</div>
++		</div>
++		<InsightCardFooter />
++	</>
++);
++
++const InsightCardPending: FC = () => (
++	<>
++		<div className="insightCard__pending">
++			<CoThinkerGeneratingSparkleSvgIcon className="insightCard__stateIcon" />
++			<div className="insightCard__stateCopy">
++				<div className="insightCard__stateTitle">
++					Your AI-generated insight is just one click away.
++				</div>
++				<p className="insightCard__stateDescription">
++					Click on &apos;Generate Master Commentary&apos; to uncover
++					what matters most in this tab.
++				</p>
++			</div>
+ 		</div>
++		<InsightCardFooter />
+ 	</>
+ );
+ 
+ const InsightCardSuccess: FC<{
+ 	filters: JSX.Element;
+-	sections: Array<[string, string, JSX.Element]>;
++	summary?: string;
++	criticalInsight?: string;
++	summaryExpanded: boolean;
++	onToggleSummary: () => void;
+ 	showAddToTextEditor: boolean;
+ 	onAddToTextEditor?: (content: string) => Promise<void>;
+ 	isAddingToTextEditor: boolean;
+@@ -1248,7 +1345,10 @@ const InsightCardSuccess: FC<{
+ 	onFeedback: (sentiment: "LIKE" | "DISLIKE") => void;
+ }> = ({
+ 	filters,
+-	sections,
++	summary,
++	criticalInsight,
++	summaryExpanded,
++	onToggleSummary,
+ 	showAddToTextEditor,
+ 	onAddToTextEditor,
+ 	isAddingToTextEditor,
+@@ -1261,67 +1361,52 @@ const InsightCardSuccess: FC<{
+ }) => (
+ 	<>
+ 		{filters}
+-		<div
+-			className="insightCard__sections"
+-			style={{
+-				gridTemplateColumns: `repeat(${Math.min(
+-					sections.length || 1,
+-					3
+-				)}, minmax(0, 1fr))`,
+-			}}
+-		>
+-			{sections.map(([title, value, iconPath]) => (
+-				<div key={title}>
+-					<span className="insightCard__sectionIcon">{iconPath}</span>
+-					<div>
+-						<h3>{title}</h3>
+-						<p>{value}</p>
+-					</div>
+-				</div>
+-			))}
+-		</div>
+-		<div className="insightCard__footer">
+-			<p className="insightCard__disclaimer">
+-				<ProtectSvgIcon className="insightCard__disclaimerIcon" />
+-				{AI_DISCLAIMER}
+-			</p>
+-			{showAddToTextEditor && onAddToTextEditor && (
+-				<GenericButtonV2
+-					type="primary"
+-					loading={isAddingToTextEditor}
+-					disabled={
+-						disabled || isAddingToTextEditor || !editorContent
+-					}
+-					className="insightCard__addButton"
+-					onClick={onAdd}
+-					prefixIcon={<EditSvgIcon />}
+-				>
+-					Add to Text Editor
+-				</GenericButtonV2>
++		<div className="insightCard__takeaways">
++			<div className="insightCard__takeawaysLabel">Key Takeaways</div>
++			{summary && (
++				<p className="insightCard__takeawaysSummary">{summary}</p>
++			)}
++			{criticalInsight && (
++				<>
++					<GenericButtonV2
++						aria-expanded={summaryExpanded}
++						className="insightCard__summaryToggle"
++						onClick={onToggleSummary}
++					>
++						{summaryExpanded
++							? "Hide Insights Summary"
++							: "View Insights Summary"}
++						<DownOutlined aria-hidden="true" />
++					</GenericButtonV2>
++					{summaryExpanded && (
++						<div className="insightCard__summaryPanel">
++							<div className="insightCard__summaryHeader">
++								<CoThinkerSummaryDocSvgIcon className="insightCard__summaryHeaderIcon" />
++								<span className="insightCard__summaryHeaderTitle">
++									Insights Summary
++								</span>
++							</div>
++							<div className="insightCard__summaryBody">
++								<p className="insightCard__summaryText">
++									{criticalInsight}
++								</p>
++							</div>
++						</div>
++					)}
++				</>
+ 			)}
+-			<div className="insightCard__feedback">
+-				<GenericButtonV2
+-					aria-label="Like"
+-					className="insightCard__feedbackButton"
+-					disabled={disabled}
+-					aria-pressed={feedback?.sentiment === "LIKE"}
+-					title="Like"
+-					onClick={() => onFeedback("LIKE")}
+-				>
+-					<CoThinkerThumbsUpSvgIcon />
+-				</GenericButtonV2>
+-				<GenericButtonV2
+-					aria-label="Dislike"
+-					className="insightCard__feedbackButton"
+-					disabled={disabled}
+-					aria-pressed={feedback?.sentiment === "DISLIKE"}
+-					title="Dislike"
+-					onClick={() => onFeedback("DISLIKE")}
+-				>
+-					<CoThinkerThumbsDownSvgIcon />
+-				</GenericButtonV2>
+-			</div>
+ 		</div>
++		<InsightCardFooter
++			isSuccessful
++			showAddToTextEditor={showAddToTextEditor}
++			onAddToTextEditor={onAddToTextEditor}
++			isAddingToTextEditor={isAddingToTextEditor}
++			editorContent={editorContent}
++			disabled={disabled}
++			feedback={feedback}
++			onAdd={onAdd}
++			onFeedback={onFeedback}
++		/>
+ 		{addError && <p className="insightCard__error">{addError}</p>}
+ 	</>
+ );
+@@ -1396,6 +1481,7 @@ export const InsightCard: FC<{
+ 		[tableau?.projects]
+ 	);
+ 	const [filtersExpanded, setFiltersExpanded] = useState(false);
++	const [summaryExpanded, setSummaryExpanded] = useState(false);
+ 	const { cardExpanded, toggleCardExpanded } = useInsightCardViewState(
+ 		cacheKey,
+ 		generation.isGenerating
+@@ -1409,6 +1495,7 @@ export const InsightCard: FC<{
+ 	useEffect(() => {
+ 		if (generation.isGenerating && !previousGeneratingRef.current) {
+ 			setFiltersExpanded(false);
++			setSummaryExpanded(false);
+ 			setAddError(undefined);
+ 			setCopiedRequestId(false);
+ 			setFeedbackSuccessOpen(false);
+@@ -1438,7 +1525,7 @@ export const InsightCard: FC<{
+ 		roleProp,
+ 		insightKpiCardViews
+ 	);
+-	const showCardBody = !isSuccessful || cardExpanded;
++	const showCardBody = cardExpanded;
+ 	const filters = (
+ 		<InsightCardFilters
+ 			filtersExpanded={filtersExpanded}
+@@ -1476,17 +1563,6 @@ export const InsightCard: FC<{
+ 			setCopiedRequestId(false);
+ 		}
+ 	};
+-	const sections = (
+-		[
+-			[
+-				"Key Takeaways",
+-				generation.insight?.criticalInsight,
+-				<CriticalInsightIcon />,
+-			],
+-		] as Array<[string, string | undefined, JSX.Element]>
+-	).filter((section): section is [string, string, JSX.Element] =>
+-		Boolean(section[1])
+-	);
+ 	if (
+ 		!generation.generationStarted &&
+ 		!generation.isGenerating &&
+@@ -1509,6 +1585,7 @@ export const InsightCard: FC<{
+ 				aria-label="AI Commentary"
+ 				data-testid="insight-card"
+ 			>
++				<InsightCardBrandRow />
+ 				<InsightCardHeader
+ 					generation={generation}
+ 					isSuccessful={isSuccessful}
+@@ -1527,22 +1604,29 @@ export const InsightCard: FC<{
+ 							config={config}
+ 							generation={generation}
+ 						/>
++					) : isSuccessful ? (
++						<InsightCardSuccess
++							filters={filters}
++							summary={generation.insight?.summary}
++							criticalInsight={
++								generation.insight?.criticalInsight
++							}
++							summaryExpanded={summaryExpanded}
++							onToggleSummary={() =>
++								setSummaryExpanded((value) => !value)
++							}
++							showAddToTextEditor={showAddToTextEditor}
++							onAddToTextEditor={onAddToTextEditor}
++							isAddingToTextEditor={isAddingToTextEditor}
++							editorContent={editorContent}
++							disabled={config.disabled}
++							feedback={generation.feedback}
++							addError={addError}
++							onAdd={addToTextEditor}
++							onFeedback={setFeedbackOpen}
++						/>
+ 					) : (
+-						<>
+-							<InsightCardSuccess
+-								filters={filters}
+-								sections={sections}
+-								showAddToTextEditor={showAddToTextEditor}
+-								onAddToTextEditor={onAddToTextEditor}
+-								isAddingToTextEditor={isAddingToTextEditor}
+-								editorContent={editorContent}
+-								disabled={config.disabled}
+-								feedback={generation.feedback}
+-								addError={addError}
+-								onAdd={addToTextEditor}
+-								onFeedback={setFeedbackOpen}
+-							/>
+-						</>
++						<InsightCardPending />
+ 					))}
+ 				{showCardBody && showGenerateButton && (
+ 					<InsightGenerateButton
