@@ -1,0 +1,1500 @@
+diff --git a/packages/components/src/AdminPortalPermissionsProvider/index.spec.tsx b/packages/components/src/AdminPortalPermissionsProvider/index.spec.tsx
+new file mode 100644
+index 0000000..c8f74a3
+--- /dev/null
++++ b/packages/components/src/AdminPortalPermissionsProvider/index.spec.tsx
+@@ -0,0 +1,173 @@
++import { renderHook } from "@testing-library/react";
++import { PropsWithChildren } from "react";
++import type { IAdminPortalPermissions } from "@angen_frontend/services";
++import { AdminPortalAccess } from "@angen_frontend/types";
++import { useUser } from "../UserProvider";
++import {
++	AdminPortalPermissionsProvider,
++	useAdminPortalPermissions,
++} from "./index";
++
++jest.mock("@angen_frontend/types", () => ({
++	AdminPortalAccess: {
++		READ: "read",
++		WRITE: "write",
++	},
++}));
++
++jest.mock("../UserProvider", () => ({ useUser: jest.fn() }));
++
++describe("AdminPortalPermissionsProvider", () => {
++	const permissions: IAdminPortalPermissions = {
++		readGroups: [" Reader-Group "],
++		writeGroups: [" Writer-Group "],
++	};
++
++	beforeEach(() => {
++		jest.resetAllMocks();
++		(useUser as jest.Mock).mockReturnValue({
++			profile: { shortenedAdGroupsForGtm: ["reader-group"] },
++		});
++	});
++
++	it.each([
++		[["reader-group"], AdminPortalAccess.READ],
++		[["writer-group"], AdminPortalAccess.WRITE],
++		[["reader-group", "writer-group"], AdminPortalAccess.WRITE],
++		[["  ReAdEr-GrOuP  "], AdminPortalAccess.READ],
++		[["unrelated-group"], null],
++		[[], null],
++	])("resolves groups %j to %s", (groups, access) => {
++		(useUser as jest.Mock).mockReturnValue({
++			profile: { shortenedAdGroupsForGtm: groups },
++		});
++		const wrapper = ({ children }: PropsWithChildren) => (
++			<AdminPortalPermissionsProvider permissions={permissions}>
++				{children}
++			</AdminPortalPermissionsProvider>
++		);
++		const { result } = renderHook(() => useAdminPortalPermissions(), {
++			wrapper,
++		});
++		expect(result.current.access).toBe(access);
++		expect(result.current.loading).toBe(false);
++		expect(result.current.permissionError).toBe("");
++	});
++
++	it("does not match blank group names", () => {
++		(useUser as jest.Mock).mockReturnValue({
++			profile: { shortenedAdGroupsForGtm: [" "] },
++		});
++		const wrapper = ({ children }: PropsWithChildren) => (
++			<AdminPortalPermissionsProvider
++				permissions={{
++					readGroups: [""],
++					writeGroups: [" "],
++				}}
++			>
++				{children}
++			</AdminPortalPermissionsProvider>
++		);
++		const { result } = renderHook(() => useAdminPortalPermissions(), {
++			wrapper,
++		});
++		expect(result.current.access).toBeNull();
++	});
++
++	it("keeps access null while loading", () => {
++		const wrapper = ({ children }: PropsWithChildren) => (
++			<AdminPortalPermissionsProvider
++				permissions={permissions}
++				loading={true}
++				permissionError="ignored while loading"
++			>
++				{children}
++			</AdminPortalPermissionsProvider>
++		);
++		const { result } = renderHook(() => useAdminPortalPermissions(), {
++			wrapper,
++		});
++		expect(result.current.access).toBeNull();
++		expect(result.current.loading).toBe(true);
++		expect(result.current.permissionError).toBe("");
++	});
++
++	it("exposes error and retry callback when not loading", () => {
++		const retry = jest.fn();
++		const wrapper = ({ children }: PropsWithChildren) => (
++			<AdminPortalPermissionsProvider
++				permissionError="Permission service unavailable"
++				retry={retry}
++			>
++				{children}
++			</AdminPortalPermissionsProvider>
++		);
++		const { result } = renderHook(() => useAdminPortalPermissions(), {
++			wrapper,
++		});
++		expect(result.current.access).toBeNull();
++		expect(result.current.loading).toBe(false);
++		expect(result.current.permissionError).toBe(
++			"Permission service unavailable"
++		);
++		result.current.retry();
++		expect(retry).toHaveBeenCalledTimes(1);
++	});
++
++	it("returns disabled state when hook or provider enabled is false", () => {
++		const hookDisabledWrapper = ({ children }: PropsWithChildren) => (
++			<AdminPortalPermissionsProvider permissions={permissions}>
++				{children}
++			</AdminPortalPermissionsProvider>
++		);
++		const { result: hookDisabledResult, rerender } = renderHook(
++			({ enabled }) => useAdminPortalPermissions(enabled),
++			{
++				initialProps: { enabled: false },
++				wrapper: hookDisabledWrapper,
++			}
++		);
++		expect(hookDisabledResult.current.access).toBeNull();
++		expect(hookDisabledResult.current.loading).toBe(false);
++
++		rerender({ enabled: true });
++		expect(hookDisabledResult.current.access).toBe(AdminPortalAccess.READ);
++
++		const providerDisabledWrapper = ({ children }: PropsWithChildren) => (
++			<AdminPortalPermissionsProvider
++				permissions={permissions}
++				loading={true}
++				permissionError="error"
++				enabled={false}
++			>
++				{children}
++			</AdminPortalPermissionsProvider>
++		);
++		const { result: providerDisabledResult } = renderHook(
++			() => useAdminPortalPermissions(true),
++			{ wrapper: providerDisabledWrapper }
++		);
++		expect(providerDisabledResult.current.access).toBeNull();
++		expect(providerDisabledResult.current.loading).toBe(false);
++		expect(providerDisabledResult.current.permissionError).toBe("");
++	});
++
++	it("recalculates access when the user changes", () => {
++		const wrapper = ({ children }: PropsWithChildren) => (
++			<AdminPortalPermissionsProvider permissions={permissions}>
++				{children}
++			</AdminPortalPermissionsProvider>
++		);
++		const { result, rerender } = renderHook(
++			() => useAdminPortalPermissions(),
++			{ wrapper }
++		);
++		expect(result.current.access).toBe(AdminPortalAccess.READ);
++
++		(useUser as jest.Mock).mockReturnValue({
++			profile: { shortenedAdGroupsForGtm: ["unrelated-group"] },
++		});
++		rerender();
++		expect(result.current.access).toBeNull();
++	});
++});
+diff --git a/packages/components/src/AdminPortalPermissionsProvider/index.tsx b/packages/components/src/AdminPortalPermissionsProvider/index.tsx
+new file mode 100644
+index 0000000..144087a
+--- /dev/null
++++ b/packages/components/src/AdminPortalPermissionsProvider/index.tsx
+@@ -0,0 +1,117 @@
++import {
++	FC,
++	PropsWithChildren,
++	createContext,
++	useContext,
++	useMemo,
++} from "react";
++import type { IAdminPortalPermissions } from "@angen_frontend/services";
++import { AdminPortalAccess } from "@angen_frontend/types";
++import { useUser } from "../UserProvider";
++
++interface IAdminPortalPermissionsContext {
++	access: AdminPortalAccess | null;
++	loading: boolean;
++	permissionError: string;
++	retry: () => void;
++	enabled: boolean;
++}
++
++export interface IAdminPortalPermissionsProviderProps {
++	permissions?: IAdminPortalPermissions;
++	loading?: boolean;
++	permissionError?: string;
++	retry?: () => void;
++	enabled?: boolean;
++}
++
++const noop = () => {};
++
++const AdminPortalPermissionsContext =
++	createContext<IAdminPortalPermissionsContext>({
++		access: null,
++		loading: false,
++		permissionError: "",
++		retry: noop,
++		enabled: true,
++	});
++
++const resolveAdminPortalAccess = (
++	userGroups: string[],
++	permissions: IAdminPortalPermissions
++): AdminPortalAccess | null => {
++	const groups = new Set(
++		userGroups.map((group) => group.trim().toLowerCase()).filter(Boolean)
++	);
++	const matches = (configuredGroups: string[]) =>
++		configuredGroups.some((group) => {
++			const normalized = group.trim().toLowerCase();
++			return normalized !== "" && groups.has(normalized);
++		});
++
++	if (matches(permissions.writeGroups)) return AdminPortalAccess.WRITE;
++	if (matches(permissions.readGroups)) return AdminPortalAccess.READ;
++	return null;
++};
++
++export const AdminPortalPermissionsProvider: FC<
++	PropsWithChildren<IAdminPortalPermissionsProviderProps>
++> = ({
++	children,
++	permissions,
++	loading = false,
++	permissionError = "",
++	retry = noop,
++	enabled = true,
++}) => {
++	const { profile } = useUser();
++
++	const access = useMemo(
++		() =>
++			enabled && !loading && permissions
++				? resolveAdminPortalAccess(
++						profile?.shortenedAdGroupsForGtm || [],
++						permissions
++				  )
++				: null,
++		[enabled, loading, permissions, profile]
++	);
++
++	const value = useMemo(
++		() => ({
++			access,
++			loading: enabled && loading,
++			permissionError: enabled && !loading ? permissionError : "",
++			retry,
++			enabled,
++		}),
++		[access, enabled, loading, permissionError, retry]
++	);
++
++	return (
++		<AdminPortalPermissionsContext.Provider value={value}>
++			{children}
++		</AdminPortalPermissionsContext.Provider>
++	);
++};
++
++export const useAdminPortalPermissions = (enabled = true) => {
++	const context = useContext(AdminPortalPermissionsContext);
++	return useMemo(
++		() =>
++			enabled && context.enabled
++				? {
++						access: context.access,
++						loading: context.loading,
++						permissionError: context.permissionError,
++						retry: context.retry,
++				  }
++				: {
++						access: null,
++						loading: false,
++						permissionError: "",
++						retry: context.retry,
++				  },
++		[enabled, context]
++	);
++};
+diff --git a/packages/components/src/CommentaryCapabilityProvider/index.spec.tsx b/packages/components/src/CommentaryCapabilityProvider/index.spec.tsx
+index be0fba0..c654ddf 100644
+--- a/packages/components/src/CommentaryCapabilityProvider/index.spec.tsx
++++ b/packages/components/src/CommentaryCapabilityProvider/index.spec.tsx
+@@ -1,14 +1,7 @@
+-import { act, render, screen, waitFor } from "@testing-library/react";
+-import { InsightService } from "@angen_frontend/services";
++import { render, screen } from "@testing-library/react";
+ import type { ICommentaryCapabilityData } from "@angen_frontend/types";
+ import { CommentaryCapabilityProvider, useCommentaryCapability } from ".";
+ 
+-jest.mock("@angen_frontend/services", () => ({
+-	InsightService: {
+-		getCapability: jest.fn(),
+-	},
+-}));
+-
+ const enabledCapability: ICommentaryCapabilityData = {
+ 	enabled: true,
+ 	panelIds: ["panel-1", "panel-2", "panel-disabled"],
+@@ -40,54 +33,48 @@ const CapabilityProbe = ({
+ 	);
+ };
+ 
+-const renderCapability = (probe = <CapabilityProbe />) =>
++const renderCapability = (
++	props: { capability?: ICommentaryCapabilityData; loading?: boolean } = {},
++	probe = <CapabilityProbe />
++) =>
+ 	render(
+-		<CommentaryCapabilityProvider>{probe}</CommentaryCapabilityProvider>
++		<CommentaryCapabilityProvider {...props}>
++			{probe}
++		</CommentaryCapabilityProvider>
+ 	);
+ 
+ describe("CommentaryCapabilityProvider", () => {
+-	beforeEach(() => {
+-		jest.resetAllMocks();
++	it("enables matching page and panel access from capability prop", () => {
++		renderCapability({ capability: enabledCapability, loading: false });
++
++		expect(screen.getByTestId("loading")).toHaveTextContent("false");
++		expect(screen.getByTestId("enabled")).toHaveTextContent("true");
++		expect(screen.getByTestId("page-enabled")).toHaveTextContent("true");
++		expect(screen.getByTestId("panel-enabled")).toHaveTextContent("true");
+ 	});
+ 
+-	it("loads capability once and enables matching page and panel access", async () => {
+-		(InsightService.getCapability as jest.Mock).mockResolvedValue(
+-			enabledCapability
+-		);
+-		renderCapability();
++	it("stays disabled while loading even if capability is passed", () => {
++		renderCapability({ capability: enabledCapability, loading: true });
+ 
+ 		expect(screen.getByTestId("loading")).toHaveTextContent("true");
+ 		expect(screen.getByTestId("enabled")).toHaveTextContent("false");
+ 		expect(screen.getByTestId("page-enabled")).toHaveTextContent("false");
+ 		expect(screen.getByTestId("panel-enabled")).toHaveTextContent("false");
+-
+-		await waitFor(() =>
+-			expect(screen.getByTestId("loading")).toHaveTextContent("false")
+-		);
+-		expect(screen.getByTestId("page-enabled")).toHaveTextContent("true");
+-		expect(screen.getByTestId("enabled")).toHaveTextContent("true");
+-		expect(screen.getByTestId("panel-enabled")).toHaveTextContent("true");
+-		expect(InsightService.getCapability).toHaveBeenCalledTimes(1);
+ 	});
+ 
+-	it("requires more than one enabled panel in the active tab", async () => {
+-		(InsightService.getCapability as jest.Mock).mockResolvedValue(
+-			enabledCapability
++	it("requires more than one enabled panel in the active tab", () => {
++		renderCapability(
++			{ capability: enabledCapability },
++			<CapabilityProbe tabPanelIds={["panel-1"]} />
+ 		);
+-		renderCapability(<CapabilityProbe tabPanelIds={["panel-1"]} />);
+ 
+-		await waitFor(() =>
+-			expect(screen.getByTestId("loading")).toHaveTextContent("false")
+-		);
+ 		expect(screen.getByTestId("page-enabled")).toHaveTextContent("false");
+ 		expect(screen.getByTestId("panel-enabled")).toHaveTextContent("true");
+ 	});
+ 
+-	it("denies unmatched, missing-tab, and tabs with one or fewer enabled panels", async () => {
+-		(InsightService.getCapability as jest.Mock).mockResolvedValue(
+-			enabledCapability
+-		);
++	it("denies unmatched, missing-tab, and tabs with one or fewer enabled panels", () => {
+ 		const { rerender } = renderCapability(
++			{ capability: enabledCapability },
+ 			<CapabilityProbe
+ 				tabId="other-tab"
+ 				panelId="other-panel"
+@@ -95,21 +82,18 @@ describe("CommentaryCapabilityProvider", () => {
+ 			/>
+ 		);
+ 
+-		await waitFor(() =>
+-			expect(screen.getByTestId("loading")).toHaveTextContent("false")
+-		);
+ 		expect(screen.getByTestId("page-enabled")).toHaveTextContent("false");
+ 		expect(screen.getByTestId("panel-enabled")).toHaveTextContent("false");
+ 
+ 		rerender(
+-			<CommentaryCapabilityProvider>
++			<CommentaryCapabilityProvider capability={enabledCapability}>
+ 				<CapabilityProbe tabId={null} />
+ 			</CommentaryCapabilityProvider>
+ 		);
+ 		expect(screen.getByTestId("page-enabled")).toHaveTextContent("false");
+ 
+ 		rerender(
+-			<CommentaryCapabilityProvider>
++			<CommentaryCapabilityProvider capability={enabledCapability}>
+ 				<CapabilityProbe
+ 					pageId="page-disabled"
+ 					tabId="tab-disabled"
+@@ -122,61 +106,38 @@ describe("CommentaryCapabilityProvider", () => {
+ 		expect(screen.getByTestId("panel-enabled")).toHaveTextContent("false");
+ 	});
+ 
+-	it("applies the global enabled switch", async () => {
+-		(InsightService.getCapability as jest.Mock).mockResolvedValue({
+-			...enabledCapability,
+-			enabled: false,
++	it("applies the global enabled switch", () => {
++		renderCapability({
++			capability: {
++				...enabledCapability,
++				enabled: false,
++			},
+ 		});
+-		renderCapability();
+ 
+-		await waitFor(() =>
+-			expect(screen.getByTestId("loading")).toHaveTextContent("false")
+-		);
+ 		expect(screen.getByTestId("page-enabled")).toHaveTextContent("false");
+ 		expect(screen.getByTestId("panel-enabled")).toHaveTextContent("false");
+ 		expect(screen.getByTestId("enabled")).toHaveTextContent("false");
+ 	});
+ 
+-	it("fails closed when the capability request fails", async () => {
+-		(InsightService.getCapability as jest.Mock).mockRejectedValue(
+-			new Error("unavailable")
+-		);
++	it("fails closed when capability is undefined", () => {
+ 		renderCapability();
+ 
+-		await waitFor(() =>
+-			expect(screen.getByTestId("loading")).toHaveTextContent("false")
+-		);
++		expect(screen.getByTestId("loading")).toHaveTextContent("false");
+ 		expect(screen.getByTestId("page-enabled")).toHaveTextContent("false");
+ 		expect(screen.getByTestId("panel-enabled")).toHaveTextContent("false");
+ 		expect(screen.getByTestId("enabled")).toHaveTextContent("false");
+ 	});
+ 
+-	it("exposes the global switch even when no panels are enabled", async () => {
+-		(InsightService.getCapability as jest.Mock).mockResolvedValue({
+-			enabled: true,
+-			panelIds: [],
++	it("exposes the global switch even when no panels are enabled", () => {
++		renderCapability({
++			capability: {
++				enabled: true,
++				panelIds: [],
++			},
+ 		});
+-		renderCapability();
+-		await waitFor(() =>
+-			expect(screen.getByTestId("enabled")).toHaveTextContent("true")
+-		);
++
++		expect(screen.getByTestId("enabled")).toHaveTextContent("true");
+ 		expect(screen.getByTestId("page-enabled")).toHaveTextContent("false");
+ 		expect(screen.getByTestId("panel-enabled")).toHaveTextContent("false");
+-		expect(InsightService.getCapability).toHaveBeenCalledTimes(1);
+-	});
+-
+-	it("ignores a capability response after unmount", async () => {
+-		let resolveCapability!: (value: ICommentaryCapabilityData) => void;
+-		(InsightService.getCapability as jest.Mock).mockReturnValue(
+-			new Promise<ICommentaryCapabilityData>((resolve) => {
+-				resolveCapability = resolve;
+-			})
+-		);
+-		const { unmount } = renderCapability();
+-		unmount();
+-
+-		await act(async () => {
+-			resolveCapability(enabledCapability);
+-		});
+ 	});
+ });
+diff --git a/packages/components/src/CommentaryCapabilityProvider/index.tsx b/packages/components/src/CommentaryCapabilityProvider/index.tsx
+index 1f176e4..e24492b 100644
+--- a/packages/components/src/CommentaryCapabilityProvider/index.tsx
++++ b/packages/components/src/CommentaryCapabilityProvider/index.tsx
+@@ -1,14 +1,11 @@
+-import { InsightService } from "@angen_frontend/services";
+-import { ICommentaryCapabilityData } from "@angen_frontend/types";
++import type { ICommentaryCapabilityData } from "@angen_frontend/types";
+ import {
+ 	FC,
+ 	PropsWithChildren,
+ 	createContext,
+ 	useCallback,
+ 	useContext,
+-	useEffect,
+ 	useMemo,
+-	useState,
+ } from "react";
+ 
+ interface ICommentaryCapabilityContext {
+@@ -21,6 +18,11 @@ interface ICommentaryCapabilityContext {
+ 	canGeneratePanel: (panelId: string) => boolean;
+ }
+ 
++export interface ICommentaryCapabilityProviderProps {
++	capability?: ICommentaryCapabilityData;
++	loading?: boolean;
++}
++
+ const CommentaryCapabilityContext = createContext<ICommentaryCapabilityContext>(
+ 	{
+ 		loading: true,
+@@ -30,30 +32,9 @@ const CommentaryCapabilityContext = createContext<ICommentaryCapabilityContext>(
+ 	}
+ );
+ 
+-export const CommentaryCapabilityProvider: FC<PropsWithChildren> = ({
+-	children,
+-}) => {
+-	const [capability, setCapability] = useState<ICommentaryCapabilityData>();
+-	const [loading, setLoading] = useState(true);
+-
+-	useEffect(() => {
+-		let active = true;
+-		InsightService.getCapability()
+-			.then((apiCapability) => {
+-				if (!active) return;
+-				setCapability(apiCapability);
+-				setLoading(false);
+-			})
+-			.catch(() => {
+-				if (!active) return;
+-				setCapability(undefined);
+-				setLoading(false);
+-			});
+-		return () => {
+-			active = false;
+-		};
+-	}, []);
+-
++export const CommentaryCapabilityProvider: FC<
++	PropsWithChildren<ICommentaryCapabilityProviderProps>
++> = ({ children, capability, loading = false }) => {
+ 	const canGeneratePage = useCallback(
+ 		(activeTabId: string | null, panelIds: string[]) => {
+ 			return Boolean(
+@@ -67,6 +48,7 @@ export const CommentaryCapabilityProvider: FC<PropsWithChildren> = ({
+ 		},
+ 		[capability, loading]
+ 	);
++
+ 	const canGeneratePanel = useCallback(
+ 		(panelId: string) => {
+ 			return Boolean(
+@@ -77,6 +59,7 @@ export const CommentaryCapabilityProvider: FC<PropsWithChildren> = ({
+ 		},
+ 		[capability, loading]
+ 	);
++
+ 	const value = useMemo(
+ 		() => ({
+ 			loading,
+@@ -86,6 +69,7 @@ export const CommentaryCapabilityProvider: FC<PropsWithChildren> = ({
+ 		}),
+ 		[loading, capability, canGeneratePage, canGeneratePanel]
+ 	);
++
+ 	return (
+ 		<CommentaryCapabilityContext.Provider value={value}>
+ 			{children}
+diff --git a/packages/components/src/Hooks/useAdminPortalPermissions/index.spec.ts b/packages/components/src/Hooks/useAdminPortalPermissions/index.spec.ts
+deleted file mode 100644
+index dcd42c6..0000000
+--- a/packages/components/src/Hooks/useAdminPortalPermissions/index.spec.ts
++++ /dev/null
+@@ -1,145 +0,0 @@
+-import { act, renderHook, waitFor } from "@testing-library/react";
+-import { InsightService } from "@angen_frontend/services";
+-import type { IAdminPortalPermissions } from "@angen_frontend/services";
+-import { AdminPortalAccess } from "@angen_frontend/types";
+-import { useUser } from "../../UserProvider";
+-import { useAdminPortalPermissions } from "./index";
+-
+-jest.mock("@angen_frontend/types", () => ({
+-	AdminPortalAccess: {
+-		READ: "read",
+-		WRITE: "write",
+-	},
+-}));
+-
+-jest.mock("@angen_frontend/services", () => ({
+-	InsightService: { getAdminPortalPermissions: jest.fn() },
+-}));
+-
+-jest.mock("../../UserProvider", () => ({ useUser: jest.fn() }));
+-
+-describe("useAdminPortalPermissions", () => {
+-	const getPermissions = jest.mocked(
+-		InsightService.getAdminPortalPermissions
+-	);
+-	const permissions = {
+-		readGroups: [" Reader-Group "],
+-		writeGroups: [" Writer-Group "],
+-	};
+-
+-	beforeEach(() => {
+-		jest.resetAllMocks();
+-		(useUser as jest.Mock).mockReturnValue({
+-			profile: { shortenedAdGroupsForGtm: ["reader-group"] },
+-		});
+-		getPermissions.mockResolvedValue(permissions);
+-	});
+-
+-	it.each([
+-		[["reader-group"], AdminPortalAccess.READ],
+-		[["writer-group"], AdminPortalAccess.WRITE],
+-		[["reader-group", "writer-group"], AdminPortalAccess.WRITE],
+-		[["  ReAdEr-GrOuP  "], AdminPortalAccess.READ],
+-		[["unrelated-group"], null],
+-		[[], null],
+-	])("resolves groups %j to %s", async (groups, access) => {
+-		(useUser as jest.Mock).mockReturnValue({
+-			profile: { shortenedAdGroupsForGtm: groups },
+-		});
+-		const { result } = renderHook(() => useAdminPortalPermissions());
+-		expect(result.current.access).toBeNull();
+-		expect(result.current.loading).toBe(true);
+-		await waitFor(() => expect(result.current.loading).toBe(false));
+-		await waitFor(() => expect(result.current.access).toBe(access));
+-		expect(result.current.permissionError).toBe("");
+-	});
+-
+-	it("does not match blank group names", async () => {
+-		(useUser as jest.Mock).mockReturnValue({
+-			profile: { shortenedAdGroupsForGtm: [" "] },
+-		});
+-		getPermissions.mockResolvedValue({
+-			readGroups: [""],
+-			writeGroups: [" "],
+-		});
+-		const { result } = renderHook(() => useAdminPortalPermissions());
+-		await waitFor(() => expect(result.current.loading).toBe(false));
+-		expect(result.current.access).toBeNull();
+-	});
+-
+-	it("keeps access pending until the request completes", async () => {
+-		let resolve!: (value: IAdminPortalPermissions) => void;
+-		getPermissions.mockReturnValue(
+-			new Promise((done) => {
+-				resolve = done;
+-			})
+-		);
+-		const { result } = renderHook(() => useAdminPortalPermissions());
+-		expect(result.current.access).toBeNull();
+-		expect(result.current.loading).toBe(true);
+-		await act(async () => resolve(permissions));
+-		expect(result.current.access).toBe(AdminPortalAccess.READ);
+-		expect(result.current.loading).toBe(false);
+-	});
+-
+-	it("reports errors and reloads permissions on retry", async () => {
+-		getPermissions.mockRejectedValueOnce(
+-			new Error("Permission service unavailable")
+-		);
+-		const { result } = renderHook(() => useAdminPortalPermissions());
+-		await waitFor(() =>
+-			expect(result.current.permissionError).toBe(
+-				"Permission service unavailable"
+-			)
+-		);
+-		expect(result.current.access).toBeNull();
+-		expect(result.current.loading).toBe(false);
+-		act(() => result.current.retry());
+-		expect(result.current.permissionError).toBe("");
+-		expect(result.current.loading).toBe(true);
+-		await waitFor(() =>
+-			expect(result.current.access).toBe(AdminPortalAccess.READ)
+-		);
+-		expect(result.current.loading).toBe(false);
+-		expect(getPermissions).toHaveBeenCalledTimes(2);
+-	});
+-
+-	it("skips requests when disabled and loads when enabled", async () => {
+-		const { result, rerender } = renderHook(
+-			({ enabled }) => useAdminPortalPermissions(enabled),
+-			{ initialProps: { enabled: false } }
+-		);
+-		expect(getPermissions).not.toHaveBeenCalled();
+-		expect(result.current.access).toBeNull();
+-		expect(result.current.loading).toBe(false);
+-		rerender({ enabled: true });
+-		expect(result.current.loading).toBe(true);
+-		await waitFor(() =>
+-			expect(result.current.access).toBe(AdminPortalAccess.READ)
+-		);
+-		rerender({ enabled: false });
+-		expect(result.current.access).toBeNull();
+-		expect(result.current.loading).toBe(false);
+-	});
+-
+-	it("ignores the previous user's late response", async () => {
+-		let resolve!: (value: IAdminPortalPermissions) => void;
+-		getPermissions.mockReturnValueOnce(
+-			new Promise((done) => {
+-				resolve = done;
+-			})
+-		);
+-		const { result, rerender } = renderHook(() =>
+-			useAdminPortalPermissions()
+-		);
+-		(useUser as jest.Mock).mockReturnValue({
+-			profile: { shortenedAdGroupsForGtm: ["unrelated-group"] },
+-		});
+-		rerender();
+-		await waitFor(() => expect(result.current.loading).toBe(false));
+-		expect(result.current.access).toBeNull();
+-		await act(async () => resolve(permissions));
+-		expect(result.current.access).toBeNull();
+-		expect(result.current.loading).toBe(false);
+-	});
+-});
+diff --git a/packages/components/src/Hooks/useAdminPortalPermissions/index.ts b/packages/components/src/Hooks/useAdminPortalPermissions/index.ts
+deleted file mode 100644
+index 6216458..0000000
+--- a/packages/components/src/Hooks/useAdminPortalPermissions/index.ts
++++ /dev/null
+@@ -1,64 +0,0 @@
+-import { useCallback, useEffect, useState } from "react";
+-import { InsightService } from "@angen_frontend/services";
+-import type { IAdminPortalPermissions } from "@angen_frontend/services";
+-import { AdminPortalAccess } from "@angen_frontend/types";
+-import { useUser } from "../../UserProvider";
+-
+-const resolveAdminPortalAccess = (
+-	userGroups: string[],
+-	permissions: IAdminPortalPermissions
+-): AdminPortalAccess | null => {
+-	const groups = new Set(
+-		userGroups.map((group) => group.trim().toLowerCase()).filter(Boolean)
+-	);
+-	const matches = (configuredGroups: string[]) =>
+-		configuredGroups.some((group) => {
+-			const normalized = group.trim().toLowerCase();
+-			return normalized !== "" && groups.has(normalized);
+-		});
+-
+-	if (matches(permissions.writeGroups)) return AdminPortalAccess.WRITE;
+-	if (matches(permissions.readGroups)) return AdminPortalAccess.READ;
+-	return null;
+-};
+-
+-export const useAdminPortalPermissions = (enabled = true) => {
+-	const { profile } = useUser();
+-	const [access, setAccess] = useState<AdminPortalAccess | null>(null);
+-	const [loading, setLoading] = useState(enabled);
+-	const [permissionError, setPermissionError] = useState("");
+-	const [retryKey, setRetryKey] = useState(0);
+-	const retry = useCallback(() => setRetryKey((value) => value + 1), []);
+-
+-	useEffect(() => {
+-		let mounted = true;
+-		setAccess(null);
+-		setPermissionError("");
+-		setLoading(enabled);
+-		if (!enabled) return;
+-
+-		InsightService.getAdminPortalPermissions()
+-			.then((permissions) => {
+-				if (mounted) {
+-					setAccess(
+-						resolveAdminPortalAccess(
+-							profile?.shortenedAdGroupsForGtm || [],
+-							permissions
+-						)
+-					);
+-					setLoading(false);
+-				}
+-			})
+-			.catch((error: Error) => {
+-				if (mounted) {
+-					setPermissionError(error.message);
+-					setLoading(false);
+-				}
+-			});
+-		return () => {
+-			mounted = false;
+-		};
+-	}, [enabled, profile, retryKey]);
+-
+-	return { access, loading, permissionError, retry };
+-};
+diff --git a/packages/components/src/MenuContent/index.spec.tsx b/packages/components/src/MenuContent/index.spec.tsx
+index 6f57cf2..9e070ab 100644
+--- a/packages/components/src/MenuContent/index.spec.tsx
++++ b/packages/components/src/MenuContent/index.spec.tsx
+@@ -22,26 +22,20 @@ import { PropsWithChildren, ReactNode } from "react";
+ import { LinkProps, Path, useSearchParams } from "react-router-dom";
+ import { useProjectParams } from "../Hooks/useProjectParams";
+ import { useLocalStorage } from "react-use";
+-import { IConfig, InsightService } from "@angen_frontend/services";
++import { IConfig } from "@angen_frontend/services";
+ import { useTrackingFn } from "../GTMTrackingProvider";
+ import { useUser } from "../UserProvider";
+ import { useCommentaryCapability } from "../CommentaryCapabilityProvider";
+-import { useAdminPortalPermissions } from "../Hooks/useAdminPortalPermissions";
++import { useAdminPortalPermissions } from "../AdminPortalPermissionsProvider";
+ 
+ jest.mock("../CommentaryCapabilityProvider", () => ({
+ 	useCommentaryCapability: jest.fn(),
+ }));
+ 
+-jest.mock("../Hooks/useAdminPortalPermissions", () => ({
++jest.mock("../AdminPortalPermissionsProvider", () => ({
+ 	useAdminPortalPermissions: jest.fn(),
+ }));
+ 
+-jest.mock("@angen_frontend/services", () => ({
+-	InsightService: {
+-		getCapability: jest.fn(),
+-	},
+-}));
+-
+ type ItemProp = {
+ 	key?: string;
+ 	icon?: ReactNode;
+@@ -584,7 +578,7 @@ describe("Menu Content", () => {
+ 		).toHaveAttribute("href", "/cothinker-admin");
+ 	});
+ 
+-	it("shares one capability request across menu consumers", async () => {
++	it("shares capability state from CommentaryCapabilityProvider across menu consumers", () => {
+ 		const {
+ 			CommentaryCapabilityProvider,
+ 			useCommentaryCapability: useSharedCapability,
+@@ -594,12 +588,8 @@ describe("Menu Content", () => {
+ 		(useCommentaryCapability as jest.Mock).mockImplementation(
+ 			useSharedCapability
+ 		);
+-		(InsightService.getCapability as jest.Mock).mockResolvedValue({
+-			enabled: true,
+-			panelIds: [],
+-		});
+-		render(
+-			<CommentaryCapabilityProvider>
++		const { rerender } = render(
++			<CommentaryCapabilityProvider loading={true}>
+ 				<MenuContent />
+ 				<MenuContent />
+ 			</CommentaryCapabilityProvider>
+@@ -608,10 +598,20 @@ describe("Menu Content", () => {
+ 		expect(
+ 			screen.queryByText("sideMenu.sections.coThinkerAdmin")
+ 		).not.toBeInTheDocument();
++
++		rerender(
++			<CommentaryCapabilityProvider
++				capability={{ enabled: true, panelIds: [] }}
++				loading={false}
++			>
++				<MenuContent />
++				<MenuContent />
++			</CommentaryCapabilityProvider>
++		);
++
+ 		expect(
+-			await screen.findAllByText("sideMenu.sections.coThinkerAdmin")
++			screen.getAllByText("sideMenu.sections.coThinkerAdmin")
+ 		).toHaveLength(2);
+-		expect(InsightService.getCapability).toHaveBeenCalledTimes(1);
+ 	});
+ 
+ 	it("hides the portal when capability is disabled and preserves other menus", async () => {
+diff --git a/packages/components/src/MenuContent/index.tsx b/packages/components/src/MenuContent/index.tsx
+index 5adfc89..1d00e2a 100644
+--- a/packages/components/src/MenuContent/index.tsx
++++ b/packages/components/src/MenuContent/index.tsx
+@@ -40,7 +40,7 @@ import PathfinderSvgIcon from "../Icons/PathfinderSvgIcon";
+ import { useLocalStorage } from "react-use";
+ import { useTrackingFn } from "../GTMTrackingProvider";
+ import { useUser } from "../UserProvider";
+-import { useAdminPortalPermissions } from "../Hooks/useAdminPortalPermissions";
++import { useAdminPortalPermissions } from "../AdminPortalPermissionsProvider";
+ import MxDashboardSvgIcon from "../Icons/MxDashboardIcon";
+ import AllianceManagementSvgIcon from "../Icons/AllianceManagementIcon";
+ import CXAnalyticsSvgIcon from "../Icons/CXAnalyticsIcon";
+diff --git a/packages/components/src/index.ts b/packages/components/src/index.ts
+index a84866b..9f87e97 100644
+--- a/packages/components/src/index.ts
++++ b/packages/components/src/index.ts
+@@ -218,7 +218,10 @@ import { UserProvider, useUser } from "./UserProvider";
+ import { YearMonthGlobalFilter } from "./Section/GlobalFilter/YearMonthGlobalFilter";
+ import { UnderConstruction } from "./UnderConstruction";
+ import { useFetchAdvancedFilter } from "./Hooks/useFetchAdvancedFilter";
+-import { useAdminPortalPermissions } from "./Hooks/useAdminPortalPermissions";
++import {
++	AdminPortalPermissionsProvider,
++	useAdminPortalPermissions,
++} from "./AdminPortalPermissionsProvider";
+ import { useAdvancedFilterSwapRegionItem } from "./Hooks/useAdvancedFilterSwapRegionItem";
+ import { useDataRecencyViewSwap } from "./Hooks/useDataRecencyViewSwap";
+ import { useIsMobile } from "./Hooks/useIsMobile";
+@@ -507,6 +510,7 @@ export {
+ 	useDateRange,
+ 	useError,
+ 	useFetchAdvancedFilter,
++	AdminPortalPermissionsProvider,
+ 	useAdminPortalPermissions,
+ 	useAdvancedFilterSwapRegionItem,
+ 	useDataRecencyViewSwap,
+diff --git a/packages/web/src/components/AdminPortalPermissionsWrapper/index.spec.tsx b/packages/web/src/components/AdminPortalPermissionsWrapper/index.spec.tsx
+new file mode 100644
+index 0000000..5e3c4eb
+--- /dev/null
++++ b/packages/web/src/components/AdminPortalPermissionsWrapper/index.spec.tsx
+@@ -0,0 +1,201 @@
++import {
++	act,
++	fireEvent,
++	render,
++	screen,
++	waitFor,
++} from "@testing-library/react";
++import { useConfiguration } from "@angen_frontend/components";
++import { InsightService } from "@angen_frontend/services";
++import type { IAdminPortalPermissions } from "@angen_frontend/services";
++import { PropsWithChildren } from "react";
++import { AdminPortalPermissionsWrapper } from ".";
++
++jest.mock("@angen_frontend/components", () => ({
++	__esModule: true,
++	useLoading: jest.fn(),
++	useConfiguration: jest.fn(),
++	AdminPortalPermissionsProvider: ({
++		children,
++		permissions,
++		loading,
++		permissionError,
++		retry,
++		enabled,
++	}: PropsWithChildren<{
++		permissions?: IAdminPortalPermissions;
++		loading?: boolean;
++		permissionError?: string;
++		retry?: () => void;
++		enabled?: boolean;
++	}>) => (
++		<div
++			data-testid="mock-permissions-provider"
++			data-has-permissions={String(Boolean(permissions))}
++			data-loading={String(Boolean(loading))}
++			data-error={permissionError || ""}
++			data-enabled={String(Boolean(enabled))}
++		>
++			<button type="button" onClick={retry}>
++				retry
++			</button>
++			{children}
++		</div>
++	),
++}));
++
++jest.mock("@angen_frontend/services", () => ({
++	__esModule: true,
++	InsightService: {
++		getAdminPortalPermissions: jest.fn(),
++	},
++}));
++
++describe("AdminPortalPermissionsWrapper", () => {
++	const originalConsoleError = global.console.error;
++	const getPermissions = jest.mocked(
++		InsightService.getAdminPortalPermissions
++	);
++	const permissions: IAdminPortalPermissions = {
++		readGroups: ["reader-group"],
++		writeGroups: ["writer-group"],
++	};
++
++	beforeEach(() => {
++		jest.resetAllMocks();
++		global.console.error = jest.fn();
++		getPermissions.mockResolvedValue(permissions);
++		(useConfiguration as jest.Mock).mockReturnValue({
++			menuRedirectUrl: {
++				coThinkerAdmin: "/cothinker-admin",
++			},
++		});
++	});
++
++	afterEach(() => {
++		global.console.error = originalConsoleError;
++	});
++
++	it("loads permissions and passes resolved state to provider", async () => {
++		let resolvePermissions!: (value: IAdminPortalPermissions) => void;
++		getPermissions.mockReturnValue(
++			new Promise<IAdminPortalPermissions>((resolve) => {
++				resolvePermissions = resolve;
++			})
++		);
++
++		render(
++			<AdminPortalPermissionsWrapper>
++				<span data-testid="child">admin</span>
++			</AdminPortalPermissionsWrapper>
++		);
++
++		const provider = screen.getByTestId("mock-permissions-provider");
++		expect(provider).toHaveAttribute("data-loading", "true");
++		expect(provider).toHaveAttribute("data-has-permissions", "false");
++		expect(provider).toHaveAttribute("data-error", "");
++		expect(screen.getByTestId("child")).toBeInTheDocument();
++
++		await act(async () => resolvePermissions(permissions));
++
++		expect(provider).toHaveAttribute("data-loading", "false");
++		expect(provider).toHaveAttribute("data-has-permissions", "true");
++		expect(provider).toHaveAttribute("data-error", "");
++	});
++
++	it("derives enabled state from coThinkerAdmin config unless overridden", async () => {
++		(useConfiguration as jest.Mock).mockReturnValue({
++			menuRedirectUrl: {},
++		});
++
++		const { rerender } = render(<AdminPortalPermissionsWrapper />);
++		const provider = screen.getByTestId("mock-permissions-provider");
++
++		expect(getPermissions).not.toHaveBeenCalled();
++		expect(provider).toHaveAttribute("data-enabled", "false");
++
++		rerender(<AdminPortalPermissionsWrapper enabled />);
++		await waitFor(() =>
++			expect(provider).toHaveAttribute("data-has-permissions", "true")
++		);
++		expect(provider).toHaveAttribute("data-enabled", "true");
++		expect(getPermissions).toHaveBeenCalledTimes(1);
++	});
++
++	it("reports Error message and reloads permissions on retry", async () => {
++		getPermissions.mockRejectedValueOnce(
++			new Error("Permission service unavailable")
++		);
++
++		render(<AdminPortalPermissionsWrapper />);
++
++		const provider = screen.getByTestId("mock-permissions-provider");
++		await waitFor(() =>
++			expect(provider).toHaveAttribute(
++				"data-error",
++				"Permission service unavailable"
++			)
++		);
++		expect(provider).toHaveAttribute("data-loading", "false");
++		expect(provider).toHaveAttribute("data-has-permissions", "false");
++
++		fireEvent.click(screen.getByText("retry"));
++
++		await waitFor(() =>
++			expect(provider).toHaveAttribute("data-has-permissions", "true")
++		);
++		expect(provider).toHaveAttribute("data-error", "");
++		expect(getPermissions).toHaveBeenCalledTimes(2);
++	});
++
++	it("uses fallback message for non-Error failures", async () => {
++		getPermissions.mockRejectedValueOnce("Permission service unavailable");
++
++		render(<AdminPortalPermissionsWrapper />);
++
++		const provider = screen.getByTestId("mock-permissions-provider");
++		await waitFor(() =>
++			expect(provider).toHaveAttribute(
++				"data-error",
++				"Failed to load permissions"
++			)
++		);
++		expect(provider).toHaveAttribute("data-has-permissions", "false");
++		expect(global.console.error).toHaveBeenCalled();
++	});
++
++	it("skips requests when disabled and clears stale permissions while reloading", async () => {
++		let resolveNext!: (value: IAdminPortalPermissions) => void;
++		const { rerender } = render(
++			<AdminPortalPermissionsWrapper enabled={false} />
++		);
++
++		const provider = screen.getByTestId("mock-permissions-provider");
++		expect(getPermissions).not.toHaveBeenCalled();
++		expect(provider).toHaveAttribute("data-enabled", "false");
++		expect(provider).toHaveAttribute("data-loading", "false");
++		expect(provider).toHaveAttribute("data-has-permissions", "false");
++
++		rerender(<AdminPortalPermissionsWrapper enabled={true} />);
++		await waitFor(() =>
++			expect(provider).toHaveAttribute("data-has-permissions", "true")
++		);
++
++		rerender(<AdminPortalPermissionsWrapper enabled={false} />);
++		expect(provider).toHaveAttribute("data-has-permissions", "false");
++		expect(provider).toHaveAttribute("data-loading", "false");
++
++		getPermissions.mockReturnValueOnce(
++			new Promise((resolve) => {
++				resolveNext = resolve;
++			})
++		);
++		rerender(<AdminPortalPermissionsWrapper enabled={true} />);
++		expect(provider).toHaveAttribute("data-loading", "true");
++		expect(provider).toHaveAttribute("data-has-permissions", "false");
++
++		await act(async () => resolveNext(permissions));
++		expect(provider).toHaveAttribute("data-loading", "false");
++		expect(provider).toHaveAttribute("data-has-permissions", "true");
++	});
++});
+diff --git a/packages/web/src/components/AdminPortalPermissionsWrapper/index.tsx b/packages/web/src/components/AdminPortalPermissionsWrapper/index.tsx
+new file mode 100644
+index 0000000..943ba9d
+--- /dev/null
++++ b/packages/web/src/components/AdminPortalPermissionsWrapper/index.tsx
+@@ -0,0 +1,54 @@
++import {
++	AdminPortalPermissionsProvider,
++	useConfiguration,
++} from "@angen_frontend/components";
++import { InsightService } from "@angen_frontend/services";
++import type { IAdminPortalPermissions } from "@angen_frontend/services";
++import { FC, PropsWithChildren, useCallback, useState } from "react";
++import { useSafeAsync } from "../../hook";
++
++export interface IAdminPortalPermissionsWrapperProps {
++	enabled?: boolean;
++}
++
++const getPermissionErrorMessage = (error: unknown): string => {
++	if (error instanceof Error && error.message) {
++		return error.message;
++	}
++	return "Failed to load permissions";
++};
++
++export const AdminPortalPermissionsWrapper: FC<
++	PropsWithChildren<IAdminPortalPermissionsWrapperProps>
++> = ({ children, enabled }) => {
++	const { menuRedirectUrl } = useConfiguration();
++	const isEnabled = enabled ?? Boolean(menuRedirectUrl.coThinkerAdmin);
++	const [retryKey, setRetryKey] = useState(0);
++	const {
++		error,
++		loading: requestLoading,
++		value,
++	} = useSafeAsync(async (): Promise<IAdminPortalPermissions | undefined> => {
++		if (!isEnabled) return undefined;
++		return InsightService.getAdminPortalPermissions();
++	}, [isEnabled, retryKey]);
++
++	const retry = useCallback(() => setRetryKey((count) => count + 1), []);
++	const loading = isEnabled && requestLoading;
++	const permissionError =
++		isEnabled && !requestLoading && error
++			? getPermissionErrorMessage(error)
++			: "";
++
++	return (
++		<AdminPortalPermissionsProvider
++			permissions={isEnabled && !requestLoading ? value : undefined}
++			loading={loading}
++			permissionError={permissionError}
++			retry={retry}
++			enabled={isEnabled}
++		>
++			{children}
++		</AdminPortalPermissionsProvider>
++	);
++};
+diff --git a/packages/web/src/components/CommentaryCapabilityWrapper/index.spec.tsx b/packages/web/src/components/CommentaryCapabilityWrapper/index.spec.tsx
+new file mode 100644
+index 0000000..6350186
+--- /dev/null
++++ b/packages/web/src/components/CommentaryCapabilityWrapper/index.spec.tsx
+@@ -0,0 +1,104 @@
++import { act, render, screen, waitFor } from "@testing-library/react";
++import { InsightService } from "@angen_frontend/services";
++import type { ICommentaryCapabilityData } from "@angen_frontend/types";
++import { PropsWithChildren } from "react";
++import { CommentaryCapabilityWrapper } from ".";
++
++jest.mock("@angen_frontend/components", () => ({
++	__esModule: true,
++	useLoading: jest.fn(),
++	CommentaryCapabilityProvider: ({
++		children,
++		capability,
++		loading,
++	}: PropsWithChildren<{
++		capability?: ICommentaryCapabilityData;
++		loading?: boolean;
++	}>) => (
++		<div
++			data-testid="mock-capability-provider"
++			data-loading={String(Boolean(loading))}
++			data-enabled={String(Boolean(capability?.enabled))}
++			data-panel-ids={(capability?.panelIds || []).join(",")}
++		>
++			{children}
++		</div>
++	),
++}));
++
++jest.mock("@angen_frontend/services", () => ({
++	__esModule: true,
++	InsightService: {
++		getCapability: jest.fn(),
++	},
++}));
++
++describe("CommentaryCapabilityWrapper", () => {
++	const originalConsoleError = global.console.error;
++
++	beforeEach(() => {
++		jest.resetAllMocks();
++		global.console.error = jest.fn();
++	});
++
++	afterEach(() => {
++		global.console.error = originalConsoleError;
++	});
++
++	it("fetches capability once and passes loading and value to provider", async () => {
++		let resolveCapability!: (value: ICommentaryCapabilityData) => void;
++		(InsightService.getCapability as jest.Mock).mockReturnValue(
++			new Promise<ICommentaryCapabilityData>((resolve) => {
++				resolveCapability = resolve;
++			})
++		);
++
++		render(
++			<CommentaryCapabilityWrapper>
++				<span data-testid="child">content</span>
++			</CommentaryCapabilityWrapper>
++		);
++
++		const provider = screen.getByTestId("mock-capability-provider");
++		expect(provider).toHaveAttribute("data-loading", "true");
++		expect(provider).toHaveAttribute("data-enabled", "false");
++		expect(screen.getByTestId("child")).toBeInTheDocument();
++
++		await act(async () => {
++			resolveCapability({
++				enabled: true,
++				panelIds: ["panel-1", "panel-2"],
++			});
++		});
++
++		expect(provider).toHaveAttribute("data-loading", "false");
++		expect(provider).toHaveAttribute("data-enabled", "true");
++		expect(provider).toHaveAttribute("data-panel-ids", "panel-1,panel-2");
++		expect(InsightService.getCapability).toHaveBeenCalledTimes(1);
++	});
++
++	it("fails closed and keeps rendering children when capability request fails", async () => {
++		(InsightService.getCapability as jest.Mock).mockRejectedValue(
++			new Error("unavailable")
++		);
++
++		render(
++			<CommentaryCapabilityWrapper>
++				<span data-testid="child">content</span>
++			</CommentaryCapabilityWrapper>
++		);
++
++		await waitFor(() =>
++			expect(
++				screen.getByTestId("mock-capability-provider")
++			).toHaveAttribute("data-loading", "false")
++		);
++
++		expect(screen.getByTestId("mock-capability-provider")).toHaveAttribute(
++			"data-enabled",
++			"false"
++		);
++		expect(screen.getByTestId("child")).toBeInTheDocument();
++		expect(global.console.error).toHaveBeenCalled();
++	});
++});
+diff --git a/packages/web/src/components/CommentaryCapabilityWrapper/index.tsx b/packages/web/src/components/CommentaryCapabilityWrapper/index.tsx
+new file mode 100644
+index 0000000..d94cc11
+--- /dev/null
++++ b/packages/web/src/components/CommentaryCapabilityWrapper/index.tsx
+@@ -0,0 +1,19 @@
++import { CommentaryCapabilityProvider } from "@angen_frontend/components";
++import { InsightService } from "@angen_frontend/services";
++import { FC, PropsWithChildren } from "react";
++import { useSafeAsync } from "../../hook";
++
++export const CommentaryCapabilityWrapper: FC<PropsWithChildren> = ({
++	children,
++}) => {
++	const { value: capability, loading } = useSafeAsync(
++		() => InsightService.getCapability(),
++		[]
++	);
++
++	return (
++		<CommentaryCapabilityProvider capability={capability} loading={loading}>
++			{children}
++		</CommentaryCapabilityProvider>
++	);
++};
+diff --git a/packages/web/src/pages/coThinkerAdmin/index.spec.tsx b/packages/web/src/pages/coThinkerAdmin/index.spec.tsx
+index 0825b4c..114a5c0 100644
+--- a/packages/web/src/pages/coThinkerAdmin/index.spec.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/index.spec.tsx
+@@ -56,6 +56,15 @@ jest.mock("../../components/UserWrapper", () => ({
+ 	UserWrapper: ({ children }: { children: React.ReactNode }) => children,
+ }));
+ 
++jest.mock("../../components/AdminPortalPermissionsWrapper", () => ({
++	__esModule: true,
++	AdminPortalPermissionsWrapper: ({
++		children,
++	}: {
++		children: React.ReactNode;
++	}) => children,
++}));
++
+ jest.mock("./components/OverviewTab", () => ({
+ 	__esModule: true,
+ 	OverviewTab: () => <div data-testid="mock-overview-tab">Overview Tab</div>,
+diff --git a/packages/web/src/pages/coThinkerAdmin/index.tsx b/packages/web/src/pages/coThinkerAdmin/index.tsx
+index 5608555..505954f 100644
+--- a/packages/web/src/pages/coThinkerAdmin/index.tsx
++++ b/packages/web/src/pages/coThinkerAdmin/index.tsx
+@@ -13,6 +13,7 @@ import {
+ 	useAdminPortalPermissions,
+ } from "@angen_frontend/components";
+ import { UserWrapper } from "../../components/UserWrapper";
++import { AdminPortalPermissionsWrapper } from "../../components/AdminPortalPermissionsWrapper";
+ import { AdminPortalAccess, TranslationEntry } from "@angen_frontend/types";
+ import "./index.scss";
+ 
+@@ -138,6 +139,8 @@ const CoThinkerAdminContent: FC = () => {
+ 
+ export const CoThinkerAdmin: FC = () => (
+ 	<UserWrapper>
+-		<CoThinkerAdminContent />
++		<AdminPortalPermissionsWrapper enabled>
++			<CoThinkerAdminContent />
++		</AdminPortalPermissionsWrapper>
+ 	</UserWrapper>
+ );
+diff --git a/packages/web/src/pages/contexts/index.spec.tsx b/packages/web/src/pages/contexts/index.spec.tsx
+index 9921861..5c8cab6 100644
+--- a/packages/web/src/pages/contexts/index.spec.tsx
++++ b/packages/web/src/pages/contexts/index.spec.tsx
+@@ -38,8 +38,17 @@ jest.mock("@angen_frontend/components", () => ({
+ 	ErrorProvider: ({ children }: PropsWithChildren) => {
+ 		return <div>{children}</div>;
+ 	},
+-	CommentaryCapabilityProvider: ({ children }: PropsWithChildren) => (
+-		<div data-testid="mock-capability-provider">{children}</div>
++}));
++jest.mock("../../components/CommentaryCapabilityWrapper", () => ({
++	__esModule: true,
++	CommentaryCapabilityWrapper: ({ children }: PropsWithChildren) => (
++		<div data-testid="mock-capability-wrapper">{children}</div>
++	),
++}));
++jest.mock("../../components/AdminPortalPermissionsWrapper", () => ({
++	__esModule: true,
++	AdminPortalPermissionsWrapper: ({ children }: PropsWithChildren) => (
++		<div data-testid="mock-permissions-wrapper">{children}</div>
+ 	),
+ }));
+ jest.mock("../../components/ConfigurationWrapper", () => ({
+@@ -160,7 +169,7 @@ describe("Contexts", () => {
+ 		expect(screen.getByText("SG")).toBeInTheDocument();
+ 		expect(screen.getByTestId("mock-theme-wrapper")).toBeInTheDocument();
+ 		expect(
+-			screen.queryByTestId("mock-capability-provider")
++			screen.queryByTestId("mock-capability-wrapper")
+ 		).not.toBeInTheDocument();
+ 	});
+ 
+@@ -169,9 +178,12 @@ describe("Contexts", () => {
+ 
+ 		expect(screen.getByTestId("mock-tableau-wrapper")).toBeInTheDocument();
+ 		expect(screen.getByTestId("mock-user-wrapper")).toContainElement(
+-			screen.getByTestId("mock-capability-provider")
++			screen.getByTestId("mock-capability-wrapper")
++		);
++		expect(screen.getByTestId("mock-capability-wrapper")).toContainElement(
++			screen.getByTestId("mock-permissions-wrapper")
+ 		);
+-		expect(screen.getByTestId("mock-capability-provider")).toContainElement(
++		expect(screen.getByTestId("mock-permissions-wrapper")).toContainElement(
+ 			screen.getByTestId("mock-gtm-wrapper")
+ 		);
+ 	});
+diff --git a/packages/web/src/pages/contexts/index.tsx b/packages/web/src/pages/contexts/index.tsx
+index b297d46..d1c8a8a 100644
+--- a/packages/web/src/pages/contexts/index.tsx
++++ b/packages/web/src/pages/contexts/index.tsx
+@@ -4,7 +4,6 @@ import {
+ 	TargetTypeFilterProvider,
+ 	TemplateSizeProvider,
+ 	ErrorProvider,
+-	CommentaryCapabilityProvider,
+ } from "@angen_frontend/components";
+ import type { Country } from "@angen_frontend/types";
+ import { FC } from "react";
+@@ -22,6 +21,8 @@ import { UserAnnouncementWrapper } from "../../components/UserAnnouncementWrappe
+ import { AnalyticsWrapper } from "../../components/AnalyticsWrapper";
+ import { UserReportWrapper } from "../../components/UserReportWrapper";
+ import { ModuleTabWrapper } from "../../components/ModuleTabWrapper";
++import { CommentaryCapabilityWrapper } from "../../components/CommentaryCapabilityWrapper";
++import { AdminPortalPermissionsWrapper } from "../../components/AdminPortalPermissionsWrapper";
+ import LocalStorageVersionChecker from "../../components/LocalStorageVersionChecker";
+ 
+ export const GlobalContexts: FC = () => {
+@@ -46,30 +47,32 @@ export const MainContexts: FC = () => {
+ 	return (
+ 		<TableauWrapper>
+ 			<UserWrapper>
+-				<CommentaryCapabilityProvider>
+-					<GTMTrackingWrapper>
+-						<TableauSession>
+-							<ModuleTabWrapper>
+-								<GlobalFilterWrapper>
+-									<TargetTypeFilterProvider>
+-										<DateRangeProvider>
+-											<TemplateSizeProvider>
+-												<ErrorProvider>
+-													<UserAnnouncementWrapper>
+-														<UserReportWrapper>
+-															<ConnectivityNotification />
+-															<Outlet />
+-														</UserReportWrapper>
+-													</UserAnnouncementWrapper>
+-												</ErrorProvider>
+-											</TemplateSizeProvider>
+-										</DateRangeProvider>
+-									</TargetTypeFilterProvider>
+-								</GlobalFilterWrapper>
+-							</ModuleTabWrapper>
+-						</TableauSession>
+-					</GTMTrackingWrapper>
+-				</CommentaryCapabilityProvider>
++				<CommentaryCapabilityWrapper>
++					<AdminPortalPermissionsWrapper>
++						<GTMTrackingWrapper>
++							<TableauSession>
++								<ModuleTabWrapper>
++									<GlobalFilterWrapper>
++										<TargetTypeFilterProvider>
++											<DateRangeProvider>
++												<TemplateSizeProvider>
++													<ErrorProvider>
++														<UserAnnouncementWrapper>
++															<UserReportWrapper>
++																<ConnectivityNotification />
++																<Outlet />
++															</UserReportWrapper>
++														</UserAnnouncementWrapper>
++													</ErrorProvider>
++												</TemplateSizeProvider>
++											</DateRangeProvider>
++										</TargetTypeFilterProvider>
++									</GlobalFilterWrapper>
++								</ModuleTabWrapper>
++							</TableauSession>
++						</GTMTrackingWrapper>
++					</AdminPortalPermissionsWrapper>
++				</CommentaryCapabilityWrapper>
+ 			</UserWrapper>
+ 		</TableauWrapper>
+ 	);
